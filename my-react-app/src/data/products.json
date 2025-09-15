@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1,
+    "title": "經典白色馬克杯",
+    "price": 299,
+    "category": "mug",
+    "image": "https://via.placeholder.com/300x300/ffffff/cccccc?text=White+Mug",
+    "mockupImage": "/images/products/mockups/mug-white-mockup.svg",
+    "printArea": { "x": 50, "y": 80, "width": 200, "height": 140 },
+    "description": "高品質陶瓷材質，容量 350ml，適合個人定製設計",
+    "featured": true
+  },
+  {
+    "id": 2,
+    "title": "純棉T恤 - 白色",
+    "price": 599,
+    "category": "tshirt",
+    "image": "https://via.placeholder.com/300x300/ffffff/cccccc?text=White+T-Shirt",
+    "mockupImage": "/images/products/mockups/tshirt-white-mockup.png",
+    "printArea": { "x": 100, "y": 120, "width": 200, "height": 200 },
+    "description": "100% 純棉材質，舒適透氣，多種尺寸可選",
+    "featured": true
+  },
+  {
+    "id": 3,
+    "title": "帆布袋",
+    "price": 399,
+    "category": "bag",
+    "image": "https://via.placeholder.com/300x300/f5f5dc/cccccc?text=Canvas+Bag",
+    "mockupImage": "/images/products/mockups/bag-canvas-mockup.png",
+    "printArea": { "x": 75, "y": 100, "width": 150, "height": 150 },
+    "description": "環保帆布材質，大容量設計，耐用實用",
+    "featured": false
+  },
+  {
+    "id": 4,
+    "title": "黑色馬克杯",
+    "price": 299,
+    "category": "mug",
+    "image": "https://via.placeholder.com/300x300/000000/ffffff?text=Black+Mug",
+    "mockupImage": "/images/products/mockups/mug-black-mockup.png",
+    "printArea": { "x": 50, "y": 80, "width": 200, "height": 140 },
+    "description": "經典黑色設計，耐熱陶瓷材質",
+    "featured": true
+  },
+  {
+    "id": 5,
+    "title": "純棉T恤 - 黑色",
+    "price": 599,
+    "category": "tshirt",
+    "image": "https://via.placeholder.com/300x300/000000/ffffff?text=Black+T-Shirt",
+    "mockupImage": "/images/products/mockups/tshirt-black-mockup.svg",
+    "printArea": { "x": 100, "y": 120, "width": 200, "height": 200 },
+    "description": "經典黑色純棉T恤，百搭必備款",
+    "featured": false
+  },
+  {
+    "id": 6,
+    "title": "保溫水瓶",
+    "price": 799,
+    "category": "bottle",
+    "image": "https://via.placeholder.com/300x300/4169e1/ffffff?text=Water+Bottle",
+    "mockupImage": "/images/products/mockups/bottle-steel-mockup.png",
+    "printArea": { "x": 60, "y": 100, "width": 180, "height": 120 },
+    "description": "不鏽鋼保溫瓶，保溫效果佳，容量 500ml",
+    "featured": true
+  },
+  {
+    "id": 7,
+    "title": "抱枕套",
+    "price": 450,
+    "category": "pillow",
+    "image": "https://via.placeholder.com/300x300/ffd700/000000?text=Pillow+Case",
+    "mockupImage": "/images/products/mockups/pillow-white-mockup.png",
+    "printArea": { "x": 50, "y": 50, "width": 200, "height": 200 },
+    "description": "柔軟舒適，45x45cm 標準尺寸",
+    "featured": false
+  },
+  {
+    "id": 8,
+    "title": "筆記本",
+    "price": 350,
+    "category": "notebook",
+    "image": "https://via.placeholder.com/300x300/90ee90/000000?text=Notebook",
+    "mockupImage": "/images/products/mockups/notebook-cover-mockup.png",
+    "printArea": { "x": 25, "y": 40, "width": 150, "height": 200 },
+    "description": "A5尺寸精裝筆記本，內頁空白設計",
+    "featured": false
+  }
+]
