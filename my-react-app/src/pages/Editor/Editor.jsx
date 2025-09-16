@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import productsData from '../../data/products.json';
+import Mug3D from '../../components/3D/Mug3D';
 
 const Editor = () => {
   const { id } = useParams();
@@ -385,7 +386,8 @@ const Editor = () => {
                                 fontSize: `${element.fontSize * (384 / 400)}px`, // 384是畫布實際寬度
                                 color: element.color,
                                 fontFamily: element.fontFamily,
-                                userSelect: 'none'
+                                userSelect: 'none',
+                                whiteSpace: 'nowrap' // 防止文字換行
                               }}
                               onMouseDown={(e) => handleMouseDown(e, element)}
                             >
@@ -482,84 +484,68 @@ const Editor = () => {
               <div className="flex-1 p-4">
                 <h3 className="font-semibold text-gray-900 mb-4">即時預覽</h3>
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="aspect-square bg-white rounded border-2 border-gray-200 relative overflow-hidden">
-                    {/* Product Mockup as Background */}
-                    {product.mockupImage ? (
-                      <img
-                        src={product.mockupImage}
-                        alt={`${product.title} 預覽`}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'block';
-                        }}
-                      />
-                    ) : (
-                      <img
-                        src={product.image}
-                        alt={product.title}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-
-                    {/* Design Elements with Clipping */}
-                    <div
-                      className="absolute overflow-hidden"
-                      style={{
-                        left: `${product.printArea ? (product.printArea.x / 400) * 100 : 0}%`,
-                        top: `${product.printArea ? (product.printArea.y / 400) * 100 : 0}%`,
-                        width: `${product.printArea ? (product.printArea.width / 400) * 100 : 100}%`,
-                        height: `${product.printArea ? (product.printArea.height / 400) * 100 : 100}%`,
-                      }}
-                    >
-                      {/* Design Elements in Preview */}
-                      {designElements.map((element) => {
-                        if (element.type === 'text') {
-                          // 計算文字在設計區域內的相對位置
-                          const relativeX = product.printArea ? element.x - product.printArea.x : element.x;
-                          const relativeY = product.printArea ? element.y - product.printArea.y : element.y;
-                          const areaWidth = product.printArea ? product.printArea.width : 400;
-                          const areaHeight = product.printArea ? product.printArea.height : 400;
-
-                          return (
-                            <div
-                              key={`preview-${element.id}`}
-                              className="absolute pointer-events-none"
-                              style={{
-                                left: `${(relativeX / areaWidth) * 100}%`,
-                                top: `${(relativeY / areaHeight) * 100}%`,
-                                transform: 'translate(-50%, -50%)',
-                                fontSize: `${element.fontSize * 0.6}px`, // 預覽區域縮放
-                                color: element.color,
-                                fontFamily: element.fontFamily,
-                                whiteSpace: 'nowrap', // 防止換行
-                                overflow: 'visible', // 讓文字能顯示但被父容器裁切
-                              }}
-                            >
-                              {element.content}
-                            </div>
-                          );
-                        }
-                        return null;
-                      })}
+                  {product.category === 'mug' ? (
+                    /* 3D 馬克杯預覽 */
+                    <div className="aspect-square bg-white rounded border-2 border-gray-200 relative overflow-hidden">
+                      <Mug3D designElements={designElements} product={product} />
+                      <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                        🖱️ 拖曳旋轉 • 滾輪縮放
+                      </div>
                     </div>
+                  ) : (
+                    /* 2D 預覽 (T恤等其他產品) */
+                    <div className="aspect-square bg-white rounded border-2 border-gray-200 relative overflow-hidden">
+                      {/* Product Mockup as Background */}
+                      {product.mockupImage ? (
+                        <img
+                          src={product.mockupImage}
+                          alt={`${product.title} 預覽`}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'block';
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={product.image}
+                          alt={product.title}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
 
-                    {/* No Print Area Fallback */}
-                    {!product.printArea && designElements.length > 0 && (
-                      <div className="absolute inset-0">
+                      {/* Design Elements with Clipping */}
+                      <div
+                        className="absolute overflow-hidden"
+                        style={{
+                          left: `${product.printArea ? (product.printArea.x / 400) * 100 : 0}%`,
+                          top: `${product.printArea ? (product.printArea.y / 400) * 100 : 0}%`,
+                          width: `${product.printArea ? (product.printArea.width / 400) * 100 : 100}%`,
+                          height: `${product.printArea ? (product.printArea.height / 400) * 100 : 100}%`,
+                        }}
+                      >
+                        {/* Design Elements in Preview */}
                         {designElements.map((element) => {
                           if (element.type === 'text') {
+                            // 計算文字在設計區域內的相對位置
+                            const relativeX = product.printArea ? element.x - product.printArea.x : element.x;
+                            const relativeY = product.printArea ? element.y - product.printArea.y : element.y;
+                            const areaWidth = product.printArea ? product.printArea.width : 400;
+                            const areaHeight = product.printArea ? product.printArea.height : 400;
+
                             return (
                               <div
-                                key={`preview-fallback-${element.id}`}
+                                key={`preview-${element.id}`}
                                 className="absolute pointer-events-none"
                                 style={{
-                                  left: `${(element.x / 400) * 100}%`,
-                                  top: `${(element.y / 400) * 100}%`,
+                                  left: `${(relativeX / areaWidth) * 100}%`,
+                                  top: `${(relativeY / areaHeight) * 100}%`,
                                   transform: 'translate(-50%, -50%)',
-                                  fontSize: `${element.fontSize * 0.6}px`,
+                                  fontSize: `${element.fontSize * 0.6}px`, // 預覽區域縮放
                                   color: element.color,
-                                  fontFamily: element.fontFamily
+                                  fontFamily: element.fontFamily,
+                                  whiteSpace: 'nowrap', // 防止換行
+                                  overflow: 'visible', // 讓文字能顯示但被父容器裁切
                                 }}
                               >
                                 {element.content}
@@ -569,14 +555,51 @@ const Editor = () => {
                           return null;
                         })}
                       </div>
-                    )}
-                  </div>
+
+                      {/* No Print Area Fallback */}
+                      {!product.printArea && designElements.length > 0 && (
+                        <div className="absolute inset-0">
+                          {designElements.map((element) => {
+                            if (element.type === 'text') {
+                              return (
+                                <div
+                                  key={`preview-fallback-${element.id}`}
+                                  className="absolute pointer-events-none"
+                                  style={{
+                                    left: `${(element.x / 400) * 100}%`,
+                                    top: `${(element.y / 400) * 100}%`,
+                                    transform: 'translate(-50%, -50%)',
+                                    fontSize: `${element.fontSize * 0.6}px`,
+                                    color: element.color,
+                                    fontFamily: element.fontFamily
+                                  }}
+                                >
+                                  {element.content}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-3 text-center">
-                    <p className="text-xs text-gray-600">設計會自動裁切至印刷區域</p>
-                    {product.printArea && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        印刷區域: {product.printArea.width} × {product.printArea.height} px
-                      </p>
+                    {product.category === 'mug' ? (
+                      <div>
+                        <p className="text-xs text-gray-600">3D 即時預覽 - 可旋轉查看效果</p>
+                        <p className="text-xs text-gray-500 mt-1">設計會環繞在馬克杯表面</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-xs text-gray-600">設計會自動裁切至印刷區域</p>
+                        {product.printArea && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            印刷區域: {product.printArea.width} × {product.printArea.height} px
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
