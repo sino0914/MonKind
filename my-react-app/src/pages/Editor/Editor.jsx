@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { API } from '../../services/api';
@@ -27,6 +27,54 @@ const Editor = () => {
   const [editingText, setEditingText] = useState(null);
   const [editingContent, setEditingContent] = useState('');
   const [showTextToolbar, setShowTextToolbar] = useState(false);
+
+  // 文字寬度測量工具函數
+  const measureTextWidth = useCallback((text, fontSize, fontFamily, fontWeight = 'normal', fontStyle = 'normal') => {
+    if (!text || text.length === 0) {
+      return 20; // 最小寬度，避免空文字時輸入框消失
+    }
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    context.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    const width = context.measureText(text).width;
+
+    // 添加一些padding，確保文字完整顯示
+    return Math.max(20, Math.ceil(width) + 16);
+  }, []);
+
+  // 計算編輯中文字的實際寬度
+  const editingInputWidth = useMemo(() => {
+    if (!editingText || !editingContent) return 100;
+
+    const element = designElements.find(el => el.id === editingText);
+    if (!element) return 100;
+
+    try {
+      // 使用與畫布相同的縮放比例計算實際顯示字體大小
+      const scaledFontSize = element.fontSize * (384 / 400);
+      const textWidth = measureTextWidth(
+        editingContent,
+        scaledFontSize,
+        element.fontFamily || 'Arial',
+        element.fontWeight || 'normal',
+        element.fontStyle || 'normal'
+      );
+
+      // 限制最大寬度，確保不超出設計區域
+      const maxWidth = product?.printArea ?
+        (product.printArea.width / 400) * 384 * 0.8 : // 使用設計區80%的寬度作為限制
+        300; // 預設最大寬度
+
+      // 確保最小寬度，避免輸入框太小
+      const minWidth = 60;
+
+      return Math.max(minWidth, Math.min(textWidth, maxWidth));
+    } catch (error) {
+      console.warn('計算文字寬度時發生錯誤:', error);
+      return 100; // 發生錯誤時使用預設寬度
+    }
+  }, [editingText, editingContent, designElements, measureTextWidth, product]);
 
   const tools = [
     { id: 'template', icon: '📐', label: '版型', description: '選擇設計模板' },
@@ -359,6 +407,11 @@ const Editor = () => {
         )
       );
       setSelectedElement(prev => ({ ...prev, fontSize: newSize }));
+
+      // 如果正在編輯這個文字，觸發寬度重新計算
+      if (editingText === selectedElement.id) {
+        // useMemo 會自動重新計算，這裡不需要額外操作
+      }
     }
   };
 
@@ -1041,7 +1094,11 @@ const Editor = () => {
                                     fontFamily: element.fontFamily,
                                     fontWeight: element.fontWeight || 'normal',
                                     fontStyle: element.fontStyle || 'normal',
-                                    minWidth: '100px'
+                                    width: `${editingInputWidth}px`,
+                                    border: '2px solid #3b82f6',
+                                    borderRadius: '2px',
+                                    outline: 'none',
+                                    textAlign: 'center'
                                   }}
                                 />
                               ) : (
