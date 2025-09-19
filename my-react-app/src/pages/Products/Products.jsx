@@ -1,24 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import productsData from '../../data/products.json';
+import { API } from '../../services/api';
 
 const Products = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [activeCategory, setActiveCategory] = useState('熱銷');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const categories = [
     { key: 'featured', label: '熱銷' },
     { key: 'mug', label: '馬克杯' },
     { key: 'tshirt', label: 'T恤' },
     { key: 'bag', label: '帆布袋' },
+    { key: 'bottle', label: '水瓶' },
+    { key: 'pillow', label: '抱枕' },
+    { key: 'notebook', label: '筆記本' },
     { key: 'other', label: '其他' }
   ];
 
+  // 載入商品資料（只顯示啟用的商品）
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const allProducts = await API.products.getAll();
+      console.log('載入的所有商品:', allProducts);
+
+      // 只顯示啟用的商品
+      const activeProducts = allProducts.filter(product => product.isActive !== false);
+      console.log('啟用的商品:', activeProducts);
+
+      setProducts(activeProducts);
+      filterProducts('featured', activeProducts);
+    } catch (error) {
+      console.error('載入商品失敗:', error);
+      setError('載入商品失敗，請重新整理頁面');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setProducts(productsData);
-    filterProducts('featured', productsData);
+    loadProducts();
   }, []);
 
   const filterProducts = (categoryKey, productsList = products) => {
@@ -37,9 +64,18 @@ const Products = () => {
       case 'bag':
         filtered = productsList.filter(product => product.category === 'bag');
         break;
+      case 'bottle':
+        filtered = productsList.filter(product => product.category === 'bottle');
+        break;
+      case 'pillow':
+        filtered = productsList.filter(product => product.category === 'pillow');
+        break;
+      case 'notebook':
+        filtered = productsList.filter(product => product.category === 'notebook');
+        break;
       case 'other':
         filtered = productsList.filter(product =>
-          !['mug', 'tshirt', 'bag'].includes(product.category)
+          !['mug', 'tshirt', 'bag', 'bottle', 'pillow', 'notebook'].includes(product.category)
         );
         break;
       default:
@@ -61,6 +97,55 @@ const Products = () => {
   const handleViewDetails = (productId) => {
     navigate(`/products/${productId}`);
   };
+
+  // 載入狀態
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">逛產品</h1>
+            <p className="text-gray-600">探索我們的客製化商品，讓您的創意變成現實</p>
+          </div>
+
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">載入商品中...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 錯誤狀態
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">逛產品</h1>
+            <p className="text-gray-600">探索我們的客製化商品，讓您的創意變成現實</p>
+          </div>
+
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center max-w-md mx-auto">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">載入失敗</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button
+                onClick={loadProducts}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                重新載入
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -120,9 +205,19 @@ const Products = () => {
                     {product.category === 'mug' ? '馬克杯' :
                      product.category === 'tshirt' ? 'T恤' :
                      product.category === 'bag' ? '帆布袋' :
-                     product.category === 'bottle' ? '保溫瓶' :
-                     product.category === 'pillow' ? '抱枕套' : '商品'}
+                     product.category === 'bottle' ? '水瓶' :
+                     product.category === 'pillow' ? '抱枕' :
+                     product.category === 'notebook' ? '筆記本' : '商品'}
                   </div>
+                  {/* 圖片數量提示 */}
+                  {product.contentImages && product.contentImages.length > 0 && (
+                    <div className="absolute bottom-2 left-2 bg-gray-800 bg-opacity-75 text-white text-xs px-2 py-1 rounded flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {product.contentImages.length + 1}
+                    </div>
+                  )}
                 </div>
 
                 {/* Product Info */}

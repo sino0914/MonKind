@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx create-react-app:*)",
       "Bash(npm uninstall:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": []

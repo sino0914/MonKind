@@ -11,6 +11,8 @@ import MyWorks from './pages/MyWorks/MyWorks';
 import Cart from './pages/Cart/Cart';
 import Account from './pages/Account/Account';
 import Editor from './pages/Editor/Editor';
+import Admin from './pages/Admin/Admin';
+import ProductMaintenance from './pages/Admin/ProductMaintenance';
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
         <div className="App">
           <Routes>
             <Route path="/editor/:id" element={<Editor />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/products" element={<ProductMaintenance />} />
             <Route path="/*" element={
               <Layout>
                 <Routes>

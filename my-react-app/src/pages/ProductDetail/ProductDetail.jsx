@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
-import productsData from '../../data/products.json';
+import { API } from '../../services/api';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -10,13 +10,48 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 載入商品資料
+  const loadProduct = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('載入商品詳情 ID:', id);
+      const foundProduct = await API.products.getById(parseInt(id));
+
+      // 檢查商品是否存在
+      if (!foundProduct) {
+        setError('找不到此商品');
+        return;
+      }
+
+      // 檢查商品是否啟用
+      if (foundProduct.isActive === false) {
+        setError('此商品目前無法購買');
+        return;
+      }
+
+      console.log('載入的商品詳情:', foundProduct);
+      setProduct(foundProduct);
+    } catch (error) {
+      console.error('載入商品詳情失敗:', error);
+
+      if (error.message.includes('找不到')) {
+        setError('商品不存在或已被移除');
+      } else {
+        setError('載入商品失敗，請重新嘗試');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const foundProduct = productsData.find(p => p.id === parseInt(id));
-    if (foundProduct) {
-      setProduct(foundProduct);
+    if (id) {
+      loadProduct();
     }
-    setLoading(false);
   }, [id]);
 
   const handleStartDesigning = () => {
@@ -30,17 +65,46 @@ const ProductDetail = () => {
     }
   };
 
+  // 載入狀態
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">載入中...</p>
+          <p className="text-gray-600">載入商品詳情中...</p>
         </div>
       </div>
     );
   }
 
+  // 錯誤狀態
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <div className="text-6xl mb-4">❌</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">無法載入商品</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <div className="flex space-x-3 justify-center">
+            <button
+              onClick={() => navigate('/products')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              回到商品頁
+            </button>
+            <button
+              onClick={loadProduct}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+            >
+              重新載入
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 商品不存在
   if (!product) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
@@ -59,13 +123,14 @@ const ProductDetail = () => {
     );
   }
 
-  // 創建多個圖片變化 (模擬不同角度)
+  // 創建圖片陣列：主圖 + 內容圖片
   const productImages = [
-    product.image,
-    product.image.replace('cccccc', 'dddddd'),
-    product.image.replace('cccccc', 'eeeeee'),
-    product.image.replace('cccccc', 'bbbbbb')
+    product.image, // 主圖永遠是第一張
+    ...(product.contentImages || []) // 添加內容圖片
   ];
+
+  // 確保 currentImageIndex 不超出範圍
+  const validCurrentImageIndex = Math.min(currentImageIndex, productImages.length - 1);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -85,30 +150,105 @@ const ProductDetail = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-8">
             {/* Product Images */}
             <div>
-              <div className="bg-gray-100 rounded-lg overflow-hidden mb-4">
+              <div className="bg-gray-100 rounded-lg overflow-hidden mb-4 relative">
                 <img
-                  src={productImages[currentImageIndex]}
+                  src={productImages[validCurrentImageIndex]}
                   alt={product.title}
                   className="w-full h-96 object-cover"
+                  onError={(e) => {
+                    console.error('圖片載入失敗:', e.target.src);
+                    e.target.src = product.image; // 失敗時回到主圖
+                  }}
                 />
+
+                {/* 圖片導航箭頭 */}
+                {productImages.length > 1 && (
+                  <>
+                    {validCurrentImageIndex > 0 && (
+                      <button
+                        onClick={() => setCurrentImageIndex(validCurrentImageIndex - 1)}
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                    )}
+
+                    {validCurrentImageIndex < productImages.length - 1 && (
+                      <button
+                        onClick={() => setCurrentImageIndex(validCurrentImageIndex + 1)}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    )}
+
+                    {/* 圖片指示器 */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                      {productImages.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentImageIndex(index)}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            index === validCurrentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* 圖片數量顯示 */}
+                {productImages.length > 1 && (
+                  <div className="absolute top-4 right-4 bg-black bg-opacity-60 text-white px-2 py-1 rounded text-sm">
+                    {validCurrentImageIndex + 1} / {productImages.length}
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                {productImages.map((img, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`bg-gray-100 rounded overflow-hidden transition-all ${
-                      currentImageIndex === index ? 'ring-2 ring-blue-500' : 'hover:opacity-75'
-                    }`}
-                  >
-                    <img
-                      src={img}
-                      alt={`${product.title} ${index + 1}`}
-                      className="w-full h-20 object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
+
+              {/* 縮圖導航 */}
+              {productImages.length > 1 && (
+                <div className="grid gap-2" style={{gridTemplateColumns: `repeat(${Math.min(productImages.length, 5)}, 1fr)`}}>
+                  {productImages.map((img, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`bg-gray-100 rounded overflow-hidden transition-all relative ${
+                        validCurrentImageIndex === index ? 'ring-2 ring-blue-500' : 'hover:opacity-75'
+                      }`}
+                    >
+                      <img
+                        src={img}
+                        alt={`${product.title} ${index + 1}`}
+                        className="w-full h-20 object-cover"
+                        onError={(e) => {
+                          console.error('縮圖載入失敗:', e.target.src);
+                          if (index === 0) {
+                            e.target.src = product.image;
+                          } else {
+                            e.target.style.display = 'none';
+                          }
+                        }}
+                      />
+                      {index === 0 && (
+                        <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
+                          主圖
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* 當只有主圖時的提示 */}
+              {productImages.length === 1 && (
+                <div className="text-center text-gray-500 text-sm mt-2">
+                  查看更多圖片請點擊「開始設計」自訂您的商品
+                </div>
+              )}
             </div>
 
             {/* Product Info */}
