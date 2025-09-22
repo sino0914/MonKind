@@ -38,6 +38,14 @@ const Admin = () => {
       icon: '📦',
       path: '/admin/products',
       color: 'bg-blue-500 hover:bg-blue-600'
+    },
+    {
+      id: 'templates',
+      title: '版型管理',
+      description: '管理設計版型與模板',
+      icon: '📐',
+      path: '/admin/templates',
+      color: 'bg-purple-500 hover:bg-purple-600'
     }
   ];
 

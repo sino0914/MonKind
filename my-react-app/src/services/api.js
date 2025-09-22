@@ -5,6 +5,7 @@
 
 import productService from './ProductService';
 import userService from './UserService';
+import templateService from './TemplateService';
 
 // 匯出所有服務
 export const API = {
@@ -62,6 +63,31 @@ export const API = {
     // 工具功能
     validate: (data) => userService.validateUserData(data),
     resetToDefault: () => userService.resetToDefault()
+  },
+
+  // 版型相關 API
+  templates: {
+    // 基礎 CRUD
+    getAll: () => templateService.getAll(),
+    getById: (id) => templateService.getById(id),
+    create: (data) => templateService.create(data),
+    update: (id, data) => templateService.update(id, data),
+    delete: (id) => templateService.delete(id),
+
+    // 版型特定功能
+    getByProductId: (productId) => templateService.getByProductId(productId),
+    getByCategory: (category) => templateService.getByCategory(category),
+    duplicate: (id, newName) => templateService.duplicate(id, newName),
+    toggleActive: (id) => templateService.toggleActive(id),
+    generateThumbnail: (templateId, canvasElement) => templateService.generateThumbnail(templateId, canvasElement),
+
+    // 搜尋和統計
+    search: (criteria) => templateService.search(criteria),
+    getStats: () => templateService.getStats(),
+
+    // 工具功能
+    validate: (data) => templateService.validateTemplate(data),
+    resetToDefault: () => templateService.resetToDefault()
   }
 };
 
@@ -72,6 +98,7 @@ export const SystemAPI = {
     try {
       await productService.clearAll();
       await userService.clearAll();
+      await templateService.clearAll();
       localStorage.removeItem('monkind_current_user');
       console.log('所有資料已清空');
       return true;
@@ -86,6 +113,7 @@ export const SystemAPI = {
     try {
       await productService.resetToDefault();
       await userService.resetToDefault();
+      await templateService.resetToDefault();
       console.log('所有資料已重置為預設值');
       return true;
     } catch (error) {
@@ -97,14 +125,16 @@ export const SystemAPI = {
   // 獲取系統統計
   getSystemStats: async () => {
     try {
-      const [productStats, userStats] = await Promise.all([
+      const [productStats, userStats, templateStats] = await Promise.all([
         productService.getProductStats(),
-        userService.getUserStats()
+        userService.getUserStats(),
+        templateService.getStats()
       ]);
 
       return {
         products: productStats,
         users: userStats,
+        templates: templateStats,
         lastUpdated: new Date().toISOString()
       };
     } catch (error) {
@@ -112,6 +142,7 @@ export const SystemAPI = {
       return {
         products: { total: 0 },
         users: { total: 0 },
+        templates: { total: 0 },
         lastUpdated: new Date().toISOString()
       };
     }
@@ -120,9 +151,10 @@ export const SystemAPI = {
   // 匯出資料（用於備份）
   exportData: async () => {
     try {
-      const [products, users] = await Promise.all([
+      const [products, users, templates] = await Promise.all([
         productService.getAll(),
-        userService.getAll()
+        userService.getAll(),
+        templateService.getAll()
       ]);
 
       const exportData = {
@@ -134,7 +166,8 @@ export const SystemAPI = {
             // 移除密碼
             const { password, ...userWithoutPassword } = user;
             return userWithoutPassword;
-          })
+          }),
+          templates
         }
       };
 
@@ -158,10 +191,12 @@ export const SystemAPI = {
       // 匯入新資料
       const products = importData.data.products;
       const users = importData.data.users;
+      const templates = importData.data.templates || [];
 
       // 重新初始化服務
       localStorage.setItem('monkind_products', JSON.stringify(products));
       localStorage.setItem('monkind_users', JSON.stringify(users));
+      localStorage.setItem('monkind_templates', JSON.stringify(templates));
 
       console.log('資料匯入成功');
       return true;

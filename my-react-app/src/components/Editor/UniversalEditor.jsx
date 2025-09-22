@@ -1,0 +1,1669 @@
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCart } from "../../context/CartContext";
+import { API } from "../../services/api";
+import ProductPreview from "../Preview/ProductPreview";
+
+const UniversalEditor = ({
+  // 模式配置
+  mode = 'product', // 'product' | 'template'
+  showTemplateTools = true, // 是否顯示版型工具
+
+  // 商品相關
+  productId = null,
+  product = null,
+
+  // 版型相關 (僅template模式使用)
+  template = null,
+
+  // 設計元素 (可外部控制)
+  initialElements = [],
+  initialBackgroundColor = '#ffffff',
+  onElementsChange = null,
+  onBackgroundColorChange = null,
+
+  // 頂部工具列配置
+  showTopToolbar = true,
+  topToolbarLeft = null,
+  topToolbarRight = null,
+  title = '',
+
+  // 回調函數
+  onBack = null,
+  onNavigateBack = null,
+  onAddToCart = null,
+  onDesignStateChange = null, // 新增：當設計狀態變化時的回調
+
+  // 狀態相關
+  loading = false,
+  error = null,
+
+  // 其他配置
+  headerContent = null
+}) => {
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
+
+  // 內部狀態
+  const [internalProduct, setInternalProduct] = useState(product);
+  const [internalLoading, setInternalLoading] = useState(!product && !!productId);
+  const [internalError, setInternalError] = useState(null);
+  const [hoveredTool, setHoveredTool] = useState(null);
+  const [selectedTool, setSelectedTool] = useState(null);
+  const [designElements, setDesignElements] = useState(initialElements);
+  const [draggedElement, setDraggedElement] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [selectedElement, setSelectedElement] = useState(null);
+  const [resizeHandle, setResizeHandle] = useState(null);
+
+  // 圖片相關狀態
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // 文字編輯相關狀態
+  const [editingText, setEditingText] = useState(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [showTextToolbar, setShowTextToolbar] = useState(false);
+
+  // 背景顏色狀態
+  const [backgroundColor, setBackgroundColor] = useState(initialBackgroundColor);
+  const [processedMockupImage, setProcessedMockupImage] = useState(null);
+
+  // 版型相關狀態
+  const [availableTemplates, setAvailableTemplates] = useState([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  // 版型相關狀態 - 移除內部狀態，完全使用外部 props
+
+  // 使用外部傳入的product或內部載入的product
+  const currentProduct = product || internalProduct;
+
+  // 使用外部傳入的狀態或內部狀態
+  const currentLoading = loading || internalLoading;
+  const currentError = error || internalError;
+
+  // 文字寬度測量工具函數
+  const measureTextWidth = useCallback(
+    (text, fontSize, fontFamily, fontWeight = "normal", fontStyle = "normal") => {
+      if (!text || text.length === 0) {
+        return 20;
+      }
+
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      context.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+      const width = context.measureText(text).width;
+
+      return Math.max(20, Math.ceil(width) + 16);
+    },
+    []
+  );
+
+  // 計算編輯中文字的實際寬度
+  const editingInputWidth = useMemo(() => {
+    if (!editingText || !editingContent) return 100;
+
+    const element = designElements.find((el) => el.id === editingText);
+    if (!element) return 100;
+
+    try {
+      const scaledFontSize = element.fontSize * (320 / 400);
+      const textWidth = measureTextWidth(
+        editingContent,
+        scaledFontSize,
+        element.fontFamily || "Arial",
+        element.fontWeight || "normal",
+        element.fontStyle || "normal"
+      );
+
+      const maxWidth = currentProduct?.printArea
+        ? (currentProduct.printArea.width / 400) * 320 * 0.8
+        : 300;
+
+      const minWidth = 60;
+
+      return Math.max(minWidth, Math.min(textWidth, maxWidth));
+    } catch (error) {
+      console.warn("計算文字寬度時發生錯誤:", error);
+      return 100;
+    }
+  }, [editingText, editingContent, designElements, measureTextWidth, currentProduct]);
+
+  // 圖片顏色處理函數
+  const processImageColor = useCallback((imageUrl, color) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          canvas.width = img.width;
+          canvas.height = img.height;
+
+          // 繪製原始圖片
+          ctx.drawImage(img, 0, 0);
+
+          // 如果不是白色，則套用顏色濾鏡
+          if (color && color !== "#ffffff") {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // 將hex顏色轉換為RGB
+            const hexToRgb = (hex) => {
+              const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+              return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+              } : null;
+            };
+
+            const targetColor = hexToRgb(color);
+
+            // 確保顏色解析成功
+            if (targetColor) {
+              // 處理每個像素
+              for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+
+                // 如果是白色或接近白色的像素，替換為目標顏色
+                if (r > 200 && g > 200 && b > 200 && a > 0) {
+                  // 計算灰度值來保持明暗變化
+                  const brightness = (r + g + b) / 3 / 255;
+
+                  data[i] = targetColor.r * brightness;     // Red
+                  data[i + 1] = targetColor.g * brightness; // Green
+                  data[i + 2] = targetColor.b * brightness; // Blue
+                }
+              }
+
+              // 將處理後的數據繪製回canvas
+              ctx.putImageData(imageData, 0, 0);
+            }
+          }
+
+          // 轉換為DataURL
+          resolve(canvas.toDataURL());
+        } catch (error) {
+          console.error('圖片顏色處理失敗:', error);
+          resolve(imageUrl); // 如果處理失敗，返回原圖
+        }
+      };
+
+      img.onerror = (error) => {
+        console.error('圖片載入失敗:', error);
+        resolve(imageUrl); // 如果載入失敗，返回原圖URL
+      };
+
+      img.src = imageUrl;
+    });
+  }, []);
+
+  // 背景色現在直接設定在設計區域，不再處理商品圖片顏色
+  // 保持原始商品底圖，背景色通過設計區域背景色層顯示
+  useEffect(() => {
+    if (currentProduct?.mockupImage) {
+      // 直接使用原始圖片，不進行顏色處理
+      setProcessedMockupImage(currentProduct.mockupImage);
+    } else {
+      setProcessedMockupImage(null);
+    }
+  }, [currentProduct?.mockupImage]);
+
+  // 當設計元素改變時，通知外部
+  useEffect(() => {
+    if (onElementsChange) {
+      onElementsChange(designElements);
+    }
+  }, [designElements, onElementsChange]);
+
+  // 當背景顏色改變時，通知外部
+  useEffect(() => {
+    if (onBackgroundColorChange) {
+      onBackgroundColorChange(backgroundColor);
+    }
+  }, [backgroundColor, onBackgroundColorChange]);
+
+  // 通知外部設計狀態變化
+  useEffect(() => {
+    if (onDesignStateChange) {
+      onDesignStateChange({
+        elements: designElements,
+        backgroundColor: backgroundColor
+      });
+    }
+  }, [designElements, backgroundColor, onDesignStateChange]);
+
+  // 載入版型數據
+  useEffect(() => {
+    if (template && mode === 'template') {
+      console.log('載入版型數據:', template);
+
+      // 載入版型的設計元素
+      if (template.elements && Array.isArray(template.elements)) {
+        setDesignElements(template.elements);
+      }
+
+      // 載入版型的背景顏色
+      if (template.backgroundColor) {
+        setBackgroundColor(template.backgroundColor);
+      }
+
+      // 版型名稱和描述現在完全由外部 props 控制，無需內部設置
+    }
+  }, [template, mode]);
+
+  // 載入可用版型列表
+  const loadAvailableTemplates = useCallback(async () => {
+    if (!currentProduct || mode !== 'product') return;
+
+    try {
+      setLoadingTemplates(true);
+      const templates = await API.templates.getByProductId(currentProduct.id);
+      setAvailableTemplates(templates.filter(t => t.isActive));
+    } catch (error) {
+      console.error('載入版型列表失敗:', error);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  }, [currentProduct, mode]);
+
+  // 當商品載入後，載入對應的版型列表
+  useEffect(() => {
+    if (showTemplateTools && currentProduct && mode === 'product') {
+      loadAvailableTemplates();
+    }
+  }, [showTemplateTools, currentProduct, mode, loadAvailableTemplates]);
+
+  // 應用版型
+  const applyTemplate = (template) => {
+    if (template.elements && Array.isArray(template.elements)) {
+      setDesignElements([...template.elements]);
+    }
+    if (template.backgroundColor) {
+      setBackgroundColor(template.backgroundColor);
+    }
+    console.log('已應用版型:', template.name);
+  };
+
+  // 工具列表
+  const tools = [
+    ...(showTemplateTools ? [{ id: "template", icon: "📐", label: "版型", description: "選擇設計模板" }] : []),
+    { id: "elements", icon: "✨", label: "元素", description: "添加裝飾元素" },
+    { id: "text", icon: "➕", label: "文字", description: "添加文字內容" },
+    { id: "image", icon: "🖼️", label: "照片", description: "上傳圖片" },
+    { id: "background", icon: "🎨", label: "底色", description: "設定背景顏色" },
+    { id: "layers", icon: "📑", label: "圖層", description: "管理圖層順序" }
+  ];
+
+  // 載入商品資料
+  const loadProduct = async () => {
+    if (!productId || product) return;
+
+    try {
+      setInternalLoading(true);
+      setInternalError(null);
+
+      console.log('載入編輯器商品 ID:', productId);
+      const foundProduct = await API.products.getById(parseInt(productId));
+
+      if (!foundProduct) {
+        setInternalError('找不到此商品');
+        return;
+      }
+
+      if (foundProduct.isActive === false) {
+        setInternalError('此商品目前無法使用');
+        return;
+      }
+
+      console.log('編輯器載入的商品:', foundProduct);
+
+      if (!foundProduct.printArea) {
+        console.warn('此商品尚未設定設計區範圍，使用預設值');
+        foundProduct.printArea = { x: 50, y: 50, width: 200, height: 150 };
+      }
+
+      setInternalProduct(foundProduct);
+    } catch (error) {
+      console.error('載入商品失敗:', error);
+
+      if (error.message.includes('找不到')) {
+        setInternalError('商品不存在或已被移除');
+      } else {
+        setInternalError('載入商品失敗，請重新嘗試');
+      }
+    } finally {
+      setInternalLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (productId && !product) {
+      loadProduct();
+      loadUploadedImages();
+    } else if (product) {
+      loadUploadedImages();
+    }
+  }, [productId, product]);
+
+  // 載入已上傳的圖片
+  const loadUploadedImages = () => {
+    try {
+      const savedImages = localStorage.getItem('editor_uploaded_images');
+      if (savedImages) {
+        setUploadedImages(JSON.parse(savedImages));
+      }
+    } catch (error) {
+      console.error('載入已上傳圖片失敗:', error);
+    }
+  };
+
+  // 保存已上傳的圖片到 localStorage
+  const saveUploadedImages = (images) => {
+    try {
+      localStorage.setItem('editor_uploaded_images', JSON.stringify(images));
+      setUploadedImages(images);
+    } catch (error) {
+      console.error('保存圖片失敗:', error);
+    }
+  };
+
+  const handleSaveDraft = () => {
+    const draft = {
+      productId: productId,
+      timestamp: new Date().toISOString(),
+      elements: designElements
+    };
+    localStorage.setItem(`draft_${productId}`, JSON.stringify(draft));
+    alert('草稿已儲存！');
+  };
+
+  const handleAddToCart = () => {
+    if (onAddToCart) {
+      // 使用外部回調
+      onAddToCart({
+        elements: designElements,
+        backgroundColor: backgroundColor
+      });
+    } else if (currentProduct) {
+      // 默認行為
+      const customProduct = {
+        ...currentProduct,
+        id: `custom_${Date.now()}`,
+        title: `客製化 ${currentProduct.title}`,
+        price: currentProduct.price + 50,
+        isCustom: true,
+        designData: {
+          elements: designElements,
+          backgroundColor: backgroundColor
+        }
+      };
+      addToCart(customProduct);
+      alert('客製化商品已加入購物車！');
+    }
+  };
+
+  const handleAddText = () => {
+    const newTextElement = {
+      id: `text-${Date.now()}`,
+      type: "text",
+      content: "新增文字",
+      x: currentProduct.printArea ? currentProduct.printArea.x + currentProduct.printArea.width / 2 : 200,
+      y: currentProduct.printArea ? currentProduct.printArea.y + currentProduct.printArea.height / 2 : 200,
+      fontSize: 24,
+      color: "#000000",
+      fontFamily: "Arial",
+      fontWeight: "normal",
+      fontStyle: "normal",
+    };
+    setDesignElements([...designElements, newTextElement]);
+  };
+
+  // 圖片壓縮函數
+  const compressImage = (file, maxWidth = 600, maxHeight = 600, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+
+      img.onload = () => {
+        let { width, height } = img;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(compressedDataUrl);
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // 處理圖片上傳
+  const handleImageUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
+
+    setIsUploading(true);
+
+    try {
+      const newImages = [];
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) {
+          continue;
+        }
+
+        let imageUrl;
+        if (file.size > 500 * 1024) {
+          imageUrl = await compressImage(file, 800, 800, 0.8);
+        } else {
+          imageUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }
+
+        const imageData = {
+          id: `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          url: imageUrl,
+          name: file.name,
+          uploadDate: new Date().toISOString(),
+          originalSize: file.size,
+        };
+
+        newImages.push(imageData);
+      }
+
+      const updatedImages = [...uploadedImages, ...newImages];
+      saveUploadedImages(updatedImages);
+
+      event.target.value = "";
+    } catch (error) {
+      console.error("圖片上傳失敗:", error);
+      alert("圖片上傳失敗，請重試");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // 添加圖片到畫布
+  const handleAddImageToCanvas = (imageData) => {
+    const newImageElement = {
+      id: `canvas-image-${Date.now()}`,
+      type: "image",
+      imageId: imageData.id,
+      url: imageData.url,
+      x: currentProduct.printArea ? currentProduct.printArea.x + currentProduct.printArea.width / 2 : 200,
+      y: currentProduct.printArea ? currentProduct.printArea.y + currentProduct.printArea.height / 2 : 200,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      opacity: 1,
+    };
+    setDesignElements([...designElements, newImageElement]);
+  };
+
+  // 刪除已上傳的圖片
+  const handleDeleteUploadedImage = (imageId) => {
+    const isUsed = designElements.some(
+      (el) => el.type === "image" && el.imageId === imageId
+    );
+
+    if (isUsed) {
+      if (
+        !window.confirm(
+          "這張圖片正在畫布中使用，確定要刪除嗎？這會同時移除畫布中的圖片。"
+        )
+      ) {
+        return;
+      }
+      setDesignElements((prev) =>
+        prev.filter((el) => !(el.type === "image" && el.imageId === imageId))
+      );
+    }
+
+    const updatedImages = uploadedImages.filter((img) => img.id !== imageId);
+    saveUploadedImages(updatedImages);
+  };
+
+  // 選擇元素
+  const handleSelectElement = (element) => {
+    setSelectedElement(element);
+    if (element.type === "text") {
+      setShowTextToolbar(true);
+    } else {
+      setShowTextToolbar(false);
+      setEditingText(null);
+    }
+  };
+
+  // 刪除畫布上的元素
+  const handleDeleteElement = (elementId) => {
+    setDesignElements((prev) => prev.filter((el) => el.id !== elementId));
+    setSelectedElement(null);
+    setShowTextToolbar(false);
+    setEditingText(null);
+  };
+
+  // 開始編輯文字
+  const handleStartTextEdit = (element) => {
+    setEditingText(element.id);
+    setEditingContent(element.content);
+  };
+
+  // 完成文字編輯
+  const handleFinishTextEdit = () => {
+    if (editingText) {
+      setDesignElements((prev) =>
+        prev.map((el) =>
+          el.id === editingText ? { ...el, content: editingContent } : el
+        )
+      );
+    }
+    setEditingText(null);
+    setEditingContent("");
+  };
+
+  // 切換粗體
+  const handleToggleBold = () => {
+    if (selectedElement && selectedElement.type === "text") {
+      const newWeight = selectedElement.fontWeight === "bold" ? "normal" : "bold";
+      setDesignElements((prev) =>
+        prev.map((el) =>
+          el.id === selectedElement.id ? { ...el, fontWeight: newWeight } : el
+        )
+      );
+      setSelectedElement((prev) => ({ ...prev, fontWeight: newWeight }));
+    }
+  };
+
+  // 切換斜體
+  const handleToggleItalic = () => {
+    if (selectedElement && selectedElement.type === "text") {
+      const newStyle = selectedElement.fontStyle === "italic" ? "normal" : "italic";
+      setDesignElements((prev) =>
+        prev.map((el) =>
+          el.id === selectedElement.id ? { ...el, fontStyle: newStyle } : el
+        )
+      );
+      setSelectedElement((prev) => ({ ...prev, fontStyle: newStyle }));
+    }
+  };
+
+  // 調整字體大小
+  const handleFontSizeChange = (change) => {
+    if (selectedElement && selectedElement.type === "text") {
+      const newSize = Math.max(8, Math.min(72, selectedElement.fontSize + change));
+      setDesignElements((prev) =>
+        prev.map((el) =>
+          el.id === selectedElement.id ? { ...el, fontSize: newSize } : el
+        )
+      );
+      setSelectedElement((prev) => ({ ...prev, fontSize: newSize }));
+
+      if (editingText === selectedElement.id) {
+        // useMemo 會自動重新計算
+      }
+    }
+  };
+
+  const handleMouseDown = (e, element, handle = null) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setSelectedElement(element);
+
+    if (handle) {
+      setResizeHandle(handle);
+      setDraggedElement(null);
+    } else {
+      setDraggedElement(element.id);
+      setResizeHandle(null);
+
+      const rect = e.currentTarget.getBoundingClientRect();
+
+      setDragOffset({
+        x: e.clientX - rect.left - rect.width / 2,
+        y: e.clientY - rect.top - rect.height / 2,
+      });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if ((!draggedElement && !resizeHandle) || !currentProduct.printArea) return;
+
+    const canvasRect = e.currentTarget.getBoundingClientRect();
+    const canvasWidth = canvasRect.width;
+    const canvasHeight = canvasRect.height;
+
+    if (draggedElement) {
+      const relativeX = e.clientX - canvasRect.left - dragOffset.x;
+      const relativeY = e.clientY - canvasRect.top - dragOffset.y;
+
+      const canvasX = (relativeX / canvasWidth) * 400;
+      const canvasY = (relativeY / canvasHeight) * 400;
+
+      const minX = currentProduct.printArea.x;
+      const maxX = currentProduct.printArea.x + currentProduct.printArea.width;
+      const minY = currentProduct.printArea.y;
+      const maxY = currentProduct.printArea.y + currentProduct.printArea.height;
+
+      const constrainedX = Math.max(minX, Math.min(maxX, canvasX));
+      const constrainedY = Math.max(minY, Math.min(maxY, canvasY));
+
+      setDesignElements((elements) =>
+        elements.map((el) =>
+          el.id === draggedElement
+            ? { ...el, x: constrainedX, y: constrainedY }
+            : el
+        )
+      );
+    } else if (resizeHandle && selectedElement) {
+      // 縮放和旋轉處理邏輯...
+      const currentX = ((e.clientX - canvasRect.left) / canvasWidth) * 400;
+      const currentY = ((e.clientY - canvasRect.top) / canvasHeight) * 400;
+
+      setDesignElements((elements) =>
+        elements.map((el) => {
+          if (el.id === selectedElement.id) {
+            if (resizeHandle === "rotate") {
+              const centerX = el.x;
+              const centerY = el.y;
+              const angle = Math.atan2(currentY - centerY, currentX - centerX);
+              const degrees = (angle * 180) / Math.PI + 90;
+              return { ...el, rotation: degrees };
+            } else {
+              // 圖片縮放處理
+              let newWidth = el.width;
+              let newHeight = el.height;
+              let newX = el.x;
+              let newY = el.y;
+
+              const aspectRatio = el.width / el.height;
+              const minSize = 20;
+
+              if (resizeHandle === "se") {
+                const deltaX = currentX - el.x;
+                const deltaY = currentY - el.y;
+                if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
+                  newWidth = Math.max(minSize, Math.abs(deltaX) * 2);
+                  newHeight = newWidth / aspectRatio;
+                } else {
+                  newHeight = Math.max(minSize, Math.abs(deltaY) * 2);
+                  newWidth = newHeight * aspectRatio;
+                }
+              } else if (resizeHandle === "nw") {
+                const deltaX = el.x - currentX;
+                const deltaY = el.y - currentY;
+                if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
+                  newWidth = Math.max(minSize, Math.abs(deltaX) * 2);
+                  newHeight = newWidth / aspectRatio;
+                } else {
+                  newHeight = Math.max(minSize, Math.abs(deltaY) * 2);
+                  newWidth = newHeight * aspectRatio;
+                }
+              } else if (resizeHandle === "ne") {
+                const deltaX = currentX - el.x;
+                const deltaY = el.y - currentY;
+                if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
+                  newWidth = Math.max(minSize, Math.abs(deltaX) * 2);
+                  newHeight = newWidth / aspectRatio;
+                } else {
+                  newHeight = Math.max(minSize, Math.abs(deltaY) * 2);
+                  newWidth = newHeight * aspectRatio;
+                }
+              } else if (resizeHandle === "sw") {
+                const deltaX = el.x - currentX;
+                const deltaY = currentY - el.y;
+                if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
+                  newWidth = Math.max(minSize, Math.abs(deltaX) * 2);
+                  newHeight = newWidth / aspectRatio;
+                } else {
+                  newHeight = Math.max(minSize, Math.abs(deltaY) * 2);
+                  newWidth = newHeight * aspectRatio;
+                }
+              }
+
+              // 限制在設計區域內
+              const halfWidth = newWidth / 2;
+              const halfHeight = newHeight / 2;
+              const minX = currentProduct.printArea.x + halfWidth;
+              const maxX = currentProduct.printArea.x + currentProduct.printArea.width - halfWidth;
+              const minY = currentProduct.printArea.y + halfHeight;
+              const maxY = currentProduct.printArea.y + currentProduct.printArea.height - halfHeight;
+
+              newX = Math.max(minX, Math.min(maxX, el.x));
+              newY = Math.max(minY, Math.min(maxY, el.y));
+
+              if (newX - halfWidth < currentProduct.printArea.x) {
+                newWidth = (newX - currentProduct.printArea.x) * 2;
+                newHeight = newWidth / aspectRatio;
+              }
+              if (newX + halfWidth > currentProduct.printArea.x + currentProduct.printArea.width) {
+                newWidth = (currentProduct.printArea.x + currentProduct.printArea.width - newX) * 2;
+                newHeight = newWidth / aspectRatio;
+              }
+              if (newY - halfHeight < currentProduct.printArea.y) {
+                newHeight = (newY - currentProduct.printArea.y) * 2;
+                newWidth = newHeight * aspectRatio;
+              }
+              if (newY + halfHeight > currentProduct.printArea.y + currentProduct.printArea.height) {
+                newHeight = (currentProduct.printArea.y + currentProduct.printArea.height - newY) * 2;
+                newWidth = newHeight * aspectRatio;
+              }
+
+              return { ...el, width: newWidth, height: newHeight, x: newX, y: newY };
+            }
+          }
+          return el;
+        })
+      );
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDraggedElement(null);
+    setResizeHandle(null);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  // 點擊畫布空白處取消選擇
+  const handleCanvasClick = (e) => {
+    if (
+      e.target.classList.contains("canvas-container") ||
+      e.target.classList.contains("w-96") ||
+      e.target.classList.contains("h-96")
+    ) {
+      setSelectedElement(null);
+      setShowTextToolbar(false);
+      setEditingText(null);
+    }
+  };
+
+  // 預設頂部工具列按鈕 - 現在只有產品模式的基本按鈕，版型模式完全由外部控制
+  const defaultTopToolbarRight = mode === 'product' ? (
+    <div className="flex items-center space-x-3">
+      <button className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+        <span className="mr-1">↶</span> 撤銷
+      </button>
+      <button className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+        <span className="mr-1">↷</span> 重做
+      </button>
+      <div className="h-6 w-px bg-gray-300"></div>
+      <button
+        onClick={handleSaveDraft}
+        className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+      >
+        💾 儲存
+      </button>
+      <button
+        onClick={handleAddToCart}
+        className="px-4 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+      >
+        🛒 加入購物車
+      </button>
+    </div>
+  ) : null; // 版型模式不提供預設按鈕，完全由外部控制
+
+  // 預設頂部工具列左側
+  const defaultTopToolbarLeft = (
+    <div className="flex items-center space-x-4">
+      <button
+        onClick={onNavigateBack || onBack || (() => navigate(-1))}
+        className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+      >
+        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        返回
+      </button>
+      <div className="h-6 w-px bg-gray-300"></div>
+      <h1 className="text-lg font-semibold text-gray-900">
+        {title || (mode === 'template' ? '📐 版型編輯器' : '編輯器')} - {currentProduct?.title}
+      </h1>
+    </div>
+  );
+
+  // 載入狀態
+  if (currentLoading) {
+    return (
+      <div className="h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">載入編輯器中...</p>
+          <p className="text-sm text-gray-500 mt-2">正在載入商品資料與設計區域</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 錯誤狀態
+  if (currentError) {
+    return (
+      <div className="h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <div className="text-6xl mb-4">❌</div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">無法開啟編輯器</h3>
+          <p className="text-gray-600 mb-4">{currentError}</p>
+          <div className="flex space-x-3 justify-center">
+            <button
+              onClick={onNavigateBack || onBack || (() => navigate('/products'))}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              {mode === 'template' ? '回到版型管理' : '回到商品頁'}
+            </button>
+            <button
+              onClick={loadProduct}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+            >
+              重新載入
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 商品不存在
+  if (!currentProduct) {
+    return (
+      <div className="h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">📦</div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">商品不存在</h3>
+          <p className="text-gray-600 mb-4">找不到此商品或商品已被移除</p>
+          <button
+            onClick={onNavigateBack || onBack || (() => navigate('/products'))}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            {mode === 'template' ? '回到版型管理' : '回到商品頁'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-screen bg-gray-100 flex flex-col">
+      {/* Top Toolbar */}
+      {showTopToolbar && (
+        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+          {topToolbarLeft || defaultTopToolbarLeft}
+          {topToolbarRight || defaultTopToolbarRight}
+        </div>
+      )}
+
+      <div className="flex-1 flex">
+        {/* Left Sidebar - Collapsible Tools */}
+        <div className="bg-white border-r border-gray-200 transition-all duration-300 ease-in-out">
+          <div className="flex">
+            {/* Tool Icons */}
+            <div className="w-16 bg-gray-50 border-r border-gray-200">
+              <div className="p-2 space-y-1">
+                {tools.map((tool) => (
+                  <button
+                    key={tool.id}
+                    onMouseEnter={() => setHoveredTool(tool.id)}
+                    onMouseLeave={() => setHoveredTool(null)}
+                    onClick={() =>
+                      setSelectedTool(selectedTool === tool.id ? null : tool.id)
+                    }
+                    className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl transition-all duration-200 ${
+                      selectedTool === tool.id
+                        ? "bg-blue-500 text-white shadow-md"
+                        : hoveredTool === tool.id
+                        ? "bg-gray-200"
+                        : "hover:bg-gray-100"
+                    }`}
+                    title={tool.label}
+                  >
+                    {tool.icon}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Expanded Tool Panel */}
+            <div
+              className={`bg-white transition-all duration-300 ease-in-out overflow-hidden ${
+                hoveredTool || selectedTool ? "w-72" : "w-0"
+              }`}
+            >
+              {(hoveredTool || selectedTool) && (
+                <div className="p-4 w-72">
+                  {(() => {
+                    const currentTool = tools.find(
+                      (t) => t.id === (selectedTool || hoveredTool)
+                    );
+                    return (
+                      <div>
+                        <div className="flex items-center mb-4">
+                          <span className="text-2xl mr-3">
+                            {currentTool?.icon}
+                          </span>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">
+                              {currentTool?.label}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {currentTool?.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Tool-specific content */}
+                        <div className="space-y-3">
+                          {currentTool?.id === "template" && (
+                            <div className="space-y-3">
+                              {loadingTemplates ? (
+                                <div className="text-center py-4">
+                                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                                  <p className="text-sm text-gray-600">載入版型中...</p>
+                                </div>
+                              ) : availableTemplates.length > 0 ? (
+                                <>
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-medium text-gray-700">可用版型</h4>
+                                    <span className="text-xs text-gray-500">{availableTemplates.length} 個版型</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                                    {availableTemplates.map((template) => (
+                                      <button
+                                        key={template.id}
+                                        onClick={() => applyTemplate(template)}
+                                        className="p-3 bg-gray-50 rounded-lg border hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
+                                        title={`點擊應用版型：${template.name}`}
+                                      >
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-lg mr-2">📐</span>
+                                          <span className="text-sm font-medium text-gray-900 truncate">
+                                            {template.name}
+                                          </span>
+                                        </div>
+                                        {template.description && (
+                                          <p className="text-xs text-gray-600 line-clamp-2">
+                                            {template.description}
+                                          </p>
+                                        )}
+                                        <div className="mt-2 flex items-center text-xs text-gray-500">
+                                          <span>{template.elements?.length || 0} 個元素</span>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-center py-6 text-gray-500 text-sm">
+                                  <div className="text-2xl mb-2">📐</div>
+                                  此商品還沒有可用版型
+                                  <br />
+                                  可在後台管理中新增版型
+                                </div>
+                              )}
+
+                              {/* 使用說明 */}
+                              <div className="bg-blue-50 rounded-lg p-3">
+                                <h5 className="text-sm font-medium text-blue-900 mb-1">
+                                  💡 使用說明
+                                </h5>
+                                <ul className="text-xs text-blue-800 space-y-1">
+                                  <li>• 點擊版型即可套用設計</li>
+                                  <li>• 套用後可繼續編輯調整</li>
+                                  <li>• 版型會覆蓋目前的設計內容</li>
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+
+                          {currentTool?.id === "text" && (
+                            <div className="space-y-2">
+                              <button
+                                onClick={handleAddText}
+                                className="w-full p-3 text-left bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                              >
+                                ➕ 基本文字
+                              </button>
+                            </div>
+                          )}
+
+                          {currentTool?.id === "image" && (
+                            <div className="space-y-4">
+                              {/* 圖片上傳區 */}
+                              <div>
+                                <input
+                                  type="file"
+                                  id="imageUpload"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={handleImageUpload}
+                                  className="hidden"
+                                />
+                                <label
+                                  htmlFor="imageUpload"
+                                  className={`w-full p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-colors text-center cursor-pointer block ${
+                                    isUploading
+                                      ? "bg-blue-50 border-blue-300"
+                                      : "hover:bg-gray-50"
+                                  }`}
+                                >
+                                  {isUploading ? (
+                                    <div className="flex items-center justify-center">
+                                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+                                      上傳中...
+                                    </div>
+                                  ) : (
+                                    <>
+                                      📁 點擊上傳圖片
+                                      <div className="text-xs text-gray-500 mt-1">
+                                        支援 JPG、PNG 格式
+                                      </div>
+                                    </>
+                                  )}
+                                </label>
+                              </div>
+
+                              {/* 已上傳圖片庫 */}
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="text-sm font-medium text-gray-700">
+                                    圖片庫
+                                  </h4>
+                                  <span className="text-xs text-gray-500">
+                                    {uploadedImages.length} 張圖片
+                                  </span>
+                                </div>
+
+                                {uploadedImages.length > 0 ? (
+                                  <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                                    {uploadedImages.map((image) => (
+                                      <div
+                                        key={image.id}
+                                        className="relative group"
+                                      >
+                                        <button
+                                          onClick={() =>
+                                            handleAddImageToCanvas(image)
+                                          }
+                                          className="aspect-square bg-gray-100 rounded border hover:border-blue-400 transition-colors overflow-hidden w-full"
+                                          title={`點擊添加到畫布 - ${image.name}`}
+                                        >
+                                          <img
+                                            src={image.url}
+                                            alt={image.name}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </button>
+
+                                        {/* 刪除按鈕 */}
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteUploadedImage(image.id);
+                                          }}
+                                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="刪除圖片"
+                                        >
+                                          ×
+                                        </button>
+
+                                        {/* 圖片名稱 */}
+                                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                                          {image.name}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-6 text-gray-500 text-sm">
+                                    <div className="text-2xl mb-2">📷</div>
+                                    還沒有上傳圖片
+                                    <br />
+                                    點擊上方按鈕開始上傳
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 使用說明 */}
+                              <div className="bg-blue-50 rounded-lg p-3">
+                                <h5 className="text-sm font-medium text-blue-900 mb-1">
+                                  💡 使用說明
+                                </h5>
+                                <ul className="text-xs text-blue-800 space-y-1">
+                                  <li>• 點擊圖片庫中的圖片添加到畫布</li>
+                                  <li>• 在畫布上可拖曳調整位置和大小</li>
+                                  <li>• 滑鼠右鍵可刪除畫布上的圖片</li>
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+
+                          {currentTool?.id === "background" && (
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  商品底色
+                                </label>
+                                <input
+                                  type="color"
+                                  value={backgroundColor}
+                                  onChange={(e) => setBackgroundColor(e.target.value)}
+                                  className="w-full h-10 rounded border"
+                                />
+                              </div>
+
+                              <div className="text-xs text-gray-600 mb-2">
+                                當前顏色: {backgroundColor}
+                              </div>
+
+                              <div className="grid grid-cols-4 gap-2">
+                                {[
+                                  "#ffffff",
+                                  "#f3f4f6",
+                                  "#fef3c7",
+                                  "#dbeafe",
+                                  "#fce7f3",
+                                  "#f3e8ff",
+                                  "#fecaca",
+                                  "#fed7aa",
+                                  "#fde68a",
+                                  "#bbf7d0",
+                                  "#bfdbfe",
+                                  "#e0e7ff"
+                                ].map((color) => (
+                                  <button
+                                    key={color}
+                                    onClick={() => setBackgroundColor(color)}
+                                    className={`w-12 h-12 rounded border-2 transition-colors ${
+                                      backgroundColor === color
+                                        ? "border-blue-500 shadow-md scale-105"
+                                        : "border-gray-200 hover:border-gray-400"
+                                    }`}
+                                    style={{ backgroundColor: color }}
+                                    title={`選擇顏色: ${color}`}
+                                  />
+                                ))}
+                              </div>
+
+                              {/* 重置按鈕 */}
+                              <button
+                                onClick={() => setBackgroundColor("#ffffff")}
+                                className="w-full px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                              >
+                                🔄 重置為白色
+                              </button>
+
+                              {/* 說明文字 */}
+                              <div className="bg-blue-50 rounded-lg p-3">
+                                <h5 className="text-sm font-medium text-blue-900 mb-1">
+                                  💡 使用說明
+                                </h5>
+                                <ul className="text-xs text-blue-800 space-y-1">
+                                  <li>• 選擇顏色會設定設計區域的背景色</li>
+                                  <li>• 背景色會顯示在設計區域和即時預覽中</li>
+                                  <li>• 設計元素會顯示在背景色上方</li>
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+
+                          {currentTool?.id === "layers" && (
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-600 mb-2">
+                                圖層列表
+                              </div>
+                              {["背景", "文字層 1", "圖片層 1"].map(
+                                (layer, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                                  >
+                                    <span className="text-sm">{layer}</span>
+                                    <div className="flex space-x-1">
+                                      <button className="text-xs px-2 py-1 bg-white rounded">
+                                        👁️
+                                      </button>
+                                      <button className="text-xs px-2 py-1 bg-white rounded">
+                                        🗑️
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex">
+          {/* Canvas Area */}
+          <div className="flex-1 bg-gray-50 p-8">
+            <div className="h-full flex items-center justify-center">
+              <div className="bg-white rounded-lg shadow-xl p-8">
+                <div
+                  className="w-80 h-80 border-2 border-gray-200 rounded-lg relative overflow-hidden bg-white canvas-container"
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onClick={handleCanvasClick}
+                >
+                  {/* Product Mockup Image */}
+                  {currentProduct.mockupImage ? (
+                    <img
+                      src={processedMockupImage || currentProduct.mockupImage}
+                      alt={`${currentProduct.title} 底圖`}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+
+                  {/* Fallback content */}
+                  <div
+                    className="absolute inset-0 bg-gray-100 border border-dashed border-gray-400 rounded flex items-center justify-center"
+                    style={{ display: currentProduct.mockupImage ? "none" : "flex" }}
+                  >
+                    <div className="text-center">
+                      <img
+                        src={currentProduct.image}
+                        alt={currentProduct.title}
+                        className="w-16 h-16 mx-auto mb-2 opacity-30"
+                      />
+                      <p className="text-gray-600 text-sm">商品底圖載入中...</p>
+                      <p className="text-gray-500 text-xs">點擊工具開始設計</p>
+                    </div>
+                  </div>
+
+                  {/* Print Area Overlay */}
+                  {currentProduct.printArea && (
+                    <>
+                      <div
+                        className="absolute bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-sm z-10"
+                        style={{
+                          left: `${(currentProduct.printArea.x / 400) * 100}%`,
+                          top: `${(currentProduct.printArea.y / 400) * 100 - 2}%`,
+                          transform: "translateY(-100%)",
+                        }}
+                      >
+                        設計區 {currentProduct.printArea.width}×
+                        {currentProduct.printArea.height}px
+                      </div>
+
+                      {/* 設計區域背景色 - 與即時預覽區保持一致 */}
+                      <div
+                        className="absolute"
+                        style={{
+                          left: `${(currentProduct.printArea.x / 400) * 100}%`,
+                          top: `${(currentProduct.printArea.y / 400) * 100}%`,
+                          width: `${(currentProduct.printArea.width / 400) * 100}%`,
+                          height: `${(currentProduct.printArea.height / 400) * 100}%`,
+                          backgroundColor: backgroundColor,
+                          zIndex: 1
+                        }}
+                      />
+
+                      {/* 設計區域邊框 */}
+                      <div
+                        className="absolute border-2 border-blue-500 border-dashed bg-transparent"
+                        style={{
+                          left: `${(currentProduct.printArea.x / 400) * 100}%`,
+                          top: `${(currentProduct.printArea.y / 400) * 100}%`,
+                          width: `${(currentProduct.printArea.width / 400) * 100}%`,
+                          height: `${(currentProduct.printArea.height / 400) * 100}%`,
+                          zIndex: 2
+                        }}
+                      />
+                    </>
+                  )}
+
+                  {/* Design Elements Layer */}
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ zIndex: 10 }}
+                  >
+                    <div className="w-full h-full relative">
+                      {designElements.map((element) => {
+                        if (element.type === "text") {
+                          const isEditing = editingText === element.id;
+                          return (
+                            <div key={element.id}>
+                              {/* 文字工具列 */}
+                              {showTextToolbar &&
+                                selectedElement &&
+                                selectedElement.id === element.id && (
+                                  <div
+                                    className="absolute bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 pointer-events-auto"
+                                    style={{
+                                      left: `${(element.x / 400) * 100}%`,
+                                      top: `${(element.y / 400) * 100}%`,
+                                      transform:
+                                        "translate(-50%, calc(-100% - 40px))",
+                                      zIndex: 1000,
+                                    }}
+                                  >
+                                    {/* 編輯文字按鈕 */}
+                                    <button
+                                      onClick={() =>
+                                        handleStartTextEdit(element)
+                                      }
+                                      className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded"
+                                      title="編輯文字"
+                                    >
+                                      ✏️
+                                    </button>
+
+                                    {/* 粗體按鈕 */}
+                                    <button
+                                      onClick={handleToggleBold}
+                                      className={`px-2 py-1 text-xs rounded font-bold ${
+                                        element.fontWeight === "bold"
+                                          ? "bg-yellow-600 text-white"
+                                          : "bg-gray-600 hover:bg-gray-500"
+                                      }`}
+                                      title="粗體"
+                                    >
+                                      B
+                                    </button>
+
+                                    {/* 斜體按鈕 */}
+                                    <button
+                                      onClick={handleToggleItalic}
+                                      className={`px-2 py-1 text-xs rounded italic ${
+                                        element.fontStyle === "italic"
+                                          ? "bg-yellow-600 text-white"
+                                          : "bg-gray-600 hover:bg-gray-500"
+                                      }`}
+                                      title="斜體"
+                                    >
+                                      I
+                                    </button>
+
+                                    {/* 分隔線 */}
+                                    <div className="w-px h-4 bg-gray-500" />
+
+                                    {/* 字體大小調整 */}
+                                    <div className="flex items-center space-x-1">
+                                      <button
+                                        onClick={() => handleFontSizeChange(-2)}
+                                        className="px-1 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded"
+                                        title="縮小字體"
+                                      >
+                                        A-
+                                      </button>
+                                      <span className="text-xs px-1 min-w-6 text-center">
+                                        {element.fontSize}
+                                      </span>
+                                      <button
+                                        onClick={() => handleFontSizeChange(2)}
+                                        className="px-1 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded"
+                                        title="放大字體"
+                                      >
+                                        A+
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                              {/* 文字元素 */}
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={editingContent}
+                                  onChange={(e) =>
+                                    setEditingContent(e.target.value)
+                                  }
+                                  onBlur={handleFinishTextEdit}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleFinishTextEdit();
+                                    }
+                                    if (e.key === "Escape") {
+                                      setEditingText(null);
+                                      setEditingContent("");
+                                    }
+                                  }}
+                                  autoFocus
+                                  className="absolute bg-white border-2 border-blue-500 p-1 pointer-events-auto z-40"
+                                  style={{
+                                    left: `${(element.x / 400) * 100}%`,
+                                    top: `${(element.y / 400) * 100}%`,
+                                    transform: "translate(-50%, -50%)",
+                                    fontSize: `${
+                                      element.fontSize * (320 / 400)
+                                    }px`,
+                                    color: element.color,
+                                    fontFamily: element.fontFamily,
+                                    fontWeight: element.fontWeight || "normal",
+                                    fontStyle: element.fontStyle || "normal",
+                                    width: `${editingInputWidth}px`,
+                                    border: "2px solid #3b82f6",
+                                    borderRadius: "2px",
+                                    outline: "none",
+                                    textAlign: "center",
+                                  }}
+                                />
+                              ) : (
+                                <div
+                                  className={`absolute bg-opacity-90 border border-blue-400 p-1 pointer-events-auto select-none ${
+                                    draggedElement === element.id
+                                      ? "cursor-grabbing z-50"
+                                      : "cursor-grab hover:bg-opacity-100"
+                                  }`}
+                                  style={{
+                                    left: `${(element.x / 400) * 100}%`,
+                                    top: `${(element.y / 400) * 100}%`,
+                                    transform: "translate(-50%, -50%)",
+                                    fontSize: `${
+                                      element.fontSize * (320 / 400)
+                                    }px`,
+                                    color: element.color,
+                                    fontFamily: element.fontFamily,
+                                    fontWeight: element.fontWeight || "normal",
+                                    fontStyle: element.fontStyle || "normal",
+                                    userSelect: "none",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  onMouseDown={(e) =>
+                                    handleMouseDown(e, element)
+                                  }
+                                  onClick={() => handleSelectElement(element)}
+                                >
+                                  {element.content}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        } else if (element.type === "image") {
+                          const isSelected =
+                            selectedElement &&
+                            selectedElement.id === element.id;
+                          return (
+                            <div
+                              key={element.id}
+                              className={`absolute pointer-events-auto select-none ${
+                                draggedElement === element.id
+                                  ? "cursor-grabbing z-50"
+                                  : "cursor-grab"
+                              }`}
+                              style={{
+                                left: `${(element.x / 400) * 100}%`,
+                                top: `${(element.y / 400) * 100}%`,
+                                width: `${(element.width / 400) * 100}%`,
+                                height: `${(element.height / 400) * 100}%`,
+                                transform: "translate(-50%, -50%)",
+                                transformOrigin: "center",
+                                opacity: element.opacity || 1,
+                              }}
+                              onMouseDown={(e) => handleMouseDown(e, element)}
+                              onClick={() => handleSelectElement(element)}
+                            >
+                              {/* 圖片內容 */}
+                              <img
+                                src={element.url}
+                                alt="設計圖片"
+                                className="w-full h-full object-contain pointer-events-none"
+                                style={{
+                                  transform: `rotate(${
+                                    element.rotation || 0
+                                  }deg)`,
+                                }}
+                                draggable={false}
+                              />
+
+                              {/* 選中狀態的邊框和控制點 */}
+                              {isSelected && (
+                                <>
+                                  {/* 選中邊框 */}
+                                  <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none" />
+
+                                  {/* 縮放控制點 */}
+                                  <div
+                                    className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-nw-resize pointer-events-auto"
+                                    style={{ top: "-6px", left: "-6px" }}
+                                    onMouseDown={(e) =>
+                                      handleMouseDown(e, element, "nw")
+                                    }
+                                  />
+                                  <div
+                                    className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-ne-resize pointer-events-auto"
+                                    style={{ top: "-6px", right: "-6px" }}
+                                    onMouseDown={(e) =>
+                                      handleMouseDown(e, element, "ne")
+                                    }
+                                  />
+                                  <div
+                                    className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-sw-resize pointer-events-auto"
+                                    style={{ bottom: "-6px", left: "-6px" }}
+                                    onMouseDown={(e) =>
+                                      handleMouseDown(e, element, "sw")
+                                    }
+                                  />
+                                  <div
+                                    className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-se-resize pointer-events-auto"
+                                    style={{ bottom: "-6px", right: "-6px" }}
+                                    onMouseDown={(e) =>
+                                      handleMouseDown(e, element, "se")
+                                    }
+                                  />
+
+                                  {/* 旋轉控制點 */}
+                                  <div
+                                    className="absolute w-3 h-3 bg-green-500 border border-white rounded-full cursor-grab pointer-events-auto"
+                                    style={{
+                                      top: "-20px",
+                                      left: "50%",
+                                      transform: "translateX(-50%)",
+                                    }}
+                                    onMouseDown={(e) =>
+                                      handleMouseDown(e, element, "rotate")
+                                    }
+                                    title="拖曳旋轉"
+                                  />
+
+                                  {/* 刪除按鈕 */}
+                                  <button
+                                    className="absolute w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center pointer-events-auto hover:bg-red-600 transition-colors"
+                                    style={{ top: "-12px", right: "-12px" }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteElement(element.id);
+                                    }}
+                                    title="刪除圖片"
+                                  >
+                                    ×
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 text-center">
+                  <p className="text-sm font-medium text-gray-700">
+                    {currentProduct.title}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    可印刷區域:{" "}
+                    {currentProduct.printArea
+                      ? `${currentProduct.printArea.width} x ${currentProduct.printArea.height} px`
+                      : "準備中..."}
+                  </p>
+                  <div className="mt-2 flex justify-center space-x-4 text-xs text-gray-500">
+                    <span>🎯 點擊工具開始設計</span>
+                    <span>📏 虛線框為可印刷區域</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar - Preview */}
+          <div className="flex-1 bg-white border-l border-gray-200">
+            <div className="h-full flex flex-col">
+              {/* Live Preview */}
+              <div className="flex-1 p-8">
+                <div className="h-full flex items-center justify-center">
+                  <div
+                    className="bg-white rounded-lg shadow-xl p-8"
+                    style={{ marginTop: "-48px" }}
+                  >
+                    <h3 className="font-semibold text-gray-900 mb-4 text-center">
+                      即時預覽
+                    </h3>
+                    <ProductPreview
+                      productId={currentProduct.id}
+                      designElements={designElements}
+                      backgroundColor={backgroundColor}
+                      width={320}
+                      height={320}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default UniversalEditor;

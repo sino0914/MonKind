@@ -13,29 +13,37 @@ import Account from './pages/Account/Account';
 import Editor from './pages/Editor/Editor';
 import Admin from './pages/Admin/Admin';
 import ProductMaintenance from './pages/Admin/ProductMaintenance';
+import TemplateManagement from './pages/Admin/TemplateManagement';
+import TemplateEditor from './pages/Admin/TemplateEditor';
 
 function App() {
   return (
     <CartProvider>
       <Router>
         <div className="App">
-          <Routes>
-            <Route path="/editor/:id" element={<Editor />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/admin/products" element={<ProductMaintenance />} />
-            <Route path="/*" element={
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/works" element={<MyWorks />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/products/:id" element={<ProductDetail />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/account" element={<Account />} />
-                </Routes>
-              </Layout>
-            } />
-          </Routes>
+<Routes>
+  {/* Admin 區域，不經過 Layout */}
+  <Route path="/admin" element={<Admin />} />
+  <Route path="/admin/products" element={<ProductMaintenance />} />
+  <Route path="/admin/templates" element={<TemplateManagement />} />
+  <Route path="/admin/templates/editor/:id" element={<TemplateEditor />} />
+
+  {/* Editor 也是獨立 */}
+  <Route path="/editor/:id" element={<Editor />} />
+
+  {/* 前台區域，經過 Layout */}
+  <Route element={<Layout />}>
+    <Route path="/" element={<Home />} />
+    <Route path="/works" element={<MyWorks />} />
+    <Route path="/products" element={<Products />} />
+    <Route path="/products/:id" element={<ProductDetail />} />
+    <Route path="/cart" element={<Cart />} />
+    <Route path="/account" element={<Account />} />
+  </Route>
+
+  {/* 404 Not Found */}
+  <Route path="*" element={<div>Page Not Found</div>} />
+</Routes>
         </div>
       </Router>
     </CartProvider>
