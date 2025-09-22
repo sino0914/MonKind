@@ -73,7 +73,7 @@ const Editor = () => {
       };
       addToCart(customProduct);
       navigate("/cart");
-      alert("客製化商品已加入購物車！");
+      alert("客製化商品成功加入購物車！");
     }
   };
 
