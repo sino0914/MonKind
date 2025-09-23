@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { API } from "../../services/api";
 import UniversalEditor from "../../components/Editor/UniversalEditor";
@@ -35,46 +35,73 @@ const TemplateEditor = () => {
       setLoading(true);
       setError(null);
 
+      console.log('🔄 TemplateEditor - 開始載入資料');
+      console.log('   - ID參數:', id);
+      console.log('   - ProductID參數:', productId);
+
       // 載入商品資料
       let targetProductId = productId;
 
       if (id !== 'new') {
         // 編輯現有版型
+        console.log('✏️ 編輯現有版型，ID:', id);
         const templateData = await API.templates.getById(parseInt(id));
         if (!templateData) {
+          console.error('❌ 找不到版型，ID:', id);
           setError("找不到此版型");
           return;
         }
 
+        console.log('✅ 版型載入成功:', templateData);
         setTemplate(templateData);
         setTemplateName(templateData.name);
         setTemplateDescription(templateData.description);
         setFormTemplateName(templateData.name);
         setFormTemplateDescription(templateData.description);
         targetProductId = templateData.productId;
+      } else {
+        console.log('🆕 建立新版型');
+        if (!productId) {
+          console.error('❌ 新建版型缺少ProductID參數');
+          setError("缺少商品ID參數，無法建立新版型");
+          return;
+        }
       }
 
       // 載入商品資料
       if (targetProductId) {
+        console.log('📦 載入商品資料，ID:', targetProductId);
         const productData = await API.products.getById(parseInt(targetProductId));
         if (!productData) {
+          console.error('❌ 找不到商品，ID:', targetProductId);
           setError("找不到對應的商品");
           return;
         }
 
+        console.log('✅ 商品載入成功:', productData);
+
         // 檢查是否有設計區設定
         if (!productData.printArea) {
-          console.warn("此商品尚未設定設計區範圍，使用預設值");
-          productData.printArea = { x: 50, y: 50, width: 200, height: 150 };
+          console.warn("⚠️ 此商品尚未設定設計區範圍，使用預設值");
+          productData.printArea = {
+            x: 50,
+            y: 50,
+            width: 200,
+            height: 150,
+            offsetX: 100,
+            offsetY: 75
+          };
         }
 
         setProduct(productData);
+        console.log('✅ TemplateEditor - 資料載入完成');
       } else {
+        console.error('❌ 缺少商品ID參數');
         setError("缺少商品ID參數");
       }
     } catch (error) {
-      console.error("載入資料失敗:", error);
-      setError("載入失敗，請重新嘗試");
+      console.error("❌ TemplateEditor - 載入資料失敗:", error);
+      setError(`載入失敗: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -82,7 +109,7 @@ const TemplateEditor = () => {
 
   useEffect(() => {
     loadData();
-  }, [id, productId]);
+  }, [id, productId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 儲存版型
   const handleSaveTemplate = async (designData) => {
@@ -145,9 +172,9 @@ const TemplateEditor = () => {
   );
 
   // 處理設計狀態變化
-  const handleDesignStateChange = (designState) => {
+  const handleDesignStateChange = useCallback((designState) => {
     setCurrentDesignState(designState);
-  };
+  }, []);
 
   // 建立版型工具列按鈕
   const templateToolbarRight = (

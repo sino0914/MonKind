@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API } from '../../services/api';
+import TemplateThumbnail from '../../components/Preview/TemplateThumbnail';
 import { getTemplatesWithPreviews } from '../../utils/ProductDataManager';
-import TemplatePreview from '../../components/Template/TemplatePreview';
-// eslint-disable-next-line no-unused-vars
 import { testPreviewGeneration } from '../../test-preview';
 
 const TemplateManagement = () => {
@@ -22,7 +21,6 @@ const TemplateManagement = () => {
       const productList = await API.products.getAll();
       setProducts(productList);
     } catch (error) {
-      console.error('載入商品失敗:', error);
       setError('載入商品失敗');
     }
   };
@@ -49,7 +47,6 @@ const TemplateManagement = () => {
       const templateStats = await API.templates.getStats();
       setStats(templateStats);
     } catch (error) {
-      console.error('載入版型失敗:', error);
       setError('載入版型失敗');
     } finally {
       setLoading(false);
@@ -96,7 +93,6 @@ const TemplateManagement = () => {
         loadTemplates();
       }
     } catch (error) {
-      console.error('切換版型狀態失敗:', error);
       alert('操作失敗');
     }
   };
@@ -119,7 +115,6 @@ const TemplateManagement = () => {
 
       alert('版型已刪除');
     } catch (error) {
-      console.error('刪除版型失敗:', error);
       alert('刪除失敗');
     }
   };
@@ -138,7 +133,6 @@ const TemplateManagement = () => {
 
       alert('版型複製成功');
     } catch (error) {
-      console.error('複製版型失敗:', error);
       alert('複製失敗');
     }
   };
@@ -269,9 +263,11 @@ const TemplateManagement = () => {
           <div className="flex items-center space-x-3">
             <button
               onClick={async () => {
-                console.log('開始測試預覽圖生成...');
-                // eslint-disable-next-line no-undef
-                await testPreviewGeneration();
+                try {
+                  await testPreviewGeneration();
+                } catch (error) {
+                  alert('測試預覽圖生成失敗');
+                }
               }}
               className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
               title="測試預覽圖生成功能"
@@ -342,12 +338,15 @@ const TemplateManagement = () => {
                 {templates.map(template => (
                   <div key={template.id} className="relative group bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
                     {/* 版型預覽圖 */}
-                    <div className="aspect-[4/3] bg-gray-100 flex items-center justify-center overflow-hidden">
-                      <TemplatePreview
+                    <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                      <TemplateThumbnail
                         template={template}
-                        product={template.product}
-                        size="medium"
-                        className="w-full h-full group-hover:scale-105 transition-transform duration-200"
+                        width={300}
+                        height={300}
+                        showName={false}
+                        showElementCount={true}
+                        useFlexibleSize={true}
+                        className="absolute inset-0 w-full h-full group-hover:scale-105 transition-transform duration-200"
                       />
                     </div>
 

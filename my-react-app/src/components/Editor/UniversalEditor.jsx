@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { API } from "../../services/api";
 import ProductPreview from "../Preview/ProductPreview";
+import TemplateThumbnail from "../Preview/TemplateThumbnail";
 
 const UniversalEditor = ({
   // 模式配置
@@ -56,6 +57,7 @@ const UniversalEditor = ({
   const [selectedElement, setSelectedElement] = useState(null);
   const [resizeHandle, setResizeHandle] = useState(null);
 
+
   // 圖片相關狀態
   const [uploadedImages, setUploadedImages] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -68,6 +70,25 @@ const UniversalEditor = ({
   // 背景顏色狀態
   const [backgroundColor, setBackgroundColor] = useState(initialBackgroundColor);
   const [processedMockupImage, setProcessedMockupImage] = useState(null);
+
+  // 圖層管理狀態
+  const [hiddenLayers, setHiddenLayers] = useState(new Set()); // 隱藏的圖層ID集合
+
+  // 用於避免初始化時觸發 onDesignStateChange 的標記
+  const isInitialized = useRef(false);
+
+  // 監聽初始化資料變化，更新內部狀態（僅在產品模式下）
+  useEffect(() => {
+    if (mode === 'product' && initialElements) {
+      setDesignElements(initialElements);
+    }
+  }, [initialElements, mode]);
+
+  useEffect(() => {
+    if (mode === 'product' && initialBackgroundColor) {
+      setBackgroundColor(initialBackgroundColor);
+    }
+  }, [initialBackgroundColor, mode]);
 
   // 版型相關狀態
   const [availableTemplates, setAvailableTemplates] = useState([]);
@@ -124,7 +145,6 @@ const UniversalEditor = ({
 
       return Math.max(minWidth, Math.min(textWidth, maxWidth));
     } catch (error) {
-      console.warn("計算文字寬度時發生錯誤:", error);
       return 100;
     }
   }, [editingText, editingContent, designElements, measureTextWidth, currentProduct]);
@@ -191,13 +211,11 @@ const UniversalEditor = ({
           // 轉換為DataURL
           resolve(canvas.toDataURL());
         } catch (error) {
-          console.error('圖片顏色處理失敗:', error);
           resolve(imageUrl); // 如果處理失敗，返回原圖
         }
       };
 
       img.onerror = (error) => {
-        console.error('圖片載入失敗:', error);
         resolve(imageUrl); // 如果載入失敗，返回原圖URL
       };
 
@@ -232,6 +250,12 @@ const UniversalEditor = ({
 
   // 通知外部設計狀態變化
   useEffect(() => {
+    // 標記為已初始化，避免初始化時觸發回調導致無限循環
+    if (!isInitialized.current) {
+      isInitialized.current = true;
+      return;
+    }
+
     if (onDesignStateChange) {
       onDesignStateChange({
         elements: designElements,
@@ -243,8 +267,6 @@ const UniversalEditor = ({
   // 載入版型數據
   useEffect(() => {
     if (template && mode === 'template') {
-      console.log('載入版型數據:', template);
-
       // 載入版型的設計元素
       if (template.elements && Array.isArray(template.elements)) {
         setDesignElements(template.elements);
@@ -254,8 +276,6 @@ const UniversalEditor = ({
       if (template.backgroundColor) {
         setBackgroundColor(template.backgroundColor);
       }
-
-      // 版型名稱和描述現在完全由外部 props 控制，無需內部設置
     }
   }, [template, mode]);
 
@@ -268,7 +288,7 @@ const UniversalEditor = ({
       const templates = await API.templates.getByProductId(currentProduct.id);
       setAvailableTemplates(templates.filter(t => t.isActive));
     } catch (error) {
-      console.error('載入版型列表失敗:', error);
+      // 載入版型列表失敗
     } finally {
       setLoadingTemplates(false);
     }
@@ -289,7 +309,6 @@ const UniversalEditor = ({
     if (template.backgroundColor) {
       setBackgroundColor(template.backgroundColor);
     }
-    console.log('已應用版型:', template.name);
   };
 
   // 工具列表
@@ -310,7 +329,6 @@ const UniversalEditor = ({
       setInternalLoading(true);
       setInternalError(null);
 
-      console.log('載入編輯器商品 ID:', productId);
       const foundProduct = await API.products.getById(parseInt(productId));
 
       if (!foundProduct) {
@@ -323,17 +341,12 @@ const UniversalEditor = ({
         return;
       }
 
-      console.log('編輯器載入的商品:', foundProduct);
-
       if (!foundProduct.printArea) {
-        console.warn('此商品尚未設定設計區範圍，使用預設值');
         foundProduct.printArea = { x: 50, y: 50, width: 200, height: 150 };
       }
 
       setInternalProduct(foundProduct);
     } catch (error) {
-      console.error('載入商品失敗:', error);
-
       if (error.message.includes('找不到')) {
         setInternalError('商品不存在或已被移除');
       } else {
@@ -361,7 +374,7 @@ const UniversalEditor = ({
         setUploadedImages(JSON.parse(savedImages));
       }
     } catch (error) {
-      console.error('載入已上傳圖片失敗:', error);
+      // 載入已上傳圖片失敗
     }
   };
 
@@ -371,17 +384,18 @@ const UniversalEditor = ({
       localStorage.setItem('editor_uploaded_images', JSON.stringify(images));
       setUploadedImages(images);
     } catch (error) {
-      console.error('保存圖片失敗:', error);
+      // 保存圖片失敗
     }
   };
 
   const handleSaveDraft = () => {
     const draft = {
-      productId: productId,
+      productId: currentProduct?.id || productId,
       timestamp: new Date().toISOString(),
-      elements: designElements
+      elements: designElements,
+      backgroundColor: backgroundColor
     };
-    localStorage.setItem(`draft_${productId}`, JSON.stringify(draft));
+    localStorage.setItem(`draft_${currentProduct?.id || productId}`, JSON.stringify(draft));
     alert('草稿已儲存！');
   };
 
@@ -411,12 +425,17 @@ const UniversalEditor = ({
   };
 
   const handleAddText = () => {
+    // 安全檢查：確保 currentProduct 和 printArea 存在
+    const printArea = currentProduct?.printArea;
+    const centerX = printArea ? printArea.x + printArea.width / 2 : 200;
+    const centerY = printArea ? printArea.y + printArea.height / 2 : 200;
+
     const newTextElement = {
       id: `text-${Date.now()}`,
       type: "text",
       content: "新增文字",
-      x: currentProduct.printArea ? currentProduct.printArea.x + currentProduct.printArea.width / 2 : 200,
-      y: currentProduct.printArea ? currentProduct.printArea.y + currentProduct.printArea.height / 2 : 200,
+      x: centerX,
+      y: centerY,
       fontSize: 24,
       color: "#000000",
       fontFamily: "Arial",
@@ -503,7 +522,6 @@ const UniversalEditor = ({
 
       event.target.value = "";
     } catch (error) {
-      console.error("圖片上傳失敗:", error);
       alert("圖片上傳失敗，請重試");
     } finally {
       setIsUploading(false);
@@ -512,13 +530,18 @@ const UniversalEditor = ({
 
   // 添加圖片到畫布
   const handleAddImageToCanvas = (imageData) => {
+    // 安全檢查：確保 currentProduct 和 printArea 存在
+    const printArea = currentProduct?.printArea;
+    const centerX = printArea ? printArea.x + printArea.width / 2 : 200;
+    const centerY = printArea ? printArea.y + printArea.height / 2 : 200;
+
     const newImageElement = {
       id: `canvas-image-${Date.now()}`,
       type: "image",
       imageId: imageData.id,
       url: imageData.url,
-      x: currentProduct.printArea ? currentProduct.printArea.x + currentProduct.printArea.width / 2 : 200,
-      y: currentProduct.printArea ? currentProduct.printArea.y + currentProduct.printArea.height / 2 : 200,
+      x: centerX,
+      y: centerY,
       width: 100,
       height: 100,
       rotation: 0,
@@ -567,6 +590,73 @@ const UniversalEditor = ({
     setSelectedElement(null);
     setShowTextToolbar(false);
     setEditingText(null);
+    // 同時從隱藏圖層集合中移除
+    setHiddenLayers(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(elementId);
+      return newSet;
+    });
+  };
+
+  // 圖層管理函數
+  const toggleLayerVisibility = (elementId) => {
+    setHiddenLayers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(elementId)) {
+        newSet.delete(elementId);
+      } else {
+        newSet.add(elementId);
+      }
+      return newSet;
+    });
+  };
+
+  const moveLayerUp = (elementId) => {
+    setDesignElements(prev => {
+      const elements = [...prev];
+      const currentIndex = elements.findIndex(el => el.id === elementId);
+      if (currentIndex < elements.length - 1) {
+        // 交換當前元素和上一個元素的位置
+        [elements[currentIndex], elements[currentIndex + 1]] = [elements[currentIndex + 1], elements[currentIndex]];
+      }
+      return elements;
+    });
+  };
+
+  const moveLayerDown = (elementId) => {
+    setDesignElements(prev => {
+      const elements = [...prev];
+      const currentIndex = elements.findIndex(el => el.id === elementId);
+      if (currentIndex > 0) {
+        // 交換當前元素和下一個元素的位置
+        [elements[currentIndex], elements[currentIndex - 1]] = [elements[currentIndex - 1], elements[currentIndex]];
+      }
+      return elements;
+    });
+  };
+
+  const moveLayerToTop = (elementId) => {
+    setDesignElements(prev => {
+      const elements = [...prev];
+      const elementIndex = elements.findIndex(el => el.id === elementId);
+      if (elementIndex !== -1) {
+        const element = elements.splice(elementIndex, 1)[0];
+        elements.push(element); // 移到陣列最後（最上層）
+      }
+      return elements;
+    });
+  };
+
+  const moveLayerToBottom = (elementId) => {
+    setDesignElements(prev => {
+      const elements = [...prev];
+      const elementIndex = elements.findIndex(el => el.id === elementId);
+      if (elementIndex !== -1) {
+        const element = elements.splice(elementIndex, 1)[0];
+        elements.unshift(element); // 移到陣列最前（最下層）
+      }
+      return elements;
+    });
   };
 
   // 開始編輯文字
@@ -654,7 +744,10 @@ const UniversalEditor = ({
   };
 
   const handleMouseMove = (e) => {
-    if ((!draggedElement && !resizeHandle) || !currentProduct.printArea) return;
+    if (!draggedElement && !resizeHandle) return;
+
+    // 安全檢查：如果沒有 printArea，使用預設範圍
+    const printArea = currentProduct?.printArea || { x: 0, y: 0, width: 400, height: 400 };
 
     const canvasRect = e.currentTarget.getBoundingClientRect();
     const canvasWidth = canvasRect.width;
@@ -667,10 +760,10 @@ const UniversalEditor = ({
       const canvasX = (relativeX / canvasWidth) * 400;
       const canvasY = (relativeY / canvasHeight) * 400;
 
-      const minX = currentProduct.printArea.x;
-      const maxX = currentProduct.printArea.x + currentProduct.printArea.width;
-      const minY = currentProduct.printArea.y;
-      const maxY = currentProduct.printArea.y + currentProduct.printArea.height;
+      const minX = printArea.x;
+      const maxX = printArea.x + printArea.width;
+      const minY = printArea.y;
+      const maxY = printArea.y + printArea.height;
 
       const constrainedX = Math.max(minX, Math.min(maxX, canvasX));
       const constrainedY = Math.max(minY, Math.min(maxY, canvasY));
@@ -751,28 +844,28 @@ const UniversalEditor = ({
               // 限制在設計區域內
               const halfWidth = newWidth / 2;
               const halfHeight = newHeight / 2;
-              const minX = currentProduct.printArea.x + halfWidth;
-              const maxX = currentProduct.printArea.x + currentProduct.printArea.width - halfWidth;
-              const minY = currentProduct.printArea.y + halfHeight;
-              const maxY = currentProduct.printArea.y + currentProduct.printArea.height - halfHeight;
+              const minX = printArea.x + halfWidth;
+              const maxX = printArea.x + printArea.width - halfWidth;
+              const minY = printArea.y + halfHeight;
+              const maxY = printArea.y + printArea.height - halfHeight;
 
               newX = Math.max(minX, Math.min(maxX, el.x));
               newY = Math.max(minY, Math.min(maxY, el.y));
 
-              if (newX - halfWidth < currentProduct.printArea.x) {
-                newWidth = (newX - currentProduct.printArea.x) * 2;
+              if (newX - halfWidth < printArea.x) {
+                newWidth = (newX - printArea.x) * 2;
                 newHeight = newWidth / aspectRatio;
               }
-              if (newX + halfWidth > currentProduct.printArea.x + currentProduct.printArea.width) {
-                newWidth = (currentProduct.printArea.x + currentProduct.printArea.width - newX) * 2;
+              if (newX + halfWidth > printArea.x + printArea.width) {
+                newWidth = (printArea.x + printArea.width - newX) * 2;
                 newHeight = newWidth / aspectRatio;
               }
-              if (newY - halfHeight < currentProduct.printArea.y) {
-                newHeight = (newY - currentProduct.printArea.y) * 2;
+              if (newY - halfHeight < printArea.y) {
+                newHeight = (newY - printArea.y) * 2;
                 newWidth = newHeight * aspectRatio;
               }
-              if (newY + halfHeight > currentProduct.printArea.y + currentProduct.printArea.height) {
-                newHeight = (currentProduct.printArea.y + currentProduct.printArea.height - newY) * 2;
+              if (newY + halfHeight > printArea.y + printArea.height) {
+                newHeight = (printArea.y + printArea.height - newY) * 2;
                 newWidth = newHeight * aspectRatio;
               }
 
@@ -990,28 +1083,31 @@ const UniversalEditor = ({
                                     <h4 className="text-sm font-medium text-gray-700">可用版型</h4>
                                     <span className="text-xs text-gray-500">{availableTemplates.length} 個版型</span>
                                   </div>
-                                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                                  <div className="grid grid-cols-2 gap-2 overflow-y-auto">
                                     {availableTemplates.map((template) => (
                                       <button
                                         key={template.id}
                                         onClick={() => applyTemplate(template)}
-                                        className="p-3 bg-gray-50 rounded-lg border hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
+                                        className="p-2 bg-gray-50 rounded-lg border hover:border-blue-400 hover:bg-blue-50 transition-colors text-center group"
                                         title={`點擊應用版型：${template.name}`}
                                       >
-                                        <div className="flex items-center mb-2">
-                                          <span className="text-lg mr-2">📐</span>
-                                          <span className="text-sm font-medium text-gray-900 truncate">
-                                            {template.name}
-                                          </span>
+                                        {/* 版型縮圖 */}
+                                        <div className="w-full aspect-square bg-gray-100 rounded-lg border border-gray-200 overflow-hidden mb-2">
+                                          <TemplateThumbnail
+                                            template={template}
+                                            width={120}
+                                            height={120}
+                                            showName={false}
+                                            showElementCount={false}
+                                            useFlexibleSize={true}
+                                            className="w-full h-full group-hover:scale-105 transition-transform duration-200"
+                                          />
                                         </div>
-                                        {template.description && (
-                                          <p className="text-xs text-gray-600 line-clamp-2">
-                                            {template.description}
-                                          </p>
-                                        )}
-                                        <div className="mt-2 flex items-center text-xs text-gray-500">
-                                          <span>{template.elements?.length || 0} 個元素</span>
-                                        </div>
+
+                                        {/* 版型標題 */}
+                                        <p className="text-xs font-medium text-gray-900 truncate">
+                                          {template.name}
+                                        </p>
                                       </button>
                                     ))}
                                   </div>
@@ -1231,28 +1327,145 @@ const UniversalEditor = ({
                           )}
 
                           {currentTool?.id === "layers" && (
-                            <div className="space-y-2">
-                              <div className="text-sm text-gray-600 mb-2">
-                                圖層列表
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-medium text-gray-700">圖層列表</h4>
+                                <span className="text-xs text-gray-500">{designElements.length + 1} 個圖層</span>
                               </div>
-                              {["背景", "文字層 1", "圖片層 1"].map(
-                                (layer, index) => (
-                                  <div
-                                    key={index}
-                                    className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                                  >
-                                    <span className="text-sm">{layer}</span>
-                                    <div className="flex space-x-1">
-                                      <button className="text-xs px-2 py-1 bg-white rounded">
-                                        👁️
-                                      </button>
-                                      <button className="text-xs px-2 py-1 bg-white rounded">
-                                        🗑️
-                                      </button>
+
+                              <div className="space-y-1 max-h-64 overflow-y-auto">
+
+                                {/* 設計元素圖層 - 按照z-index順序顯示 */}
+                                {[...designElements].reverse().map((element, index) => {
+                                  const isSelected = selectedElement?.id === element.id;
+                                  const isHidden = hiddenLayers.has(element.id);
+                                  const layerName = element.type === 'text'
+                                    ? `文字: ${element.content?.substring(0, 10) || '新增文字'}${element.content?.length > 10 ? '...' : ''}`
+                                    : `圖片: ${element.url ? '自訂圖片' : '圖片'}`;
+
+                                  return (
+                                    <div
+                                      key={element.id}
+                                      className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors select-none ${
+                                        isSelected
+                                          ? 'bg-blue-100 border border-blue-300'
+                                          : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                                      } ${isHidden ? 'opacity-50' : ''}`}
+                                      onClick={() => handleSelectElement(element)}
+                                    >
+                                      <div className="flex items-center space-x-2 flex-1">
+                                        <span className="text-lg">
+                                          {element.type === 'text' ? '📝' : '🖼️'}
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-medium text-gray-900 truncate">
+                                            {layerName}
+                                          </div>
+                                          <div className="text-xs text-gray-500">
+                                            圖層 {designElements.length - index}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center space-x-1">
+                                        {/* 可見性切換 */}
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleLayerVisibility(element.id);
+                                          }}
+                                          className={`text-xs px-2 py-1 rounded transition-colors ${
+                                            isHidden
+                                              ? 'bg-gray-300 text-gray-600 hover:bg-gray-400'
+                                              : 'bg-blue-500 text-white hover:bg-blue-600'
+                                          }`}
+                                          title={isHidden ? '顯示圖層' : '隱藏圖層'}
+                                        >
+                                          {isHidden ? '👁️‍🗨️' : '👁️'}
+                                        </button>
+
+                                        {/* 圖層順序控制 */}
+                                        <div className="flex flex-col">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              moveLayerUp(element.id);
+                                            }}
+                                            className="text-xs px-1 py-0.5 bg-white hover:bg-gray-100 rounded-t border border-gray-300"
+                                            title="向上移動"
+                                            disabled={index === 0}
+                                          >
+                                            ↑
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              moveLayerDown(element.id);
+                                            }}
+                                            className="text-xs px-1 py-0.5 bg-white hover:bg-gray-100 rounded-b border border-gray-300 border-t-0"
+                                            title="向下移動"
+                                            disabled={index === designElements.length - 1}
+                                          >
+                                            ↓
+                                          </button>
+                                        </div>
+
+                                        {/* 刪除按鈕 */}
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm('確定要刪除這個圖層嗎？')) {
+                                              handleDeleteElement(element.id);
+                                            }
+                                          }}
+                                          className="text-xs px-2 py-1 bg-red-500 text-white hover:bg-red-600 rounded transition-colors"
+                                          title="刪除圖層"
+                                        >
+                                          🗑️
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {/* 背景圖層 - 始終在最底層 */}
+                                <div className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-lg">🎨</span>
+                                    <div>
+                                      <span className="text-sm font-medium text-blue-900">背景顏色</span>
+                                      <div className="text-xs text-blue-700">
+                                        {backgroundColor}
+                                      </div>
                                     </div>
                                   </div>
-                                )
-                              )}
+                                  <div
+                                    className="w-4 h-4 border border-gray-300 rounded"
+                                    style={{ backgroundColor: backgroundColor }}
+                                  />
+                                </div>
+
+                                {designElements.length === 0 && (
+                                  <div className="text-center py-6 text-gray-500 text-sm">
+                                    <div className="text-2xl mb-2">📑</div>
+                                    還沒有設計元素
+                                    <br />
+                                    使用左側工具開始添加元素
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 圖層操作提示 */}
+                              <div className="bg-blue-50 rounded-lg p-3">
+                                <h5 className="text-sm font-medium text-blue-900 mb-1">
+                                  💡 圖層操作
+                                </h5>
+                                <ul className="text-xs text-blue-800 space-y-1">
+                                  <li>• 點擊圖層可選中對應元素</li>
+                                  <li>• 👁️ 控制圖層顯示/隱藏</li>
+                                  <li>• ↑↓ 調整圖層順序</li>
+                                  <li>• 🗑️ 刪除圖層</li>
+                                </ul>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1355,7 +1568,9 @@ const UniversalEditor = ({
                     style={{ zIndex: 10 }}
                   >
                     <div className="w-full h-full relative">
-                      {designElements.map((element) => {
+                      {designElements
+                        .filter(element => !hiddenLayers.has(element.id)) // 過濾隱藏的圖層
+                        .map((element) => {
                         if (element.type === "text") {
                           const isEditing = editingText === element.id;
                           return (

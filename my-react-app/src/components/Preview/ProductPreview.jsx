@@ -16,6 +16,7 @@ const ProductPreview = ({
   showInfo = true,
   width = 320,
   height = 320,
+  scaleFactor = null, // 新增縮放因子參數
   ...props
 }) => {
   const [product, setProduct] = useState(null);
@@ -223,8 +224,8 @@ const ProductPreview = ({
                       top: `${(relativeY / areaHeight) * 100}%`,
                       transform: "translate(-50%, -50%)",
                       fontSize: `${
-                        element.fontSize * (320 / 400)
-                      }px`, // 預覽區域縮放
+                        element.fontSize * (scaleFactor || (width / 400))
+                      }px`, // 動態縮放因子
                       color: element.color,
                       fontFamily: element.fontFamily,
                       fontWeight:
@@ -300,7 +301,7 @@ const ProductPreview = ({
                         top: `${(element.y / 400) * 100}%`,
                         transform: "translate(-50%, -50%)",
                         fontSize: `${
-                          element.fontSize * (320 / 400)
+                          element.fontSize * (scaleFactor || (width / 400))
                         }px`,
                         color: element.color,
                         fontFamily: element.fontFamily,

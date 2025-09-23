@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 
 const CartContext = createContext();
 
@@ -33,17 +33,33 @@ const cartReducer = (state, action) => {
 
 export const CartProvider = ({ children }) => {
   const [cart, dispatch] = useReducer(cartReducer, []);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const savedCart = localStorage.getItem('shopping-cart');
+    console.log('🛒 載入購物車資料:', savedCart);
     if (savedCart) {
-      dispatch({ type: 'LOAD_CART', payload: JSON.parse(savedCart) });
+      try {
+        const parsedCart = JSON.parse(savedCart);
+        console.log('✅ 成功解析購物車:', parsedCart);
+        dispatch({ type: 'LOAD_CART', payload: parsedCart });
+      } catch (error) {
+        console.error('❌ 購物車資料解析失敗:', error);
+        localStorage.removeItem('shopping-cart');
+      }
+    } else {
+      console.log('📭 沒有找到購物車資料');
     }
+    setIsInitialized(true);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('shopping-cart', JSON.stringify(cart));
-  }, [cart]);
+    // 只有在初始化完成後才保存
+    if (isInitialized) {
+      console.log('💾 保存購物車到 localStorage:', cart);
+      localStorage.setItem('shopping-cart', JSON.stringify(cart));
+    }
+  }, [cart, isInitialized]);
 
   const addToCart = (product) => {
     dispatch({ type: 'ADD_TO_CART', payload: product });

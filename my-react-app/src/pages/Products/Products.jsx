@@ -91,7 +91,14 @@ const Products = () => {
   };
 
   const handleStartDesigning = (productId) => {
-    navigate(`/editor/${productId}`);
+    // 清除任何現有的編輯資料，確保是全新設計
+    sessionStorage.removeItem('editingDesignData');
+
+    // 創建新的設計ID
+    const newDesignId = `design_${Date.now()}`;
+
+    // 跳轉到編輯器，帶上新設計參數
+    navigate(`/editor/${productId}?new=${newDesignId}`);
   };
 
   const handleViewDetails = (productId) => {

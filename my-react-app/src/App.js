@@ -15,6 +15,8 @@ import Admin from './pages/Admin/Admin';
 import ProductMaintenance from './pages/Admin/ProductMaintenance';
 import TemplateManagement from './pages/Admin/TemplateManagement';
 import TemplateEditor from './pages/Admin/TemplateEditor';
+import DatabaseReset from './pages/DatabaseReset';
+import TestTemplateEditor from './pages/TestTemplateEditor';
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
   <Route path="/admin/products" element={<ProductMaintenance />} />
   <Route path="/admin/templates" element={<TemplateManagement />} />
   <Route path="/admin/templates/editor/:id" element={<TemplateEditor />} />
+  <Route path="/admin/database-reset" element={<DatabaseReset />} />
+  <Route path="/test-template-editor" element={<TestTemplateEditor />} />
 
   {/* Editor 也是獨立 */}
   <Route path="/editor/:id" element={<Editor />} />
