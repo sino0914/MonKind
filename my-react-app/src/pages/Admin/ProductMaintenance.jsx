@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API } from "../../services/api";
+import GLBViewer from "../../components/GLBViewer";
+import UVMapper from "../../components/UVMapper";
 
 const ProductMaintenance = () => {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ const ProductMaintenance = () => {
     description: "",
     featured: false,
     isActive: true,
+    type: "2D", // 新增：產品類型
   });
 
   // 載入商品資料
@@ -59,6 +62,157 @@ const ProductMaintenance = () => {
     setTimeout(() => {
       setNotification(null);
     }, 3000);
+  };
+
+  // 產品類型變更處理
+  const handleProductTypeChange = async (newType) => {
+    if (!selectedProduct) return;
+
+    try {
+      setSaving(true);
+      const updatedProduct = { ...selectedProduct, type: newType };
+
+      // 如果切換到3D模式，初始化3D資料
+      if (newType === '3D' && !selectedProduct.model3D) {
+        updatedProduct.model3D = {
+          glbUrl: null,
+          uvMapping: {
+            defaultUV: { u: 0.5, v: 0.5, width: 0.4, height: 0.3 },
+            availableUVs: []
+          },
+          camera: {
+            position: { x: 0, y: 0, z: 5 },
+            target: { x: 0, y: 0, z: 0 }
+          }
+        };
+      }
+
+      await API.products.update(selectedProduct.id, updatedProduct);
+      setSelectedProduct(updatedProduct);
+      setProducts(prev => prev.map(p => p.id === selectedProduct.id ? updatedProduct : p));
+
+      showNotification(`產品類型已更新為 ${newType}`);
+    } catch (error) {
+      console.error('更新產品類型失敗:', error);
+      showNotification('更新產品類型失敗: ' + error.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 3D模型保存處理
+  const handleSave3DModel = async () => {
+    if (!selectedProduct || selectedProduct.type !== '3D') return;
+
+    try {
+      setSaving(true);
+      await API.products.update(selectedProduct.id, selectedProduct);
+      showNotification('3D模型設定已儲存！');
+    } catch (error) {
+      console.error('儲存3D模型設定失敗:', error);
+      showNotification('儲存失敗: ' + error.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 檢查localStorage使用情況的輔助函數
+  const checkStorageUsage = () => {
+    let totalSize = 0;
+    const usage = {};
+
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        const size = localStorage[key].length;
+        totalSize += size;
+        usage[key] = (size / 1024).toFixed(2) + 'KB';
+      }
+    }
+
+    const totalMB = (totalSize / (1024 * 1024)).toFixed(2);
+    console.log('📊 localStorage 使用情況:');
+    console.log('總使用量:', totalMB + 'MB');
+    console.log('詳細使用量:', usage);
+
+    // 估算可用空間（大多數瀏覽器限制為5-10MB）
+    const estimatedLimitMB = 10;
+    const remainingMB = (estimatedLimitMB - parseFloat(totalMB)).toFixed(2);
+    console.log('剩餘空間:', remainingMB + 'MB');
+
+    return { totalMB: parseFloat(totalMB), remainingMB: parseFloat(remainingMB), usage };
+  };
+
+  // GLB文件上傳處理 - 使用新的後端API
+  const handleGLBUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      setSaving(true);
+      showNotification('正在上傳GLB文件...', 'info');
+
+      // 檢查文件類型
+      if (!file.name.toLowerCase().endsWith('.glb') && !file.name.toLowerCase().endsWith('.gltf')) {
+        throw new Error('只支援 GLB 或 GLTF 格式的 3D 模型文件');
+      }
+
+      // 使用後端API上傳GLB文件
+      const uploadResult = await API.products.uploadGLB(selectedProduct.id, file);
+
+      if (uploadResult.success) {
+        const { data } = uploadResult;
+
+        // 更新產品的3D模型資訊
+        const updatedProduct = {
+          ...selectedProduct,
+          model3D: {
+            ...selectedProduct.model3D,
+            glbUrl: `http://localhost:3001${data.url}`, // 完整的URL
+            fileName: data.originalName,
+            fileSize: data.size,
+            fileSizeMB: data.sizeMB,
+            uploadedAt: data.uploadedAt
+          }
+        };
+
+        // 更新產品資料
+        await API.products.update(selectedProduct.id, updatedProduct);
+        setSelectedProduct(updatedProduct);
+        setProducts(prev => prev.map(p => p.id === selectedProduct.id ? updatedProduct : p));
+
+        showNotification(`3D模型上傳成功！文件大小: ${data.sizeMB}MB`, 'success');
+        console.log('GLB上傳成功:', data);
+      } else {
+        throw new Error(uploadResult.message || '上傳失敗');
+      }
+    } catch (error) {
+      console.error('GLB上傳失敗:', error);
+      showNotification('GLB上傳失敗: ' + error.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // UV映射變更處理
+  const handleUVChange = (uvType, property, value) => {
+    if (!selectedProduct || selectedProduct.type !== '3D') return;
+
+    const updatedProduct = {
+      ...selectedProduct,
+      model3D: {
+        ...selectedProduct.model3D,
+        uvMapping: {
+          ...selectedProduct.model3D.uvMapping,
+          [uvType]: {
+            ...selectedProduct.model3D.uvMapping[uvType],
+            [property]: value
+          }
+        }
+      }
+    };
+
+    setSelectedProduct(updatedProduct);
+    setProducts(prev => prev.map(p => p.id === selectedProduct.id ? updatedProduct : p));
   };
 
   const handleProductSelect = (product) => {
@@ -786,9 +940,18 @@ const ProductMaintenance = () => {
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {product.title}
-                            </p>
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {product.title}
+                              </p>
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${
+                                product.type === '3D'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {product.type || '2D'}
+                              </span>
+                            </div>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -830,25 +993,36 @@ const ProductMaintenance = () => {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow border border-gray-200">
               <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="font-semibold text-gray-900">
-                      設計區編輯器
-                    </h3>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h3 className="font-semibold text-gray-900">
+                        設計區編輯器
+                      </h3>
+                      <span className={`px-3 py-1 text-sm rounded-full ${
+                        selectedProduct.type === '3D'
+                          ? 'bg-purple-100 text-purple-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {selectedProduct.type || '2D'}
+                      </span>
+                    </div>
                     <p className="text-sm text-gray-600">
                       {selectedProduct.title}
                     </p>
                   </div>
                   <div className="flex space-x-2">
-                    <button
-                      onClick={handleResetPrintArea}
-                      className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm"
-                    >
-                      ↶ 重置
-                    </button>
+                    {selectedProduct.type !== '3D' && (
+                      <button
+                        onClick={handleResetPrintArea}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm"
+                      >
+                        ↶ 重置
+                      </button>
+                    )}
 
                     <button
-                      onClick={handleSavePrintArea}
+                      onClick={selectedProduct.type === '3D' ? handleSave3DModel : handleSavePrintArea}
                       disabled={saving}
                       className={`px-3 py-2 text-sm rounded-md transition-colors ${
                         saving
@@ -860,17 +1034,116 @@ const ProductMaintenance = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* 產品類型切換 */}
+                <div className="flex items-center space-x-4 mb-4">
+                  <span className="text-sm font-medium text-gray-700">產品類型：</span>
+                  <div className="flex space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="2D"
+                        checked={selectedProduct.type !== '3D'}
+                        onChange={() => handleProductTypeChange('2D')}
+                        className="mr-2"
+                      />
+                      2D 平面設計
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="3D"
+                        checked={selectedProduct.type === '3D'}
+                        onChange={() => handleProductTypeChange('3D')}
+                        className="mr-2"
+                      />
+                      3D 立體設計
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* Canvas Area */}
               <div className="p-8">
-                <div className="flex justify-center">
-                  <div
-                    className="canvas-container w-96 h-96 border-2 border-gray-200 rounded-lg relative overflow-hidden bg-gray-50 cursor-crosshair"
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                  >
+                {selectedProduct.type === '3D' && (
+                  <div className="space-y-6">
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8">
+                      <div className="text-center">
+                        <div className="mb-4">
+                          <svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                          </svg>
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">上傳 3D 模型 (GLB)</h4>
+                        <p className="text-gray-600 mb-2">支援 GLB 或 GLTF 格式的 3D 模型文件</p>
+                        <p className="text-sm text-blue-600 mb-4">📁 最大文件大小：200MB</p>
+
+                        <input
+                          type="file"
+                          accept=".glb,.gltf"
+                          onChange={handleGLBUpload}
+                          className="hidden"
+                          id="glb-upload"
+                        />
+                        <div className="flex space-x-4">
+                          <label
+                            htmlFor="glb-upload"
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors"
+                          >
+                            📁 選擇 GLB 文件
+                          </label>
+                        </div>
+
+                        {selectedProduct.model3D?.glbUrl && (
+                          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                            <p className="text-green-800 text-sm">✅ 3D 模型已上傳</p>
+                            <p className="text-green-700 text-xs mt-1">
+                              文件名: {selectedProduct.model3D.fileName}
+                              ({selectedProduct.model3D.fileSizeMB}MB)
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* GLB 預覽器 */}
+                    {selectedProduct.model3D?.glbUrl && (
+                      <div className="bg-white border border-gray-200 rounded-lg p-6">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">3D 模型預覽</h4>
+                        <div className="aspect-video rounded-lg overflow-hidden border border-gray-300">
+                          <GLBViewer
+                            glbUrl={selectedProduct.model3D.glbUrl}
+                            className="w-full h-full"
+                            showControls={true}
+                            autoRotate={true}
+                          />
+                        </div>
+                        <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
+                          <span>🎯 檢查模型是否正確載入與顯示</span>
+                          <span>💡 使用滑鼠拖拽旋轉視角</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* UV 貼圖設定與檢查界面 */}
+                    <UVMapper
+                      uvMapping={selectedProduct.model3D?.uvMapping}
+                      onUVChange={handleUVChange}
+                      showPreview={true}
+                      className="bg-white border border-gray-200 rounded-lg p-6"
+                    />
+                  </div>
+                )}
+
+                {selectedProduct.type !== '3D' && (
+                  <>
+                    <div className="flex justify-center">
+                      <div
+                        className="canvas-container w-96 h-96 border-2 border-gray-200 rounded-lg relative overflow-hidden bg-gray-50 cursor-crosshair"
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                      >
                     {/* Product Background */}
                     {selectedProduct.mockupImage ? (
                       <img
@@ -982,7 +1255,6 @@ const ProductMaintenance = () => {
                   </div>
                 </div>
 
-                {/* Instructions */}
                 <div className="mt-4 text-center text-sm text-gray-600">
                   <div className="space-y-1">
                     <p>
@@ -1065,6 +1337,8 @@ const ProductMaintenance = () => {
                     </div>
                   </div>
                 </div>
+                </>
+                )}
               </div>
             </div>
           </div>
@@ -1512,7 +1786,46 @@ const ProductMaintenance = () => {
                     <option value="bottle">水瓶</option>
                     <option value="pillow">抱枕</option>
                     <option value="notebook">筆記本</option>
+                    <option value="phone_case">手機殼</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    產品類型
+                  </label>
+                  <div className="flex space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="2D"
+                        checked={newProduct.type === "2D"}
+                        onChange={(e) =>
+                          setNewProduct((prev) => ({
+                            ...prev,
+                            type: e.target.value,
+                          }))
+                        }
+                        className="mr-2"
+                      />
+                      2D 平面設計
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="3D"
+                        checked={newProduct.type === "3D"}
+                        onChange={(e) =>
+                          setNewProduct((prev) => ({
+                            ...prev,
+                            type: e.target.value,
+                          }))
+                        }
+                        className="mr-2"
+                      />
+                      3D 立體設計
+                    </label>
+                  </div>
                 </div>
 
                 <div>

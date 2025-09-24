@@ -167,6 +167,8 @@ const Editor = () => {
       // 傳入編輯中的設計資料
       initialElements={initialElements}
       initialBackgroundColor={initialBackgroundColor}
+      // 傳遞草稿ID用於更新現有草稿
+      draftId={editingData?.draftId}
     />
   );
 };

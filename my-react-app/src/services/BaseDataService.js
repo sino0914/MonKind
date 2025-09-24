@@ -133,7 +133,13 @@ class BaseDataService {
           }
           console.log(`localStorage 總使用量: ${(totalSize / 1024).toFixed(2)}KB`);
 
-          throw new Error(`存儲空間不足。目前使用: ${(totalSize / 1024).toFixed(2)}KB，此次新增: ${dataSizeKB}KB。請清除瀏覽器數據或使用較小的圖片。`);
+          // 提供更詳細的錯誤訊息，特別針對 3D 模型文件
+          const isLargeFile = parseFloat(dataSizeKB) > 5000; // 超過5MB視為大文件
+          const errorMessage = isLargeFile
+            ? `儲存空間不足，無法保存大型 3D 模型文件。目前使用: ${(totalSize / 1024).toFixed(2)}KB，嘗試新增: ${dataSizeKB}KB。建議：1) 清理瀏覽器儲存數據 2) 使用檔案壓縮工具壓縮 GLB 文件 3) 選擇較小的 3D 模型`
+            : `儲存空間不足。目前使用: ${(totalSize / 1024).toFixed(2)}KB，此次新增: ${dataSizeKB}KB。請清除瀏覽器數據或使用較小的文件。`;
+
+          throw new Error(errorMessage);
         }
 
         throw storageError;

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLB 文件上傳測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .upload-area.dragover {
+            border-color: #007cba;
+            background-color: #f0f8ff;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #005a8b;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>GLB 文件上傳測試</h1>
+    <p>這是測試新後端 GLB 文件上傳功能的簡單頁面</p>
+
+    <div class="upload-area" id="uploadArea">
+        <p>拖拽 GLB 文件到此區域或點擊按鈕選擇文件</p>
+        <input type="file" id="fileInput" accept=".glb,.gltf" style="display: none;">
+        <button onclick="document.getElementById('fileInput').click()">選擇 GLB 文件</button>
+    </div>
+
+    <button onclick="uploadFile()">上傳文件</button>
+    <button onclick="checkHealth()">檢查後端狀態</button>
+    <button onclick="getStorageInfo()">獲取存儲資訊</button>
+
+    <div id="result"></div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3001/api';
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const resultDiv = document.getElementById('result');
+
+        let selectedFile = null;
+
+        // 設置拖拽上傳
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                selectedFile = files[0];
+                showResult(`已選擇文件: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`, 'success');
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                showResult(`已選擇文件: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`, 'success');
+            }
+        });
+
+        function showResult(message, type = 'success') {
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                showResult(`後端狀態: ${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                showResult(`健康檢查失敗: ${error.message}`, 'error');
+            }
+        }
+
+        async function getStorageInfo() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/upload/storage`);
+                const data = await response.json();
+                showResult(`存儲資訊: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+            } catch (error) {
+                showResult(`獲取存儲資訊失敗: ${error.message}`, 'error');
+            }
+        }
+
+        async function uploadFile() {
+            if (!selectedFile) {
+                showResult('請先選擇一個文件', 'error');
+                return;
+            }
+
+            if (!selectedFile.name.toLowerCase().endsWith('.glb') && !selectedFile.name.toLowerCase().endsWith('.gltf')) {
+                showResult('請選擇 GLB 或 GLTF 文件', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('glb', selectedFile);
+
+            try {
+                showResult('正在上傳文件...', 'success');
+
+                const response = await fetch(`${API_BASE_URL}/upload/glb`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showResult(`上傳成功！<br>
+                        文件名: ${data.data.originalName}<br>
+                        大小: ${data.data.sizeMB} MB<br>
+                        URL: ${data.data.url}<br>
+                        上傳時間: ${data.data.uploadedAt}`, 'success');
+                } else {
+                    showResult(`上傳失敗: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(`上傳失敗: ${error.message}`, 'error');
+            }
+        }
+
+        // 頁面載入時檢查後端狀態
+        window.onload = () => {
+            checkHealth();
+        };
+    </script>
+</body>
+</html>

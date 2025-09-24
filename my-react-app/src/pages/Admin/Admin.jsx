@@ -46,6 +46,14 @@ const Admin = () => {
       icon: '📐',
       path: '/admin/templates',
       color: 'bg-purple-500 hover:bg-purple-600'
+    },
+    {
+      id: 'elements',
+      title: '元素管理',
+      description: '管理設計元素與圖片資源',
+      icon: '🎨',
+      path: '/admin/elements',
+      color: 'bg-green-500 hover:bg-green-600'
     }
   ];
 

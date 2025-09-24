@@ -1,0 +1,10 @@
+[
+  {
+    "id": 1,
+    "email": "admin@monkind.com",
+    "password": "admin123",
+    "isAdmin": true,
+    "name": "系統管理員",
+    "createdAt": "2025-09-24T05:20:38.679Z"
+  }
+]

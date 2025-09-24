@@ -12,14 +12,13 @@ const ProductThumbnail = ({
   width = 80,
   height = 80,
   className = '',
-  showElementCount = false,
-  useFlexibleSize = false // 新參數：是否使用彈性大小
+  showElementCount = false
 }) => {
   if (!product) {
     return (
       <div
         className={`bg-gray-200 flex items-center justify-center rounded ${className}`}
-        style={useFlexibleSize ? {} : { width, height }}
+        style={{ width, height }}
       >
         <span className="text-gray-500 text-xs">無圖</span>
       </div>
@@ -27,12 +26,12 @@ const ProductThumbnail = ({
   }
 
   // 計算縮放因子
-  const scaleFactor = useFlexibleSize ? width / 400 : width / 400; // 統一使用基於寬度的計算
+  const scaleFactor = width / 400;
 
   return (
     <div
       className={`relative overflow-hidden rounded ${className}`}
-      style={useFlexibleSize ? {} : { width, height }}
+      style={{ width, height }}
     >
       {/* 商品背景圖 */}
       <div className="absolute inset-0">

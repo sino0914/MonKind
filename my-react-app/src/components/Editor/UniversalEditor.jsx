@@ -35,6 +35,9 @@ const UniversalEditor = ({
   onAddToCart = null,
   onDesignStateChange = null, // 新增：當設計狀態變化時的回調
 
+  // 草稿相關
+  draftId = null, // 新增：用於更新現有草稿的ID
+
   // 狀態相關
   loading = false,
   error = null,
@@ -61,6 +64,10 @@ const UniversalEditor = ({
   // 圖片相關狀態
   const [uploadedImages, setUploadedImages] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // 元素庫狀態
+  const [managedElements, setManagedElements] = useState([]);
+  const [loadingElements, setLoadingElements] = useState(false);
 
   // 文字編輯相關狀態
   const [editingText, setEditingText] = useState(null);
@@ -303,6 +310,24 @@ const UniversalEditor = ({
 
   // 應用版型
   const applyTemplate = (template) => {
+    // 檢查設計區是否已有元素
+    if (designElements && designElements.length > 0) {
+      const hasElements = designElements.some(element =>
+        element.type === 'text' || element.type === 'image'
+      );
+
+      if (hasElements) {
+        const confirmed = window.confirm(
+          '套用模板將會覆蓋目前設計區的所有元素，確定要繼續嗎？'
+        );
+
+        if (!confirmed) {
+          return; // 取消套用
+        }
+      }
+    }
+
+    // 應用模板
     if (template.elements && Array.isArray(template.elements)) {
       setDesignElements([...template.elements]);
     }
@@ -361,8 +386,10 @@ const UniversalEditor = ({
     if (productId && !product) {
       loadProduct();
       loadUploadedImages();
+      loadManagedElements();
     } else if (product) {
       loadUploadedImages();
+      loadManagedElements();
     }
   }, [productId, product]);
 
@@ -375,6 +402,19 @@ const UniversalEditor = ({
       }
     } catch (error) {
       // 載入已上傳圖片失敗
+    }
+  };
+
+  // 載入元素庫
+  const loadManagedElements = async () => {
+    try {
+      setLoadingElements(true);
+      const elements = await API.elements.getAll();
+      setManagedElements(elements.filter(element => element.type === 'image'));
+    } catch (error) {
+      console.error('載入元素庫失敗:', error);
+    } finally {
+      setLoadingElements(false);
     }
   };
 
@@ -395,8 +435,17 @@ const UniversalEditor = ({
       elements: designElements,
       backgroundColor: backgroundColor
     };
-    localStorage.setItem(`draft_${currentProduct?.id || productId}`, JSON.stringify(draft));
-    alert('草稿已儲存！');
+
+    // 如果有 draftId，表示是從"繼續編輯"進入，更新現有草稿
+    if (draftId) {
+      localStorage.setItem(draftId, JSON.stringify(draft));
+      alert('草稿已更新！');
+    } else {
+      // 沒有 draftId，創建新的草稿
+      const newDraftId = `draft_${currentProduct?.id || productId}_${Date.now()}`;
+      localStorage.setItem(newDraftId, JSON.stringify(draft));
+      alert('草稿已儲存！');
+    }
   };
 
   const handleAddToCart = () => {
@@ -571,6 +620,31 @@ const UniversalEditor = ({
 
     const updatedImages = uploadedImages.filter((img) => img.id !== imageId);
     saveUploadedImages(updatedImages);
+  };
+
+  // 從元素庫添加圖片到設計區
+  const addManagedElementToDesign = (element) => {
+    if (element.type !== 'image') return;
+
+    // 計算畫布中央位置
+    const printArea = product?.printArea || { x: 0, y: 0, width: 400, height: 400 };
+    const centerX = printArea.x + printArea.width / 2;
+    const centerY = printArea.y + printArea.height / 2;
+
+    const newElement = {
+      id: Date.now(),
+      type: 'image',
+      url: element.url,
+      x: centerX,
+      y: centerY,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      opacity: 1
+    };
+
+    const updatedElements = [...designElements, newElement];
+    setDesignElements(updatedElements);
   };
 
   // 選擇元素
@@ -1043,11 +1117,11 @@ const UniversalEditor = ({
             {/* Expanded Tool Panel */}
             <div
               className={`bg-white transition-all duration-300 ease-in-out overflow-hidden ${
-                hoveredTool || selectedTool ? "w-72" : "w-0"
+                hoveredTool || selectedTool ? "w-80" : "w-0"
               }`}
             >
               {(hoveredTool || selectedTool) && (
-                <div className="p-4 w-72">
+                <div className="p-4 w-80">
                   {(() => {
                     const currentTool = tools.find(
                       (t) => t.id === (selectedTool || hoveredTool)
@@ -1099,7 +1173,6 @@ const UniversalEditor = ({
                                             height={120}
                                             showName={false}
                                             showElementCount={false}
-                                            useFlexibleSize={true}
                                             className="w-full h-full group-hover:scale-105 transition-transform duration-200"
                                           />
                                         </div>
@@ -1130,6 +1203,73 @@ const UniversalEditor = ({
                                   <li>• 點擊版型即可套用設計</li>
                                   <li>• 套用後可繼續編輯調整</li>
                                   <li>• 版型會覆蓋目前的設計內容</li>
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+
+                          {currentTool?.id === "elements" && (
+                            <div className="space-y-4">
+                              {/* 設計元素庫 */}
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="text-sm font-medium text-gray-700">
+                                    設計元素庫
+                                  </h4>
+                                  <button
+                                    onClick={loadManagedElements}
+                                    disabled={loadingElements}
+                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                  >
+                                    {loadingElements ? '載入中...' : '重新載入'}
+                                  </button>
+                                </div>
+
+                                {loadingElements ? (
+                                  <div className="text-center py-4">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                                    <span className="text-xs text-gray-500">載入元素中...</span>
+                                  </div>
+                                ) : managedElements.length > 0 ? (
+                                  <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                                    {managedElements.map((element) => (
+                                      <div
+                                        key={element.id}
+                                        className="relative aspect-square border border-gray-200 rounded cursor-pointer hover:border-blue-400 transition-colors group overflow-hidden"
+                                        onClick={() => addManagedElementToDesign(element)}
+                                      >
+                                        <img
+                                          src={element.url}
+                                          alt={element.name}
+                                          className="w-full h-full object-cover"
+                                        />
+
+                                        {/* 元素名稱 */}
+                                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                                          {element.name}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-6 text-gray-500 text-sm">
+                                    <div className="text-2xl mb-2">🎨</div>
+                                    沒有可用的設計元素
+                                    <br />
+                                    <span className="text-xs">前往管理頁面上傳元素</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 使用說明 */}
+                              <div className="bg-blue-50 rounded-lg p-3">
+                                <h5 className="text-sm font-medium text-blue-900 mb-1">
+                                  💡 使用說明
+                                </h5>
+                                <ul className="text-xs text-blue-800 space-y-1">
+                                  <li>• 點擊設計元素庫中的元素添加到畫布</li>
+                                  <li>• 在畫布上可拖曳調整位置和大小</li>
+                                  <li>• 滑鼠右鍵可刪除畫布上的圖片</li>
                                 </ul>
                               </div>
                             </div>
@@ -1807,19 +1947,6 @@ const UniversalEditor = ({
                                     }
                                     title="拖曳旋轉"
                                   />
-
-                                  {/* 刪除按鈕 */}
-                                  <button
-                                    className="absolute w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center pointer-events-auto hover:bg-red-600 transition-colors"
-                                    style={{ top: "-12px", right: "-12px" }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteElement(element.id);
-                                    }}
-                                    title="刪除圖片"
-                                  >
-                                    ×
-                                  </button>
                                 </>
                               )}
                             </div>

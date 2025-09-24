@@ -14,8 +14,7 @@ const TemplateThumbnail = ({
   className = '',
   showElementCount = true,
   showName = true,
-  onError = null,
-  useFlexibleSize = false // 新參數：是否使用彈性大小
+  onError = null
 }) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,29 +50,18 @@ const TemplateThumbnail = ({
     loadProduct();
   }, [template?.productId, onError]);
 
-  // 為小縮圖縮放設計元素
+  // 直接返回原始元素，讓 ProductThumbnail 處理縮放
   const getScaledElements = () => {
     if (!template?.elements) return [];
 
-    // 判斷是否為小縮圖（寬度小於150px）
-    const isSmallThumbnail = width < 150;
-    const textScaleFactor = isSmallThumbnail ? 0.6 : 1;
-
-    return template.elements.map(element => {
-      if (element.type === 'text') {
-        return {
-          ...element,
-          fontSize: element.fontSize * textScaleFactor
-        };
-      }
-      return element;
-    });
+    // 直接返回原始元素，避免雙重縮放
+    return template.elements;
   };
 
   // 載入狀態
   if (loading) {
     return (
-      <div className={className} style={useFlexibleSize ? {} : { width, height }}>
+      <div className={className} style={{ width, height }}>
         <div className="bg-gray-100 w-full h-full rounded flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mx-auto mb-1"></div>
@@ -92,7 +80,7 @@ const TemplateThumbnail = ({
   // 錯誤狀態
   if (error || !product) {
     return (
-      <div className={className} style={useFlexibleSize ? {} : { width, height }}>
+      <div className={className} style={{ width, height }}>
         <div className="bg-red-50 w-full h-full rounded flex items-center justify-center border border-red-200">
           <div className="text-center">
             <span className="text-red-500 text-lg">❌</span>
@@ -113,17 +101,16 @@ const TemplateThumbnail = ({
 
   return (
     <div className={className}>
-      <div className={useFlexibleSize ? "relative w-full h-full" : "relative"}>
+      <div className="relative">
         {/* 使用 ProductThumbnail 確保一致性 */}
         <ProductThumbnail
           product={product}
           designElements={getScaledElements()}
           backgroundColor={template.backgroundColor || '#ffffff'}
-          width={useFlexibleSize ? 300 : width}
-          height={useFlexibleSize ? 300 : height}
+          width={width}
+          height={height}
           showElementCount={showElementCount}
-          className={useFlexibleSize ? "w-full h-full border border-gray-200" : "border border-gray-200"}
-          useFlexibleSize={useFlexibleSize}
+          className="border border-gray-200"
         />
 
         {/* 版型狀態標示 */}

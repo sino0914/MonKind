@@ -15,6 +15,7 @@ import Admin from './pages/Admin/Admin';
 import ProductMaintenance from './pages/Admin/ProductMaintenance';
 import TemplateManagement from './pages/Admin/TemplateManagement';
 import TemplateEditor from './pages/Admin/TemplateEditor';
+import ElementManagement from './pages/Admin/ElementManagement';
 import DatabaseReset from './pages/DatabaseReset';
 import TestTemplateEditor from './pages/TestTemplateEditor';
 
@@ -29,6 +30,7 @@ function App() {
   <Route path="/admin/products" element={<ProductMaintenance />} />
   <Route path="/admin/templates" element={<TemplateManagement />} />
   <Route path="/admin/templates/editor/:id" element={<TemplateEditor />} />
+  <Route path="/admin/elements" element={<ElementManagement />} />
   <Route path="/admin/database-reset" element={<DatabaseReset />} />
   <Route path="/test-template-editor" element={<TestTemplateEditor />} />
 

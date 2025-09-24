@@ -28,13 +28,23 @@ const MyWorks = () => {
         if (key && key.startsWith('draft_')) {
           try {
             const draftData = JSON.parse(localStorage.getItem(key));
-            const productId = key.replace('draft_', '');
-            const product = productMap[productId];
+
+            // 處理新舊格式的草稿ID
+            let extractedProductId;
+            if (key.includes('_') && key.split('_').length > 2) {
+              // 新格式: draft_productId_timestamp
+              extractedProductId = key.split('_')[1];
+            } else {
+              // 舊格式: draft_productId
+              extractedProductId = key.replace('draft_', '');
+            }
+
+            const product = productMap[extractedProductId];
 
             if (product && draftData) {
               draftList.push({
                 id: key,
-                productId: parseInt(productId),
+                productId: parseInt(extractedProductId),
                 product: product,
                 ...draftData
               });
@@ -65,6 +75,7 @@ const MyWorks = () => {
     const editData = {
       cartItemId: null, // 不是從購物車編輯
       originalProductId: draft.productId,
+      draftId: draft.id, // 新增：傳遞草稿ID
       designData: {
         elements: draft.elements || [],
         backgroundColor: draft.backgroundColor || '#ffffff'

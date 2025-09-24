@@ -1,0 +1,366 @@
+const express = require('express');
+const multer = require('multer');
+const fs = require('fs-extra');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+
+const router = express.Router();
+const uploadsDir = path.join(__dirname, '../../data/uploads');
+
+// 配置 multer 用於文件上傳
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let uploadPath;
+
+    // 根據文件類型決定存儲目錄
+    if (file.fieldname === 'glb' || file.originalname.toLowerCase().endsWith('.glb') || file.originalname.toLowerCase().endsWith('.gltf')) {
+      uploadPath = path.join(uploadsDir, 'glb');
+    } else if (file.mimetype.startsWith('image/')) {
+      uploadPath = path.join(uploadsDir, 'images');
+    } else {
+      uploadPath = uploadsDir;
+    }
+
+    // 確保目錄存在
+    fs.ensureDirSync(uploadPath);
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    // 生成唯一文件名但保持原始擴展名
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${uuidv4()}${ext}`;
+    cb(null, uniqueName);
+  }
+});
+
+// 文件類型和大小限制
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    'model/gltf-binary',    // .glb
+    'model/gltf+json',      // .gltf
+    'application/octet-stream', // 通用二進制文件（包括 .glb）
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/svg+xml'
+  ];
+
+  const allowedExtensions = ['.glb', '.gltf', '.jpg', '.jpeg', '.png', '.webp', '.svg'];
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`不支持的文件類型: ${file.mimetype} (${ext})`), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 200 * 1024 * 1024, // 200MB 限制
+    files: 5 // 最多 5 個文件
+  }
+});
+
+// 獲取文件信息的輔助函數
+const getFileInfo = async (filePath) => {
+  try {
+    const stats = await fs.stat(filePath);
+    return {
+      size: stats.size,
+      sizeKB: (stats.size / 1024).toFixed(2),
+      sizeMB: (stats.size / (1024 * 1024)).toFixed(2),
+      createdAt: stats.birthtime,
+      modifiedAt: stats.mtime
+    };
+  } catch (error) {
+    return null;
+  }
+};
+
+// POST /api/upload/glb - 上傳 GLB 文件
+router.post('/glb', upload.single('glb'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: '沒有接收到文件'
+      });
+    }
+
+    const fileInfo = await getFileInfo(req.file.path);
+
+    res.json({
+      success: true,
+      message: 'GLB 文件上傳成功',
+      data: {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        sizeKB: (req.file.size / 1024).toFixed(2),
+        sizeMB: (req.file.size / (1024 * 1024)).toFixed(2),
+        mimetype: req.file.mimetype,
+        url: `/uploads/glb/${req.file.filename}`,
+        uploadedAt: new Date().toISOString(),
+        fileInfo
+      }
+    });
+  } catch (error) {
+    console.error('GLB 上傳失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'GLB 文件上傳失敗'
+    });
+  }
+});
+
+// POST /api/upload/image - 上傳圖片文件
+router.post('/image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: '沒有接收到圖片文件'
+      });
+    }
+
+    const fileInfo = await getFileInfo(req.file.path);
+
+    res.json({
+      success: true,
+      message: '圖片上傳成功',
+      data: {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        sizeKB: (req.file.size / 1024).toFixed(2),
+        mimetype: req.file.mimetype,
+        url: `/uploads/images/${req.file.filename}`,
+        uploadedAt: new Date().toISOString(),
+        fileInfo
+      }
+    });
+  } catch (error) {
+    console.error('圖片上傳失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '圖片上傳失敗'
+    });
+  }
+});
+
+// POST /api/upload/multiple - 批量上傳文件
+router.post('/multiple', upload.array('files', 5), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '沒有接收到文件'
+      });
+    }
+
+    const fileResults = [];
+
+    for (const file of req.files) {
+      const fileInfo = await getFileInfo(file.path);
+      const fileType = file.fieldname === 'glb' || file.originalname.toLowerCase().match(/\.(glb|gltf)$/) ? 'glb' : 'image';
+
+      fileResults.push({
+        filename: file.filename,
+        originalName: file.originalname,
+        size: file.size,
+        sizeKB: (file.size / 1024).toFixed(2),
+        sizeMB: (file.size / (1024 * 1024)).toFixed(2),
+        mimetype: file.mimetype,
+        url: `/uploads/${fileType}s/${file.filename}`,
+        type: fileType,
+        uploadedAt: new Date().toISOString(),
+        fileInfo
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `成功上傳 ${req.files.length} 個文件`,
+      data: fileResults
+    });
+  } catch (error) {
+    console.error('批量上傳失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '批量上傳失敗'
+    });
+  }
+});
+
+// GET /api/upload/files - 獲取上傳的文件列表
+router.get('/files', async (req, res) => {
+  try {
+    const { type } = req.query; // glb, images, all
+
+    const result = {
+      success: true,
+      data: {
+        glb: [],
+        images: []
+      }
+    };
+
+    // 獲取 GLB 文件
+    if (!type || type === 'glb' || type === 'all') {
+      const glbDir = path.join(uploadsDir, 'glb');
+      if (await fs.pathExists(glbDir)) {
+        const glbFiles = await fs.readdir(glbDir);
+        for (const filename of glbFiles) {
+          const filePath = path.join(glbDir, filename);
+          const fileInfo = await getFileInfo(filePath);
+          if (fileInfo) {
+            result.data.glb.push({
+              filename,
+              url: `/uploads/glb/${filename}`,
+              ...fileInfo
+            });
+          }
+        }
+      }
+    }
+
+    // 獲取圖片文件
+    if (!type || type === 'images' || type === 'all') {
+      const imagesDir = path.join(uploadsDir, 'images');
+      if (await fs.pathExists(imagesDir)) {
+        const imageFiles = await fs.readdir(imagesDir);
+        for (const filename of imageFiles) {
+          const filePath = path.join(imagesDir, filename);
+          const fileInfo = await getFileInfo(filePath);
+          if (fileInfo) {
+            result.data.images.push({
+              filename,
+              url: `/uploads/images/${filename}`,
+              ...fileInfo
+            });
+          }
+        }
+      }
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('獲取文件列表失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '獲取文件列表失敗'
+    });
+  }
+});
+
+// DELETE /api/upload/file/:type/:filename - 刪除文件
+router.delete('/file/:type/:filename', async (req, res) => {
+  try {
+    const { type, filename } = req.params;
+
+    if (!['glb', 'images'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: '無效的文件類型'
+      });
+    }
+
+    const filePath = path.join(uploadsDir, type, filename);
+
+    if (await fs.pathExists(filePath)) {
+      await fs.remove(filePath);
+      res.json({
+        success: true,
+        message: '文件刪除成功'
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: '文件不存在'
+      });
+    }
+  } catch (error) {
+    console.error('刪除文件失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '刪除文件失敗'
+    });
+  }
+});
+
+// GET /api/upload/storage - 獲取存儲使用情況
+router.get('/storage', async (req, res) => {
+  try {
+    const calculateDirSize = async (dirPath) => {
+      if (!await fs.pathExists(dirPath)) return 0;
+
+      let totalSize = 0;
+      const files = await fs.readdir(dirPath);
+
+      for (const file of files) {
+        const filePath = path.join(dirPath, file);
+        const stats = await fs.stat(filePath);
+        totalSize += stats.size;
+      }
+
+      return totalSize;
+    };
+
+    const glbSize = await calculateDirSize(path.join(uploadsDir, 'glb'));
+    const imagesSize = await calculateDirSize(path.join(uploadsDir, 'images'));
+    const totalSize = glbSize + imagesSize;
+
+    res.json({
+      success: true,
+      data: {
+        total: {
+          bytes: totalSize,
+          kb: (totalSize / 1024).toFixed(2),
+          mb: (totalSize / (1024 * 1024)).toFixed(2),
+          gb: (totalSize / (1024 * 1024 * 1024)).toFixed(2)
+        },
+        glb: {
+          bytes: glbSize,
+          mb: (glbSize / (1024 * 1024)).toFixed(2)
+        },
+        images: {
+          bytes: imagesSize,
+          mb: (imagesSize / (1024 * 1024)).toFixed(2)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('獲取存儲信息失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '獲取存儲信息失敗'
+    });
+  }
+});
+
+// 錯誤處理中間件
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: '文件大小超過限制 (最大 200MB)'
+      });
+    } else if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({
+        success: false,
+        message: '文件數量超過限制 (最多 5 個)'
+      });
+    }
+  }
+
+  res.status(500).json({
+    success: false,
+    message: error.message || '文件上傳失敗'
+  });
+});
+
+module.exports = router;

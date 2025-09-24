@@ -345,7 +345,6 @@ const TemplateManagement = () => {
                         height={300}
                         showName={false}
                         showElementCount={true}
-                        useFlexibleSize={true}
                         className="absolute inset-0 w-full h-full group-hover:scale-105 transition-transform duration-200"
                       />
                     </div>
