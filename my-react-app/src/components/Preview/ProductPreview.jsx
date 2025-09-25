@@ -3,15 +3,16 @@
  * 可重用的商品設計預覽器，支援 2D 和 3D 預覽
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { API } from '../../services/api';
-import Mug3D from '../3D/Mug3D';
+import React, { useState, useEffect, useCallback } from "react";
+import { API } from "../../services/api";
+import Mug3D from "../3D/Mug3D";
+import GLBViewer from "../GLBViewer";
 
 const ProductPreview = ({
   productId,
   designElements = [],
-  backgroundColor = '#ffffff',
-  className = '',
+  backgroundColor = "#ffffff",
+  className = "",
   showControls = true,
   showInfo = true,
   width = 320,
@@ -23,11 +24,21 @@ const ProductPreview = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [processedMockupImage, setProcessedMockupImage] = useState(null);
+  const [uvTestTexture, setUvTestTexture] = useState(null);
+
+  const uvMapping = {
+    defaultUV: {
+      u: 0.5,
+      v: 0.5,
+      width: 1,
+      height: 1,
+    },
+  };
 
   // 載入商品資料
   const loadProduct = useCallback(async () => {
     if (!productId) {
-      setError('缺少商品ID');
+      setError("缺少商品ID");
       setLoading(false);
       return;
     }
@@ -38,30 +49,28 @@ const ProductPreview = ({
 
       const productData = await API.products.getById(parseInt(productId));
       if (!productData) {
-        setError('找不到此商品');
+        setError("找不到此商品");
         return;
       }
 
       // 檢查是否有設計區設定
       if (!productData.printArea) {
-        console.warn('此商品尚未設定設計區範圍，使用預設值');
+        console.warn("此商品尚未設定設計區範圍，使用預設值");
         productData.printArea = { x: 50, y: 50, width: 200, height: 150 };
       }
 
       setProduct(productData);
     } catch (error) {
-      console.error('載入商品失敗:', error);
-      setError('載入商品失敗，請重新嘗試');
+      console.error("載入商品失敗:", error);
+      setError("載入商品失敗，請重新嘗試");
     } finally {
       setLoading(false);
     }
   }, [productId]);
 
   // 背景色現在直接設定在設計區域，不再處理商品圖片顏色
-  // 保持原始商品底圖，背景色通過設計區域背景色層顯示
   useEffect(() => {
     if (product?.mockupImage) {
-      // 直接使用原始圖片，不進行顏色處理
       setProcessedMockupImage(product.mockupImage);
     } else {
       setProcessedMockupImage(null);
@@ -72,6 +81,123 @@ const ProductPreview = ({
   useEffect(() => {
     loadProduct();
   }, [loadProduct]);
+
+  /**
+   * 產生 UV 用的 Canvas（支援 3D 正方形、白底、背景色、zIndex、圖片/文字順序繪製）
+   * 回傳：Promise<HTMLCanvasElement | null>
+   */
+  const generateUVTexture = useCallback(async () => {
+    if (!product || !product.printArea) return null;
+
+    const { width: printWidth, height: printHeight } = product.printArea;
+    const is3D = product.type === "3D";
+
+    // === 畫布尺寸（3D 要正方形）===
+    const maxSize = Math.max(printWidth, printHeight);
+    const canvasWidth = is3D ? maxSize : printWidth;
+    const canvasHeight = is3D ? maxSize : printHeight;
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    // 解析度倍率
+    const scale = 3;
+    canvas.width = canvasWidth * scale;
+    canvas.height = canvasHeight * scale;
+    ctx.scale(scale, scale);
+
+    // === 背景處理（❗先白底，避免透明導致 three.js 看起來發黑）===
+    if (is3D) {
+      // 3D：整張先白底，再把設計區域塗上 backgroundColor（若非白）
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+      if (backgroundColor && backgroundColor !== "#ffffff") {
+        ctx.fillStyle = backgroundColor;
+        // 目前你的 3D UV 是從左上(0,0)鋪設計區域
+        ctx.fillRect(0, 0, printWidth, printHeight);
+      }
+    } else {
+      // 2D：整面鋪滿背景色；沒背景色則透明
+      if (backgroundColor && backgroundColor !== "#ffffff") {
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      } else {
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      }
+    }
+
+    // 載圖工具
+    const loadImage = (url) =>
+      new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = url;
+      });
+
+    // 依 zIndex 排序，保證圖層順序
+    const sorted = [...designElements].sort(
+      (a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0)
+    );
+
+    // === 逐一繪製（保證順序）===
+    for (const el of sorted) {
+      if (!el) continue;
+
+      // 設計區相對位置
+      const relX = el.x - product.printArea.x;
+      const relY = el.y - product.printArea.y;
+
+      // 目前 3D 正方形沒有置中偏移（如需置中可加 offsetX/offsetY）
+      const finalX = relX;
+      const finalY = relY;
+
+      // 超出設計區就略過（可依需求移除）
+      if (relX < 0 || relY < 0 || relX >= printWidth || relY >= printHeight)
+        continue;
+
+      if (el.type === "text") {
+        ctx.fillStyle = el.color || "#000000";
+        ctx.font = `${el.fontSize || 16}px ${
+          el.fontFamily || "Arial"
+        }`;
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        ctx.fillText(el.content || "", finalX, finalY);
+      }
+
+      if (el.type === "image") {
+        let img = el.imageElement;
+        if (!img && el.url) img = await loadImage(el.url);
+        if (img) {
+          const w = el.width || 100;
+          const h = el.height || 100;
+          ctx.drawImage(img, finalX - w / 2, finalY - h / 2, w, h);
+        }
+      }
+    }
+
+    return canvas;
+  }, [product, designElements, backgroundColor]);
+
+  // 當設計內容改變時更新UV貼圖（❗正確等待 async 回傳，不要把 Promise 塞進 state）
+  useEffect(() => {
+    if (product && product.type === "3D") {
+      let cancelled = false;
+      (async () => {
+        const textureCanvas = await generateUVTexture();
+        if (!cancelled && textureCanvas) {
+          setUvTestTexture(textureCanvas); // 存的是 HTMLCanvasElement
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [product, designElements, backgroundColor, generateUVTexture]);
 
   // 載入中狀態
   if (loading) {
@@ -100,7 +226,7 @@ const ProductPreview = ({
         >
           <div className="text-center">
             <div className="text-4xl mb-2">❌</div>
-            <p className="text-red-600 text-sm">{error || '載入失敗'}</p>
+            <p className="text-red-600 text-sm">{error || "載入失敗"}</p>
             <button
               onClick={loadProduct}
               className="mt-2 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -115,16 +241,32 @@ const ProductPreview = ({
 
   return (
     <div className={`bg-gray-50 rounded-lg p-4 ${className}`} {...props}>
-      {product.category === "mug" ? (
-        /* 3D 馬克杯預覽 */
+      {product.type === "3D" && product.model3D?.glbUrl ? (
+        /* 3D GLB 模型預覽 */
         <div
           className="bg-white rounded border-2 border-gray-200 relative overflow-hidden"
           style={{ width, height }}
         >
-          <Mug3D
-            designElements={designElements}
-            product={product}
+          <GLBViewer
+            glbUrl={product.model3D.glbUrl}
+            className="w-full h-full"
+            autoRotate={false}
+            uvMapping={uvMapping}
+            testTexture={uvTestTexture} 
           />
+          {showControls && (
+            <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+              🖱️ 拖曳旋轉 • 滾輪縮放
+            </div>
+          )}
+        </div>
+      ) : product.category === "mug" ? (
+        /* 傳統 3D 馬克杯預覽 (向後兼容) */
+        <div
+          className="bg-white rounded border-2 border-gray-200 relative overflow-hidden"
+          style={{ width, height }}
+        >
+          <Mug3D designElements={designElements} product={product} />
           {showControls && (
             <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
               🖱️ 拖曳旋轉 • 滾輪縮放
@@ -166,7 +308,7 @@ const ProductPreview = ({
                 width: `${(product.printArea.width / 400) * 100}%`,
                 height: `${(product.printArea.height / 400) * 100}%`,
                 backgroundColor: backgroundColor,
-                zIndex: 1
+                zIndex: 1,
               }}
             />
           )}
@@ -176,32 +318,23 @@ const ProductPreview = ({
             className="absolute overflow-hidden"
             style={{
               left: `${
-                product.printArea
-                  ? (product.printArea.x / 400) * 100
-                  : 0
+                product.printArea ? (product.printArea.x / 400) * 100 : 0
               }%`,
               top: `${
-                product.printArea
-                  ? (product.printArea.y / 400) * 100
-                  : 0
+                product.printArea ? (product.printArea.y / 400) * 100 : 0
               }%`,
               width: `${
-                product.printArea
-                  ? (product.printArea.width / 400) * 100
-                  : 100
+                product.printArea ? (product.printArea.width / 400) * 100 : 100
               }%`,
               height: `${
-                product.printArea
-                  ? (product.printArea.height / 400) * 100
-                  : 100
+                product.printArea ? (product.printArea.height / 400) * 100 : 100
               }%`,
-              zIndex: 2
+              zIndex: 2,
             }}
           >
             {/* Design Elements in Preview */}
             {designElements.map((element) => {
               if (element.type === "text") {
-                // 計算文字在設計區域內的相對位置
                 const relativeX = product.printArea
                   ? element.x - product.printArea.x
                   : element.x;
@@ -224,22 +357,20 @@ const ProductPreview = ({
                       top: `${(relativeY / areaHeight) * 100}%`,
                       transform: "translate(-50%, -50%)",
                       fontSize: `${
-                        element.fontSize * (scaleFactor || (width / 400))
-                      }px`, // 動態縮放因子
+                        element.fontSize * (scaleFactor || width / 400)
+                      }px`,
                       color: element.color,
                       fontFamily: element.fontFamily,
-                      fontWeight:
-                        element.fontWeight || "normal",
+                      fontWeight: element.fontWeight || "normal",
                       fontStyle: element.fontStyle || "normal",
-                      whiteSpace: "nowrap", // 防止換行
-                      overflow: "visible", // 讓文字能顯示但被父容器裁切
+                      whiteSpace: "nowrap",
+                      overflow: "visible",
                     }}
                   >
                     {element.content}
                   </div>
                 );
               } else if (element.type === "image") {
-                // 計算圖片在設計區域內的相對位置
                 const relativeX = product.printArea
                   ? element.x - product.printArea.x
                   : element.x;
@@ -260,12 +391,8 @@ const ProductPreview = ({
                     style={{
                       left: `${(relativeX / areaWidth) * 100}%`,
                       top: `${(relativeY / areaHeight) * 100}%`,
-                      width: `${
-                        (element.width / areaWidth) * 100
-                      }%`,
-                      height: `${
-                        (element.height / areaHeight) * 100
-                      }%`,
+                      width: `${(element.width / areaWidth) * 100}%`,
+                      height: `${(element.height / areaHeight) * 100}%`,
                       transform: "translate(-50%, -50%)",
                       opacity: element.opacity || 1,
                     }}
@@ -275,9 +402,7 @@ const ProductPreview = ({
                       alt="預覽圖片"
                       className="w-full h-full object-contain"
                       style={{
-                        transform: `rotate(${
-                          element.rotation || 0
-                        }deg)`,
+                        transform: `rotate(${element.rotation || 0}deg)`,
                       }}
                     />
                   </div>
@@ -301,14 +426,12 @@ const ProductPreview = ({
                         top: `${(element.y / 400) * 100}%`,
                         transform: "translate(-50%, -50%)",
                         fontSize: `${
-                          element.fontSize * (scaleFactor || (width / 400))
+                          element.fontSize * (scaleFactor || width / 400)
                         }px`,
                         color: element.color,
                         fontFamily: element.fontFamily,
-                        fontWeight:
-                          element.fontWeight || "normal",
-                        fontStyle:
-                          element.fontStyle || "normal",
+                        fontWeight: element.fontWeight || "normal",
+                        fontStyle: element.fontStyle || "normal",
                       }}
                     >
                       {element.content}
@@ -322,12 +445,8 @@ const ProductPreview = ({
                       style={{
                         left: `${(element.x / 400) * 100}%`,
                         top: `${(element.y / 400) * 100}%`,
-                        width: `${
-                          (element.width / 400) * 100
-                        }%`,
-                        height: `${
-                          (element.height / 400) * 100
-                        }%`,
+                        width: `${(element.width / 400) * 100}%`,
+                        height: `${(element.height / 400) * 100}%`,
                         transform: "translate(-50%, -50%)",
                         opacity: element.opacity || 1,
                       }}
@@ -337,9 +456,7 @@ const ProductPreview = ({
                         alt="預覽圖片"
                         className="w-full h-full object-contain"
                         style={{
-                          transform: `rotate(${
-                            element.rotation || 0
-                          }deg)`,
+                          transform: `rotate(${element.rotation || 0}deg)`,
                         }}
                       />
                     </div>
@@ -365,9 +482,7 @@ const ProductPreview = ({
             </div>
           ) : (
             <div>
-              <p className="text-xs text-gray-600">
-                設計會自動裁切至印刷區域
-              </p>
+              <p className="text-xs text-gray-600">設計會自動裁切至印刷區域</p>
               {product.printArea && (
                 <p className="text-xs text-gray-500 mt-1">
                   印刷區域: {product.printArea.width} ×{" "}

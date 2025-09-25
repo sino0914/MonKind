@@ -1071,10 +1071,10 @@ const ProductMaintenance = () => {
                 {products.map((product) => (
                   <div
                     key={product.id}
-                    className={`rounded-md mb-2 transition-colors border-2 ${
+                    className={`rounded-md mb-2 transition-colors ${
                       selectedProduct?.id === product.id
-                        ? "bg-blue-50 border-blue-200"
-                        : "bg-white border-transparent hover:bg-gray-50"
+                        ? "bg-blue-50 border-blue-200 border-2"
+                        : "bg-white border-gray-100 border-b-2 hover:bg-gray-50"
                     } ${product.isActive === false ? "opacity-50" : ""}`}
                   >
                     <div
@@ -1087,7 +1087,7 @@ const ProductMaintenance = () => {
                           alt={product.title}
                           className="w-12 h-12 object-cover rounded mr-3"
                         />
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 relative">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <p className="text-sm font-medium text-gray-900 truncate">
@@ -1103,12 +1103,13 @@ const ProductMaintenance = () => {
                                 {product.type || "2D"}
                               </span>
                             </div>
+                          </div>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleToggleActive(product.id);
                               }}
-                              className={`ml-2 w-10 h-5 rounded-full transition-colors ${
+                              className={`absolute right-0 w-10 h-5 rounded-full transition-colors ${
                                 product.isActive !== false
                                   ? "bg-green-500"
                                   : "bg-gray-300"
@@ -1122,7 +1123,6 @@ const ProductMaintenance = () => {
                                 }`}
                               ></div>
                             </button>
-                          </div>
                           <p className="text-xs text-gray-500">
                             {product.category} • NT$ {product.price}
                           </p>
@@ -1206,7 +1206,7 @@ const ProductMaintenance = () => {
                         onChange={() => handleProductTypeChange("2D")}
                         className="mr-2"
                       />
-                      2D 平面設計
+                      2D 設計
                     </label>
                     <label className="flex items-center">
                       <input
@@ -1216,7 +1216,7 @@ const ProductMaintenance = () => {
                         onChange={() => handleProductTypeChange("3D")}
                         className="mr-2"
                       />
-                      3D 立體設計
+                      3D 設計
                     </label>
                   </div>
                 </div>

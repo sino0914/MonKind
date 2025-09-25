@@ -10,7 +10,14 @@ import {
 import * as THREE from "three";
 
 // GLB模型組件
-function GLBModel({ url, showWireframe = false, uvOverlay = false, rotation = [0, 0, 0], uvMapping, testTexture }) {
+function GLBModel({
+  url,
+  showWireframe = false,
+  uvOverlay = false,
+  rotation = [0, 0, 0],
+  uvMapping,
+  testTexture,
+}) {
   const group = useRef();
   const { scene, materials } = useGLTF(url);
 
@@ -38,11 +45,11 @@ function GLBModel({ url, showWireframe = false, uvOverlay = false, rotation = [0
           // 應用 UV 偏移和縮放（翻轉 Y 軸）
           if (uvMapping.defaultUV) {
             const { u, v, width, height } = uvMapping.defaultUV;
-            texture.offset.set(u - width/2, v - height/2);
+            texture.offset.set(u - width / 2, v - height / 2);
             texture.repeat.set(width, -height); // 負值來翻轉 Y 軸
           }
 
-          // 建議用 LinearSRGBColorSpace 以避免發白
+          // 用 LinearSRGBColorSpace 以避免發白
           texture.colorSpace = THREE.SRGBColorSpace;
 
           // 設定到材質
