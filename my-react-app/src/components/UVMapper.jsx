@@ -4,11 +4,12 @@ const UVMapper = ({
   uvMapping,
   onUVChange,
   className = "",
-  showPreview = true
+  showPreview = true,
+  onTestImageChange
 }) => {
   const canvasRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragType, setDragType] = useState(null); // 'move' 或 'resize'
+  const fileInputRef = useRef(null);
+  const [uvTestImage, setUvTestImage] = useState(null);
 
   const defaultUV = uvMapping?.defaultUV || {
     u: 0.5,
@@ -28,26 +29,31 @@ const UVMapper = ({
     // 清除畫布
     ctx.clearRect(0, 0, width, height);
 
-    // 繪製背景格線
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.lineWidth = 1;
+    // 如果有測試圖片，先繪製圖片作為背景
+    if (uvTestImage) {
+      ctx.drawImage(uvTestImage, 0, 0, width, height);
+    } else {
+      // 沒有圖片時繪製背景格線
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
 
-    // 垂直線
-    for (let i = 0; i <= 10; i++) {
-      const x = (i / 10) * width;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
+      // 垂直線
+      for (let i = 0; i <= 10; i++) {
+        const x = (i / 10) * width;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
 
-    // 水平線
-    for (let i = 0; i <= 10; i++) {
-      const y = (i / 10) * height;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
+      // 水平線
+      for (let i = 0; i <= 10; i++) {
+        const y = (i / 10) * height;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
     }
 
     // 繪製邊框
@@ -62,7 +68,7 @@ const UVMapper = ({
     const uvHeight = defaultUV.height * height;
 
     // UV區域填充
-    ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
     ctx.fillRect(uvX, uvY, uvWidth, uvHeight);
 
     // UV區域邊框
@@ -81,63 +87,66 @@ const UVMapper = ({
 
     // 繪製座標標籤
     ctx.fillStyle = '#374151';
-    ctx.font = '12px Arial';
+    ctx.font = '10px Arial';
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    ctx.strokeText('(0,0)', 5, 15);
     ctx.fillText('(0,0)', 5, 15);
+    ctx.strokeText('(1,1)', width - 25, height - 5);
     ctx.fillText('(1,1)', width - 25, height - 5);
-    ctx.fillText(`UV中心: (${defaultUV.u.toFixed(2)}, ${defaultUV.v.toFixed(2)})`, 5, height - 5);
 
-  }, [defaultUV]);
+  }, [defaultUV, uvTestImage]);
 
-  const handleMouseDown = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // 處理圖片上傳
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / canvas.width;
-    const y = (e.clientY - rect.top) / canvas.height;
+    // 檢查是否為圖片文件
+    if (!file.type.startsWith('image/')) {
+      alert('請選擇圖片文件');
+      return;
+    }
 
-    // 檢查是否點擊在UV區域內
-    const uvLeft = defaultUV.u - defaultUV.width / 2;
-    const uvRight = defaultUV.u + defaultUV.width / 2;
-    const uvTop = defaultUV.v - defaultUV.height / 2;
-    const uvBottom = defaultUV.v + defaultUV.height / 2;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        setUvTestImage(img);
+        // 通知父組件測試圖片已更新
+        if (onTestImageChange) {
+          onTestImageChange(img);
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
-    if (x >= uvLeft && x <= uvRight && y >= uvTop && y <= uvBottom) {
-      setIsDragging(true);
-      setDragType('move');
-      e.preventDefault();
+  // 點擊canvas觸發文件上傳
+  const handleCanvasClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // 清除測試圖片
+  const clearTestImage = () => {
+    setUvTestImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    // 通知父組件測試圖片已清除
+    if (onTestImageChange) {
+      onTestImageChange(null);
     }
   };
 
-  const handleMouseMove = (e) => {
-    if (!isDragging || dragType !== 'move') return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / canvas.width;
-    const y = (e.clientY - rect.top) / canvas.height;
-
-    // 限制在畫布範圍內
-    const newU = Math.max(defaultUV.width / 2, Math.min(1 - defaultUV.width / 2, x));
-    const newV = Math.max(defaultUV.height / 2, Math.min(1 - defaultUV.height / 2, y));
-
-    onUVChange('defaultUV', 'u', newU);
-    onUVChange('defaultUV', 'v', newV);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setDragType(null);
-  };
-
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}>
-      <div className="flex justify-between items-center mb-4">
-        <h5 className="font-medium text-gray-900">UV 貼圖視覺化</h5>
+    <div className={`rounded-lg p-4 ${className}`}>
+      <div className="flex justify-between items-center mb-3">
+        <h5 className="font-medium text-gray-900">UV 貼圖控制</h5>
         <div className="text-xs text-gray-500">
-          UV 座標系統 (0,0 到 1,1)
+          (0,0 到 1,1)
         </div>
       </div>
 
@@ -145,16 +154,22 @@ const UVMapper = ({
         <div className="mb-4">
           <canvas
             ref={canvasRef}
-            width={300}
-            height={300}
-            className="border border-gray-300 rounded cursor-pointer"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            width={200}
+            height={200}
+            className="border border-gray-300 rounded cursor-pointer mx-auto block"
+            onClick={handleCanvasClick}
           />
-          <div className="mt-2 text-xs text-gray-500">
-            💡 點擊並拖拽藍色區域來調整UV映射位置
+          <div className="mt-2 text-xs text-gray-500 text-center">
+            💡 點擊畫布上傳測試圖片
+            {uvTestImage && (
+              <button
+                onClick={clearTestImage}
+                className="ml-2 text-red-500 hover:text-red-700"
+                title="清除測試圖片"
+              >
+                ❌
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -243,25 +258,19 @@ const UVMapper = ({
       </div>
 
       {/* UV 資訊顯示 */}
-      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-        <div className="text-sm text-gray-700">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <strong>中心位置:</strong><br />
-              U: {defaultUV.u.toFixed(3)}<br />
-              V: {defaultUV.v.toFixed(3)}
-            </div>
-            <div>
-              <strong>區域大小:</strong><br />
-              寬: {defaultUV.width.toFixed(3)}<br />
-              高: {defaultUV.height.toFixed(3)}
-            </div>
+      <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-700">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className="font-medium">中心: ({defaultUV.u.toFixed(2)}, {defaultUV.v.toFixed(2)})</div>
+          </div>
+          <div>
+            <div className="font-medium">大小: {defaultUV.width.toFixed(2)} × {defaultUV.height.toFixed(2)}</div>
           </div>
         </div>
       </div>
 
       {/* 預設按鈕 */}
-      <div className="mt-4 flex space-x-2">
+      <div className="mt-3 flex space-x-2">
         <button
           onClick={() => {
             onUVChange('defaultUV', 'u', 0.5);
@@ -269,9 +278,9 @@ const UVMapper = ({
             onUVChange('defaultUV', 'width', 0.4);
             onUVChange('defaultUV', 'height', 0.3);
           }}
-          className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          className="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
         >
-          重置為預設
+          重置
         </button>
         <button
           onClick={() => {
@@ -280,11 +289,20 @@ const UVMapper = ({
             onUVChange('defaultUV', 'u', 0.5);
             onUVChange('defaultUV', 'v', 0.5);
           }}
-          className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+          className="flex-1 px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
         >
           全覆蓋
         </button>
       </div>
+
+      {/* 隱藏的文件輸入 */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
     </div>
   );
 };

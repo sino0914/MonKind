@@ -18,6 +18,7 @@ import TemplateEditor from './pages/Admin/TemplateEditor';
 import ElementManagement from './pages/Admin/ElementManagement';
 import DatabaseReset from './pages/DatabaseReset';
 import TestTemplateEditor from './pages/TestTemplateEditor';
+import GLBTestPage from './pages/GLBTestPage';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
   <Route path="/admin/elements" element={<ElementManagement />} />
   <Route path="/admin/database-reset" element={<DatabaseReset />} />
   <Route path="/test-template-editor" element={<TestTemplateEditor />} />
+  <Route path="/glb-test" element={<GLBTestPage />} />
 
   {/* Editor 也是獨立 */}
   <Route path="/editor/:id" element={<Editor />} />

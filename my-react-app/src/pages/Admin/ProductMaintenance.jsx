@@ -28,6 +28,9 @@ const ProductMaintenance = () => {
     type: "2D", // 新增：產品類型
   });
 
+  // UV 測試圖片狀態
+  const [uvTestImage, setUvTestImage] = useState(null);
+
   // 載入商品資料
   const loadProducts = async () => {
     try {
@@ -213,6 +216,11 @@ const ProductMaintenance = () => {
 
     setSelectedProduct(updatedProduct);
     setProducts(prev => prev.map(p => p.id === selectedProduct.id ? updatedProduct : p));
+  };
+
+  // 處理 UV 測試圖片變化
+  const handleTestImageChange = (image) => {
+    setUvTestImage(image);
   };
 
   const handleProductSelect = (product) => {
@@ -1106,32 +1114,71 @@ const ProductMaintenance = () => {
                       </div>
                     </div>
 
-                    {/* GLB 預覽器 */}
-                    {selectedProduct.model3D?.glbUrl && (
-                      <div className="bg-white border border-gray-200 rounded-lg p-6">
-                        <h4 className="text-lg font-semibold text-gray-900 mb-4">3D 模型預覽</h4>
-                        <div className="aspect-video rounded-lg overflow-hidden border border-gray-300">
-                          <GLBViewer
-                            glbUrl={selectedProduct.model3D.glbUrl}
-                            className="w-full h-full"
-                            showControls={true}
-                            autoRotate={true}
+                    {/* 3D 模型預覽與 UV 貼圖設定 */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">3D 模型預覽與 UV 設定</h4>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* GLB 預覽器 */}
+                        <div>
+                          <h5 className="font-medium text-gray-700 mb-3">模型預覽</h5>
+                          {selectedProduct.model3D?.glbUrl ? (
+                            <div className="aspect-square rounded-lg overflow-hidden border border-gray-300">
+                              <GLBViewer
+                                glbUrl={selectedProduct.model3D.glbUrl}
+                                className="w-full h-full"
+                                autoRotate={false}
+                                uvMapping={selectedProduct.model3D?.uvMapping}
+                                testTexture={uvTestImage}
+                              />
+                            </div>
+                          ) : (
+                            <div className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                              <div className="text-center">
+                                <div className="text-gray-400 mb-2">
+                                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                  </svg>
+                                </div>
+                                <p className="text-gray-500 text-sm">請先上傳 GLB 文件</p>
+                              </div>
+                            </div>
+                          )}
+                          <div className="mt-2 flex justify-between items-center text-xs text-gray-600">
+                            <span>🎯 實時預覽</span>
+                            <span>🖱️ 拖拽旋轉</span>
+                          </div>
+                        </div>
+
+                        {/* UV 貼圖控制器 */}
+                        <div>
+                          <UVMapper
+                            uvMapping={selectedProduct.model3D?.uvMapping}
+                            onUVChange={handleUVChange}
+                            onTestImageChange={handleTestImageChange}
+                            showPreview={true}
+                            className="h-full"
                           />
                         </div>
-                        <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
-                          <span>🎯 檢查模型是否正確載入與顯示</span>
-                          <span>💡 使用滑鼠拖拽旋轉視角</span>
-                        </div>
                       </div>
-                    )}
 
-                    {/* UV 貼圖設定與檢查界面 */}
-                    <UVMapper
-                      uvMapping={selectedProduct.model3D?.uvMapping}
-                      onUVChange={handleUVChange}
-                      showPreview={true}
-                      className="bg-white border border-gray-200 rounded-lg p-6"
-                    />
+                      {/* GLB 文件信息 */}
+                      {selectedProduct.model3D?.glbUrl && (
+                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center space-x-4">
+                              <span className="text-green-600 font-medium">✅ 已載入 3D 模型</span>
+                              <span className="text-gray-600">
+                                文件：{selectedProduct.model3D.fileName} ({selectedProduct.model3D.fileSizeMB}MB)
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              💡 調整右側UV參數可即時在左側預覽效果
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
