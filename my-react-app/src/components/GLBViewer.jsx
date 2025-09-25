@@ -42,6 +42,9 @@ function GLBModel({ url, showWireframe = false, uvOverlay = false, rotation = [0
             texture.repeat.set(width, -height); // 負值來翻轉 Y 軸
           }
 
+          // 建議用 LinearSRGBColorSpace 以避免發白
+          texture.colorSpace = THREE.SRGBColorSpace;
+
           // 設定到材質
           material.map = texture;
           material.needsUpdate = true;

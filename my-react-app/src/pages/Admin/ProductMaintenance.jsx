@@ -76,28 +76,30 @@ const ProductMaintenance = () => {
       const updatedProduct = { ...selectedProduct, type: newType };
 
       // 如果切換到3D模式，初始化3D資料
-      if (newType === '3D' && !selectedProduct.model3D) {
+      if (newType === "3D" && !selectedProduct.model3D) {
         updatedProduct.model3D = {
           glbUrl: null,
           uvMapping: {
             defaultUV: { u: 0.5, v: 0.5, width: 0.4, height: 0.3 },
-            availableUVs: []
+            availableUVs: [],
           },
           camera: {
             position: { x: 0, y: 0, z: 5 },
-            target: { x: 0, y: 0, z: 0 }
-          }
+            target: { x: 0, y: 0, z: 0 },
+          },
         };
       }
 
       await API.products.update(selectedProduct.id, updatedProduct);
       setSelectedProduct(updatedProduct);
-      setProducts(prev => prev.map(p => p.id === selectedProduct.id ? updatedProduct : p));
+      setProducts((prev) =>
+        prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p))
+      );
 
       showNotification(`產品類型已更新為 ${newType}`);
     } catch (error) {
-      console.error('更新產品類型失敗:', error);
-      showNotification('更新產品類型失敗: ' + error.message, 'error');
+      console.error("更新產品類型失敗:", error);
+      showNotification("更新產品類型失敗: " + error.message, "error");
     } finally {
       setSaving(false);
     }
@@ -105,15 +107,17 @@ const ProductMaintenance = () => {
 
   // 3D模型保存處理
   const handleSave3DModel = async () => {
-    if (!selectedProduct || selectedProduct.type !== '3D') return;
+    if (!selectedProduct || selectedProduct.type !== "3D") return;
 
     try {
       setSaving(true);
       await API.products.update(selectedProduct.id, selectedProduct);
-      showNotification('3D模型設定已儲存！');
+      showNotification("3D模型設定已儲存！");
+
+      handleSavePrintArea(); // 同步保存設計區範圍
     } catch (error) {
-      console.error('儲存3D模型設定失敗:', error);
-      showNotification('儲存失敗: ' + error.message, 'error');
+      console.error("儲存3D模型設定失敗:", error);
+      showNotification("儲存失敗: " + error.message, "error");
     } finally {
       setSaving(false);
     }
@@ -128,21 +132,25 @@ const ProductMaintenance = () => {
       if (localStorage.hasOwnProperty(key)) {
         const size = localStorage[key].length;
         totalSize += size;
-        usage[key] = (size / 1024).toFixed(2) + 'KB';
+        usage[key] = (size / 1024).toFixed(2) + "KB";
       }
     }
 
     const totalMB = (totalSize / (1024 * 1024)).toFixed(2);
-    console.log('📊 localStorage 使用情況:');
-    console.log('總使用量:', totalMB + 'MB');
-    console.log('詳細使用量:', usage);
+    console.log("📊 localStorage 使用情況:");
+    console.log("總使用量:", totalMB + "MB");
+    console.log("詳細使用量:", usage);
 
     // 估算可用空間（大多數瀏覽器限制為5-10MB）
     const estimatedLimitMB = 10;
     const remainingMB = (estimatedLimitMB - parseFloat(totalMB)).toFixed(2);
-    console.log('剩餘空間:', remainingMB + 'MB');
+    console.log("剩餘空間:", remainingMB + "MB");
 
-    return { totalMB: parseFloat(totalMB), remainingMB: parseFloat(remainingMB), usage };
+    return {
+      totalMB: parseFloat(totalMB),
+      remainingMB: parseFloat(remainingMB),
+      usage,
+    };
   };
 
   // GLB文件上傳處理 - 使用新的後端API
@@ -152,15 +160,21 @@ const ProductMaintenance = () => {
 
     try {
       setSaving(true);
-      showNotification('正在上傳GLB文件...', 'info');
+      showNotification("正在上傳GLB文件...", "info");
 
       // 檢查文件類型
-      if (!file.name.toLowerCase().endsWith('.glb') && !file.name.toLowerCase().endsWith('.gltf')) {
-        throw new Error('只支援 GLB 或 GLTF 格式的 3D 模型文件');
+      if (
+        !file.name.toLowerCase().endsWith(".glb") &&
+        !file.name.toLowerCase().endsWith(".gltf")
+      ) {
+        throw new Error("只支援 GLB 或 GLTF 格式的 3D 模型文件");
       }
 
       // 使用後端API上傳GLB文件
-      const uploadResult = await API.products.uploadGLB(selectedProduct.id, file);
+      const uploadResult = await API.products.uploadGLB(
+        selectedProduct.id,
+        file
+      );
 
       if (uploadResult.success) {
         const { data } = uploadResult;
@@ -174,23 +188,28 @@ const ProductMaintenance = () => {
             fileName: data.originalName,
             fileSize: data.size,
             fileSizeMB: data.sizeMB,
-            uploadedAt: data.uploadedAt
-          }
+            uploadedAt: data.uploadedAt,
+          },
         };
 
         // 更新產品資料
         await API.products.update(selectedProduct.id, updatedProduct);
         setSelectedProduct(updatedProduct);
-        setProducts(prev => prev.map(p => p.id === selectedProduct.id ? updatedProduct : p));
+        setProducts((prev) =>
+          prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p))
+        );
 
-        showNotification(`3D模型上傳成功！文件大小: ${data.sizeMB}MB`, 'success');
-        console.log('GLB上傳成功:', data);
+        showNotification(
+          `3D模型上傳成功！文件大小: ${data.sizeMB}MB`,
+          "success"
+        );
+        console.log("GLB上傳成功:", data);
       } else {
-        throw new Error(uploadResult.message || '上傳失敗');
+        throw new Error(uploadResult.message || "上傳失敗");
       }
     } catch (error) {
-      console.error('GLB上傳失敗:', error);
-      showNotification('GLB上傳失敗: ' + error.message, 'error');
+      console.error("GLB上傳失敗:", error);
+      showNotification("GLB上傳失敗: " + error.message, "error");
     } finally {
       setSaving(false);
     }
@@ -198,7 +217,7 @@ const ProductMaintenance = () => {
 
   // UV映射變更處理
   const handleUVChange = (uvType, property, value) => {
-    if (!selectedProduct || selectedProduct.type !== '3D') return;
+    if (!selectedProduct || selectedProduct.type !== "3D") return;
 
     const updatedProduct = {
       ...selectedProduct,
@@ -208,14 +227,16 @@ const ProductMaintenance = () => {
           ...selectedProduct.model3D.uvMapping,
           [uvType]: {
             ...selectedProduct.model3D.uvMapping[uvType],
-            [property]: value
-          }
-        }
-      }
+            [property]: value,
+          },
+        },
+      },
     };
 
     setSelectedProduct(updatedProduct);
-    setProducts(prev => prev.map(p => p.id === selectedProduct.id ? updatedProduct : p));
+    setProducts((prev) =>
+      prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p))
+    );
   };
 
   // 處理 UV 測試圖片變化
@@ -223,8 +244,102 @@ const ProductMaintenance = () => {
     setUvTestImage(image);
   };
 
+  // 自動調整設計區大小以符合上傳圖片比例（僅限3D產品）
+  const autoAdjustPrintAreaForImage = async (file) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+
+      img.onload = () => {
+        try {
+          const imageWidth = img.width;
+          const imageHeight = img.height;
+          const imageRatio = imageWidth / imageHeight;
+
+          // 設計區在400x400畫布內的最大可用範圍
+          const maxAreaWidth = 400; // 留出一些邊距
+          const maxAreaHeight = 400;
+
+          let newWidth, newHeight;
+
+          // 根據圖片比例計算設計區大小
+          if (imageRatio > 1) {
+            // 圖片寬度大於高度（橫向）
+            newWidth = Math.min(maxAreaWidth, maxAreaWidth);
+            newHeight = newWidth / imageRatio;
+
+            // 確保高度不超過最大範圍
+            if (newHeight > maxAreaHeight) {
+              newHeight = maxAreaHeight;
+              newWidth = newHeight * imageRatio;
+            }
+          } else {
+            // 圖片高度大於寬度（縱向）或正方形
+            newHeight = Math.min(maxAreaHeight, maxAreaHeight);
+            newWidth = newHeight * imageRatio;
+
+            // 確保寬度不超過最大範圍
+            if (newWidth > maxAreaWidth) {
+              newWidth = maxAreaWidth;
+              newHeight = newWidth / imageRatio;
+            }
+          }
+
+          // 計算居中位置
+          const centerX = (400 - newWidth) / 2;
+          const centerY = (400 - newHeight) / 2;
+
+          // 更新設計區域
+          const newPrintArea = {
+            x: Math.max(0, centerX),
+            y: Math.max(0, centerY),
+            width: Math.round(newWidth),
+            height: Math.round(newHeight)
+          };
+
+          console.log('自動調整設計區:', {
+            originalSize: { width: imageWidth, height: imageHeight },
+            ratio: imageRatio.toFixed(2),
+            newPrintArea: newPrintArea
+          });
+
+          setTempPrintArea(newPrintArea);
+
+          showNotification(
+            `設計區域已自動調整至 ${newPrintArea.width}×${newPrintArea.height} (比例: ${imageRatio.toFixed(2)})`,
+            "info"
+          );
+
+          resolve();
+        } catch (error) {
+          console.error('自動調整設計區失敗:', error);
+          reject(error);
+        }
+      };
+
+      img.onerror = () => {
+        console.error('無法載入圖片進行尺寸分析');
+        reject(new Error('無法載入圖片進行尺寸分析'));
+      };
+
+      // 載入圖片
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.onerror = () => {
+        reject(new Error('無法讀取圖片文件'));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleProductSelect = (product) => {
-    console.log('Selecting product:', product.title, 'mockupImage:', !!product.mockupImage);
+    console.log(
+      "Selecting product:",
+      product.title,
+      "mockupImage:",
+      !!product.mockupImage
+    );
     setSelectedProduct(product);
     setTempPrintArea(
       product.printArea
@@ -233,7 +348,7 @@ const ProductMaintenance = () => {
     );
     // 強制重新渲染以確保底圖正確顯示
     setTimeout(() => {
-      setSelectedProduct({...product});
+      setSelectedProduct({ ...product });
     }, 10);
   };
 
@@ -462,10 +577,10 @@ const ProductMaintenance = () => {
     const file = event.target.files[0];
     if (!file) return;
 
-    console.log('開始上傳商品圖片:', {
+    console.log("開始上傳商品圖片:", {
       name: file.name,
       size: file.size,
-      type: file.type
+      type: file.type,
     });
 
     // 檢查檔案類型
@@ -480,12 +595,13 @@ const ProductMaintenance = () => {
       let imageUrl;
 
       // 如果檔案太大，進行壓縮 (商品圖片用較小的尺寸)
-      if (file.size > 500 * 1024) { // 大於 500KB 就壓縮
-        console.log('商品圖片較大，開始壓縮...');
+      if (file.size > 500 * 1024) {
+        // 大於 500KB 就壓縮
+        console.log("商品圖片較大，開始壓縮...");
         imageUrl = await compressImage(file, 400, 400, 0.8); // 商品圖片用 400x400
         showNotification("圖片壓縮完成，正在上傳...", "info");
       } else {
-        console.log('商品圖片較小，直接上傳');
+        console.log("商品圖片較小，直接上傳");
         imageUrl = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = (e) => resolve(e.target.result);
@@ -498,18 +614,23 @@ const ProductMaintenance = () => {
       showNotification("圖片已更新", "success");
 
       // 清除 input 的值
-      event.target.value = '';
+      event.target.value = "";
     } catch (error) {
-      console.error('商品圖片上傳失敗:', error);
+      console.error("商品圖片上傳失敗:", error);
       showNotification("圖片上傳失敗: " + error.message, "error");
     }
   };
 
   // 圖片壓縮函數
-  const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
+  const compressImage = (
+    file,
+    maxWidth = 800,
+    maxHeight = 800,
+    quality = 0.8
+  ) => {
     return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       const img = new Image();
 
       img.onload = () => {
@@ -535,13 +656,14 @@ const ProductMaintenance = () => {
         ctx.drawImage(img, 0, 0, width, height);
 
         // 轉換為 Base64，使用 JPEG 格式來獲得更好的壓縮率
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
 
-        console.log('圖片壓縮完成:', {
+        console.log("圖片壓縮完成:", {
           originalSize: file.size,
           compressedSize: compressedDataUrl.length,
-          compressionRatio: ((1 - compressedDataUrl.length / file.size) * 100).toFixed(1) + '%',
-          newDimensions: `${width}x${height}`
+          compressionRatio:
+            ((1 - compressedDataUrl.length / file.size) * 100).toFixed(1) + "%",
+          newDimensions: `${width}x${height}`,
         });
 
         resolve(compressedDataUrl);
@@ -556,23 +678,23 @@ const ProductMaintenance = () => {
     const file = event.target.files[0];
     if (!file) return;
 
-    console.log('開始上傳底圖:', {
+    console.log("開始上傳底圖:", {
       name: file.name,
       size: file.size,
       type: file.type,
-      lastModified: file.lastModified
+      lastModified: file.lastModified,
     });
 
     // 檢查檔案類型
     if (!file.type.startsWith("image/")) {
-      console.error('檔案類型錯誤:', file.type);
+      console.error("檔案類型錯誤:", file.type);
       showNotification("請選擇圖片檔案 (JPG, PNG, GIF, WebP)", "error");
       return;
     }
 
     // 檢查是否有選中的產品
     if (!selectedProduct) {
-      console.error('沒有選中的產品');
+      console.error("沒有選中的產品");
       showNotification("請先選擇要更新的商品", "error");
       return;
     }
@@ -584,17 +706,22 @@ const ProductMaintenance = () => {
       let imageUrl;
 
       // 如果檔案太大，進行壓縮
-      if (file.size > 1 * 1024 * 1024) { // 大於 1MB 就壓縮
-        console.log('檔案較大，開始壓縮...');
+      if (file.size > 1 * 1024 * 1024) {
+        // 大於 1MB 就壓縮
+        console.log("檔案較大，開始壓縮...");
 
         // 根據檔案大小選擇不同的壓縮參數
-        let maxWidth = 800, maxHeight = 800, quality = 0.8;
+        let maxWidth = 800,
+          maxHeight = 800,
+          quality = 0.8;
 
-        if (file.size > 5 * 1024 * 1024) { // 大於 5MB
+        if (file.size > 5 * 1024 * 1024) {
+          // 大於 5MB
           maxWidth = 600;
           maxHeight = 600;
           quality = 0.6;
-        } else if (file.size > 3 * 1024 * 1024) { // 大於 3MB
+        } else if (file.size > 3 * 1024 * 1024) {
+          // 大於 3MB
           maxWidth = 700;
           maxHeight = 700;
           quality = 0.7;
@@ -604,7 +731,7 @@ const ProductMaintenance = () => {
         showNotification("圖片壓縮完成，正在上傳...", "info");
       } else {
         // 小檔案直接讀取
-        console.log('檔案較小，直接上傳');
+        console.log("檔案較小，直接上傳");
         imageUrl = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = (e) => resolve(e.target.result);
@@ -613,58 +740,68 @@ const ProductMaintenance = () => {
         });
       }
 
-      console.log('圖片處理成功:', {
+      console.log("圖片處理成功:", {
         productId: selectedProduct.id,
         finalSize: imageUrl.length,
-        sizeMB: (imageUrl.length / 1024 / 1024).toFixed(2)
+        sizeMB: (imageUrl.length / 1024 / 1024).toFixed(2),
       });
 
       // 檢查 Base64 資料是否有效
-      if (!imageUrl || !imageUrl.startsWith('data:image/')) {
-        throw new Error('圖片資料格式無效');
+      if (!imageUrl || !imageUrl.startsWith("data:image/")) {
+        throw new Error("圖片資料格式無效");
       }
 
       // 檢查最終大小
       const finalSizeMB = imageUrl.length / 1024 / 1024;
       if (finalSizeMB > 3) {
-        throw new Error(`處理後的圖片仍然太大 (${finalSizeMB.toFixed(2)}MB)，請使用更小的圖片`);
+        throw new Error(
+          `處理後的圖片仍然太大 (${finalSizeMB.toFixed(2)}MB)，請使用更小的圖片`
+        );
       }
 
       // 更新產品資料
       showNotification("正在儲存底圖...", "info");
       const result = await handleUpdateProduct("mockupImage", imageUrl);
-      console.log('API 更新結果:', result);
+      console.log("API 更新結果:", result);
 
       // 強制重新渲染以立即顯示新底圖
       const updatedProduct = { ...selectedProduct, mockupImage: imageUrl };
       setSelectedProduct(updatedProduct);
 
       // 更新產品列表中的資料
-      setProducts(prev => prev.map(p =>
-        p.id === selectedProduct.id
-          ? { ...p, mockupImage: imageUrl }
-          : p
-      ));
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selectedProduct.id ? { ...p, mockupImage: imageUrl } : p
+        )
+      );
+
+      // 如果是3D產品，自動調整設計區大小以符合圖片比例
+      if (selectedProduct.type === "3D") {
+        await autoAdjustPrintAreaForImage(file);
+      }
 
       showNotification("底圖已更新", "success");
-      console.log('底圖上傳完成');
+      console.log("底圖上傳完成");
 
       // 清除 input 的值，讓同一個檔案可以重新上傳
-      event.target.value = '';
+      event.target.value = "";
     } catch (error) {
-      console.error('底圖上傳失敗:', {
+      console.error("底圖上傳失敗:", {
         error: error,
         message: error.message,
         stack: error.stack,
-        productId: selectedProduct?.id
+        productId: selectedProduct?.id,
       });
 
       let errorMessage = "底圖上傳失敗";
-      if (error.message.includes('存儲空間不足') || error.message.includes('quota')) {
+      if (
+        error.message.includes("存儲空間不足") ||
+        error.message.includes("quota")
+      ) {
         errorMessage = "存儲空間不足，請嘗試使用更小的圖片或清除瀏覽器數據";
-      } else if (error.message.includes('太大')) {
+      } else if (error.message.includes("太大")) {
         errorMessage = error.message;
-      } else if (error.message.includes('network')) {
+      } else if (error.message.includes("network")) {
         errorMessage = "網絡錯誤，請檢查連接";
       } else if (error.message) {
         errorMessage = `上傳失敗: ${error.message}`;
@@ -677,7 +814,7 @@ const ProductMaintenance = () => {
   // 移除底圖
   const handleRemoveMockupImage = async () => {
     try {
-      console.log('Removing mockup image');
+      console.log("Removing mockup image");
 
       // 更新產品資料
       await handleUpdateProduct("mockupImage", null);
@@ -687,16 +824,16 @@ const ProductMaintenance = () => {
       setSelectedProduct(updatedProduct);
 
       // 更新產品列表中的資料
-      setProducts(prev => prev.map(p =>
-        p.id === selectedProduct.id
-          ? { ...p, mockupImage: null }
-          : p
-      ));
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selectedProduct.id ? { ...p, mockupImage: null } : p
+        )
+      );
 
       showNotification("底圖已移除");
-      console.log('Mockup image removed successfully');
+      console.log("Mockup image removed successfully");
     } catch (error) {
-      console.error('Mockup remove error:', error);
+      console.error("Mockup remove error:", error);
       showNotification("移除底圖失敗", "error");
     }
   };
@@ -708,7 +845,10 @@ const ProductMaintenance = () => {
 
     const currentImages = selectedProduct.contentImages || [];
     if (currentImages.length + files.length > 10) {
-      showNotification(`最多只能上傳 10 張圖片，目前已有 ${currentImages.length} 張`, "error");
+      showNotification(
+        `最多只能上傳 10 張圖片，目前已有 ${currentImages.length} 張`,
+        "error"
+      );
       return;
     }
 
@@ -717,7 +857,7 @@ const ProductMaintenance = () => {
 
       const newImages = [];
       for (const file of files) {
-        console.log('處理內容圖片:', file.name, file.size);
+        console.log("處理內容圖片:", file.name, file.size);
 
         // 檢查檔案類型
         if (!file.type.startsWith("image/")) {
@@ -727,7 +867,8 @@ const ProductMaintenance = () => {
 
         // 壓縮圖片
         let imageUrl;
-        if (file.size > 500 * 1024) { // 大於 500KB 就壓縮
+        if (file.size > 500 * 1024) {
+          // 大於 500KB 就壓縮
           imageUrl = await compressImage(file, 600, 600, 0.8);
         } else {
           imageUrl = await new Promise((resolve, reject) => {
@@ -753,9 +894,9 @@ const ProductMaintenance = () => {
       showNotification(`成功添加 ${newImages.length} 張內容圖片`, "success");
 
       // 清除 input
-      event.target.value = '';
+      event.target.value = "";
     } catch (error) {
-      console.error('內容圖片上傳失敗:', error);
+      console.error("內容圖片上傳失敗:", error);
       showNotification("圖片上傳失敗: " + error.message, "error");
     }
   };
@@ -769,7 +910,7 @@ const ProductMaintenance = () => {
       await handleUpdateProduct("contentImages", updatedImages);
       showNotification("圖片已移除", "success");
     } catch (error) {
-      console.error('移除內容圖片失敗:', error);
+      console.error("移除內容圖片失敗:", error);
       showNotification("移除圖片失敗", "error");
     }
   };
@@ -784,7 +925,7 @@ const ProductMaintenance = () => {
       await handleUpdateProduct("contentImages", currentImages);
       showNotification("圖片順序已調整", "success");
     } catch (error) {
-      console.error('調整圖片順序失敗:', error);
+      console.error("調整圖片順序失敗:", error);
       showNotification("調整順序失敗", "error");
     }
   };
@@ -952,12 +1093,14 @@ const ProductMaintenance = () => {
                               <p className="text-sm font-medium text-gray-900 truncate">
                                 {product.title}
                               </p>
-                              <span className={`px-2 py-0.5 text-xs rounded-full ${
-                                product.type === '3D'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {product.type || '2D'}
+                              <span
+                                className={`px-2 py-0.5 text-xs rounded-full ${
+                                  product.type === "3D"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-blue-100 text-blue-800"
+                                }`}
+                              >
+                                {product.type || "2D"}
                               </span>
                             </div>
                             <button
@@ -1007,12 +1150,14 @@ const ProductMaintenance = () => {
                       <h3 className="font-semibold text-gray-900">
                         設計區編輯器
                       </h3>
-                      <span className={`px-3 py-1 text-sm rounded-full ${
-                        selectedProduct.type === '3D'
-                          ? 'bg-purple-100 text-purple-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {selectedProduct.type || '2D'}
+                      <span
+                        className={`px-3 py-1 text-sm rounded-full ${
+                          selectedProduct.type === "3D"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {selectedProduct.type || "2D"}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600">
@@ -1020,7 +1165,7 @@ const ProductMaintenance = () => {
                     </p>
                   </div>
                   <div className="flex space-x-2">
-                    {selectedProduct.type !== '3D' && (
+                    {selectedProduct.type !== "3D" && (
                       <button
                         onClick={handleResetPrintArea}
                         className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm"
@@ -1030,7 +1175,11 @@ const ProductMaintenance = () => {
                     )}
 
                     <button
-                      onClick={selectedProduct.type === '3D' ? handleSave3DModel : handleSavePrintArea}
+                      onClick={
+                        selectedProduct.type === "3D"
+                          ? handleSave3DModel
+                          : handleSavePrintArea
+                      }
                       disabled={saving}
                       className={`px-3 py-2 text-sm rounded-md transition-colors ${
                         saving
@@ -1045,14 +1194,16 @@ const ProductMaintenance = () => {
 
                 {/* 產品類型切換 */}
                 <div className="flex items-center space-x-4 mb-4">
-                  <span className="text-sm font-medium text-gray-700">產品類型：</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    產品類型：
+                  </span>
                   <div className="flex space-x-4">
                     <label className="flex items-center">
                       <input
                         type="radio"
                         value="2D"
-                        checked={selectedProduct.type !== '3D'}
-                        onChange={() => handleProductTypeChange('2D')}
+                        checked={selectedProduct.type !== "3D"}
+                        onChange={() => handleProductTypeChange("2D")}
                         className="mr-2"
                       />
                       2D 平面設計
@@ -1061,8 +1212,8 @@ const ProductMaintenance = () => {
                       <input
                         type="radio"
                         value="3D"
-                        checked={selectedProduct.type === '3D'}
-                        onChange={() => handleProductTypeChange('3D')}
+                        checked={selectedProduct.type === "3D"}
+                        onChange={() => handleProductTypeChange("3D")}
                         className="mr-2"
                       />
                       3D 立體設計
@@ -1070,148 +1221,50 @@ const ProductMaintenance = () => {
                   </div>
                 </div>
               </div>
-
               {/* Canvas Area */}
               <div className="p-8">
-                {selectedProduct.type === '3D' && (
-                  <div className="space-y-6">
-                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8">
-                      <div className="text-center">
-                        <div className="mb-4">
-                          <svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                          </svg>
-                        </div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">上傳 3D 模型 (GLB)</h4>
-                        <p className="text-gray-600 mb-2">支援 GLB 或 GLTF 格式的 3D 模型文件</p>
-                        <p className="text-sm text-blue-600 mb-4">📁 最大文件大小：200MB</p>
-
-                        <input
-                          type="file"
-                          accept=".glb,.gltf"
-                          onChange={handleGLBUpload}
-                          className="hidden"
-                          id="glb-upload"
-                        />
-                        <div className="flex space-x-4">
-                          <label
-                            htmlFor="glb-upload"
-                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors"
-                          >
-                            📁 選擇 GLB 文件
-                          </label>
-                        </div>
-
-                        {selectedProduct.model3D?.glbUrl && (
-                          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                            <p className="text-green-800 text-sm">✅ 3D 模型已上傳</p>
-                            <p className="text-green-700 text-xs mt-1">
-                              文件名: {selectedProduct.model3D.fileName}
-                              ({selectedProduct.model3D.fileSizeMB}MB)
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 3D 模型預覽與 UV 貼圖設定 */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-6">
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4">3D 模型預覽與 UV 設定</h4>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* GLB 預覽器 */}
-                        <div>
-                          <h5 className="font-medium text-gray-700 mb-3">模型預覽</h5>
-                          {selectedProduct.model3D?.glbUrl ? (
-                            <div className="aspect-square rounded-lg overflow-hidden border border-gray-300">
-                              <GLBViewer
-                                glbUrl={selectedProduct.model3D.glbUrl}
-                                className="w-full h-full"
-                                autoRotate={false}
-                                uvMapping={selectedProduct.model3D?.uvMapping}
-                                testTexture={uvTestImage}
-                              />
-                            </div>
-                          ) : (
-                            <div className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                              <div className="text-center">
-                                <div className="text-gray-400 mb-2">
-                                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                  </svg>
-                                </div>
-                                <p className="text-gray-500 text-sm">請先上傳 GLB 文件</p>
-                              </div>
-                            </div>
-                          )}
-                          <div className="mt-2 flex justify-between items-center text-xs text-gray-600">
-                            <span>🎯 實時預覽</span>
-                            <span>🖱️ 拖拽旋轉</span>
-                          </div>
-                        </div>
-
-                        {/* UV 貼圖控制器 */}
-                        <div>
-                          <UVMapper
-                            uvMapping={selectedProduct.model3D?.uvMapping}
-                            onUVChange={handleUVChange}
-                            onTestImageChange={handleTestImageChange}
-                            showPreview={true}
-                            className="h-full"
-                          />
-                        </div>
-                      </div>
-
-                      {/* GLB 文件信息 */}
-                      {selectedProduct.model3D?.glbUrl && (
-                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center space-x-4">
-                              <span className="text-green-600 font-medium">✅ 已載入 3D 模型</span>
-                              <span className="text-gray-600">
-                                文件：{selectedProduct.model3D.fileName} ({selectedProduct.model3D.fileSizeMB}MB)
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              💡 調整右側UV參數可即時在左側預覽效果
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {selectedProduct.type !== '3D' && (
-                  <>
-                    <div className="flex justify-center">
-                      <div
-                        className="canvas-container w-96 h-96 border-2 border-gray-200 rounded-lg relative overflow-hidden bg-gray-50 cursor-crosshair"
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                      >
-                    {/* Product Background */}
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                  2D 商品底圖
+                  {selectedProduct.mockupImage && (
+                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded ml-5">
+                      ✓ 已設定
+                    </span>
+                  )}
+                </h4>
+                {/* === 2D 畫布 === */}
+                <div className="flex justify-center">
+                  <div
+                    className="canvas-container w-96 h-96 border-2 border-gray-200 rounded-lg relative overflow-hidden bg-gray-50 cursor-crosshair"
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  >
+                    {/* 底圖 */}
                     {selectedProduct.mockupImage ? (
                       <img
-                        key={`mockup-${selectedProduct.id}-${selectedProduct.mockupImage.substring(0, 50)}`}
+                        key={`mockup-${
+                          selectedProduct.id
+                        }-${selectedProduct.mockupImage.substring(0, 50)}`}
                         src={selectedProduct.mockupImage}
                         alt={`${selectedProduct.title} 底圖`}
                         className="w-full h-full object-contain pointer-events-none"
                         onError={(e) => {
-                          console.error('Mockup image failed to load:', selectedProduct.mockupImage);
+                          console.error(
+                            "Mockup image failed to load:",
+                            selectedProduct.mockupImage
+                          );
                           e.target.style.display = "none";
                           if (e.target.nextSibling) {
                             e.target.nextSibling.style.display = "flex";
                           }
                         }}
                         onLoad={() => {
-                          console.log('Mockup image loaded successfully');
+                          console.log("Mockup image loaded successfully");
                         }}
                       />
                     ) : null}
 
-                    {/* Fallback - 當沒有底圖或底圖載入失敗時顯示 */}
+                    {/* Fallback */}
                     <div
                       key={`fallback-${selectedProduct.id}`}
                       className="absolute inset-0 bg-gray-50 border-2 border-dashed border-gray-300 rounded flex items-center justify-center"
@@ -1221,16 +1274,30 @@ const ProductMaintenance = () => {
                     >
                       <div className="text-center">
                         <div className="mb-3">
-                          <svg className="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          <svg
+                            className="w-12 h-12 mx-auto text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1}
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
                           </svg>
                         </div>
-                        <p className="text-gray-500 text-sm mb-1">尚未設定底圖</p>
-                        <p className="text-gray-400 text-xs">使用下方控制項上傳底圖</p>
+                        <p className="text-gray-500 text-sm mb-1">
+                          尚未設定底圖
+                        </p>
+                        <p className="text-gray-400 text-xs">
+                          使用下方控制項上傳底圖
+                        </p>
                       </div>
                     </div>
 
-                    {/* Print Area Overlay */}
+                    {/* 設計區 Overlay */}
                     {tempPrintArea && (
                       <div
                         className="absolute border-2 border-blue-500 border-solid bg-blue-50 bg-opacity-30"
@@ -1241,13 +1308,11 @@ const ProductMaintenance = () => {
                           height: `${(tempPrintArea.height / 400) * 100}%`,
                         }}
                       >
-                        {/* Label */}
                         <div className="absolute -top-6 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded">
                           設計區 {tempPrintArea.width.toFixed(1)}×
                           {tempPrintArea.height.toFixed(1)}
                         </div>
 
-                        {/* Move Handle */}
                         <div
                           className="absolute inset-0 cursor-move bg-blue-200 bg-opacity-20 hover:bg-opacity-30 flex items-center justify-center"
                           onMouseDown={(e) => handleMouseDown(e, "move")}
@@ -1257,7 +1322,6 @@ const ProductMaintenance = () => {
                           </div>
                         </div>
 
-                        {/* Resize Handle */}
                         <div
                           className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-se-resize hover:bg-blue-600"
                           onMouseDown={(e) => handleMouseDown(e, "resize")}
@@ -1266,7 +1330,6 @@ const ProductMaintenance = () => {
                           }}
                         />
 
-                        {/* Corner Indicators */}
                         <div className="absolute top-0 left-0 w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1 -translate-y-1" />
                         <div className="absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full transform translate-x-1 -translate-y-1" />
                         <div className="absolute bottom-0 left-0 w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1 translate-y-1" />
@@ -1302,6 +1365,7 @@ const ProductMaintenance = () => {
                   </div>
                 </div>
 
+                {/* 提示 */}
                 <div className="mt-4 text-center text-sm text-gray-600">
                   <div className="space-y-1">
                     <p>
@@ -1315,18 +1379,7 @@ const ProductMaintenance = () => {
                 </div>
 
                 {/* 底圖控制項 */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-medium text-gray-900">底圖設定</h4>
-                    <div className="flex items-center space-x-2">
-                      {selectedProduct.mockupImage && (
-                        <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                          ✓ 已設定
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg border mb-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* 上傳底圖 */}
                     <div>
@@ -1341,10 +1394,20 @@ const ProductMaintenance = () => {
                         htmlFor="mockup-upload"
                         className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
                       >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          />
                         </svg>
-                        {selectedProduct.mockupImage ? '更換底圖' : '上傳底圖'}
+                        {selectedProduct.mockupImage ? "更換底圖" : "上傳底圖"}
                       </label>
                     </div>
 
@@ -1354,8 +1417,18 @@ const ProductMaintenance = () => {
                         onClick={handleRemoveMockupImage}
                         className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors"
                       >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                         移除底圖
                       </button>
@@ -1365,26 +1438,101 @@ const ProductMaintenance = () => {
                   <div className="mt-3 text-xs text-gray-500">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <p className="font-medium text-gray-600 mb-1">支援格式：</p>
+                        <p className="font-medium text-gray-600 mb-1">
+                          支援格式：
+                        </p>
                         <p>JPG, PNG, GIF, WebP</p>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-600 mb-1">檔案處理：</p>
+                        <p className="font-medium text-gray-600 mb-1">
+                          檔案處理：
+                        </p>
                         <p>系統會自動壓縮大圖片</p>
                       </div>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-gray-200">
-                      <p className="text-gray-500">
-                        💡 <strong>提示：</strong> 底圖是商品的背景圖片，設計區域會疊加在底圖上方。
-                        建議使用高解析度、背景透明或簡潔的圖片作為底圖。
-                      </p>
-                      <p className="text-gray-500 mt-1">
-                        🔧 <strong>自動優化：</strong> 大於 1MB 的圖片會自動壓縮為適合的尺寸，確保上傳成功。
-                      </p>
-                    </div>
                   </div>
                 </div>
-                </>
+                {selectedProduct.type === "3D" && (
+                  <div className="space-y-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 mt-10">
+                      3D 商品模型
+                      {selectedProduct.model3D?.glbUrl && (
+                        <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded ml-5">
+                          ✓ 已設定
+                        </span>
+                      )}
+                    </h4>
+                    {/* === 3D 模型預覽與 UV === */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* GLB Viewer */}
+                        <div>
+                          <h5 className="font-medium text-gray-700 mb-3">
+                            模型預覽
+                          </h5>
+                          {selectedProduct.model3D?.glbUrl ? (
+                            <div className="aspect-square rounded-lg overflow-hidden border border-gray-300">
+                              <GLBViewer
+                                glbUrl={selectedProduct.model3D.glbUrl}
+                                className="w-full h-full"
+                                autoRotate={false}
+                                uvMapping={selectedProduct.model3D?.uvMapping}
+                                testTexture={uvTestImage}
+                              />
+                            </div>
+                          ) : (
+                            <div className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                              <p className="text-gray-500 text-sm">
+                                請先上傳 GLB 文件
+                              </p>
+                            </div>
+                          )}
+                          <div className="mt-2 flex justify-between items-center text-xs text-gray-600">
+                            <span>🎯 實時預覽</span>
+                            <span>🖱️ 拖拽旋轉</span>
+                          </div>
+                        </div>
+
+                        {/* UV Mapper */}
+                        <div>
+                          <UVMapper
+                            uvMapping={selectedProduct.model3D?.uvMapping}
+                            onUVChange={handleUVChange}
+                            onTestImageChange={handleTestImageChange}
+                            showPreview={true}
+                            className="h-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* === 3D 上傳區塊 === */}
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                      {/* 隱藏的 file input */}
+                      <input
+                        type="file"
+                        accept=".glb,.gltf"
+                        onChange={handleGLBUpload}
+                        className="hidden"
+                        id="glb-upload"
+                      />
+
+                      {/* 上傳按鈕 */}
+                      <div className="flex justify-center space-x-4 mb-4">
+                        <label
+                          htmlFor="glb-upload"
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors"
+                        >
+                          📁 選擇 GLB 文件
+                        </label>
+                      </div>
+
+                      {/* 狀態顯示 */}
+                      <div className="text-gray-500 text-sm">
+                        支援 GLB 或 GLTF 格式的 3D 模型文件（最大 200MB）
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -1467,7 +1615,9 @@ const ProductMaintenance = () => {
                               {/* 左移按鈕 */}
                               {index > 0 && (
                                 <button
-                                  onClick={() => handleMoveContentImage(index, index - 1)}
+                                  onClick={() =>
+                                    handleMoveContentImage(index, index - 1)
+                                  }
                                   className="p-1 bg-white text-gray-700 rounded-full hover:bg-gray-100 text-xs"
                                   title="左移"
                                 >
@@ -1475,9 +1625,13 @@ const ProductMaintenance = () => {
                                 </button>
                               )}
                               {/* 右移按鈕 */}
-                              {index < (selectedProduct.contentImages?.length || 0) - 1 && (
+                              {index <
+                                (selectedProduct.contentImages?.length || 0) -
+                                  1 && (
                                 <button
-                                  onClick={() => handleMoveContentImage(index, index + 1)}
+                                  onClick={() =>
+                                    handleMoveContentImage(index, index + 1)
+                                  }
                                   className="p-1 bg-white text-gray-700 rounded-full hover:bg-gray-100 text-xs"
                                   title="右移"
                                 >
@@ -1502,35 +1656,42 @@ const ProductMaintenance = () => {
                     ))}
 
                     {/* 新增圖片按鈕 */}
-                    {editingProduct && (selectedProduct.contentImages?.length || 0) < 10 && (
-                      <div className="relative">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleContentImageUpload}
-                          className="hidden"
-                          id="content-image-upload"
-                          multiple
-                        />
-                        <label
-                          htmlFor="content-image-upload"
-                          className="flex items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
-                        >
-                          <div className="text-center">
-                            <div className="text-2xl text-gray-400">+</div>
-                            <div className="text-xs text-gray-500">新增圖片</div>
-                          </div>
-                        </label>
-                      </div>
-                    )}
+                    {editingProduct &&
+                      (selectedProduct.contentImages?.length || 0) < 10 && (
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleContentImageUpload}
+                            className="hidden"
+                            id="content-image-upload"
+                            multiple
+                          />
+                          <label
+                            htmlFor="content-image-upload"
+                            className="flex items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
+                          >
+                            <div className="text-center">
+                              <div className="text-2xl text-gray-400">+</div>
+                              <div className="text-xs text-gray-500">
+                                新增圖片
+                              </div>
+                            </div>
+                          </label>
+                        </div>
+                      )}
                   </div>
 
                   {/* 空狀態 */}
-                  {(!selectedProduct.contentImages || selectedProduct.contentImages.length === 0) && !editingProduct && (
-                    <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-                      <div className="text-gray-400 text-sm">尚未添加內容圖片</div>
-                    </div>
-                  )}
+                  {(!selectedProduct.contentImages ||
+                    selectedProduct.contentImages.length === 0) &&
+                    !editingProduct && (
+                      <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                        <div className="text-gray-400 text-sm">
+                          尚未添加內容圖片
+                        </div>
+                      </div>
+                    )}
 
                   {/* 說明文字 */}
                   {editingProduct && (
