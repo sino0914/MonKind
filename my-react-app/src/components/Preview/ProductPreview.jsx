@@ -160,13 +160,28 @@ const ProductPreview = ({
         continue;
 
       if (el.type === "text") {
+        // 保存當前狀態
+        ctx.save();
+
+        // 設定文字樣式
         ctx.fillStyle = el.color || "#000000";
-        ctx.font = `${el.fontSize || 16}px ${
+        ctx.font = `${el.fontWeight || "normal"} ${el.fontStyle || "normal"} ${el.fontSize || 16}px ${
           el.fontFamily || "Arial"
         }`;
         ctx.textBaseline = "middle";
         ctx.textAlign = "center";
-        ctx.fillText(el.content || "", finalX, finalY);
+
+        // 如果有旋轉，應用旋轉變換
+        if (el.rotation && el.rotation !== 0) {
+          ctx.translate(finalX, finalY);
+          ctx.rotate((el.rotation * Math.PI) / 180);
+          ctx.fillText(el.content || "", 0, 0);
+        } else {
+          ctx.fillText(el.content || "", finalX, finalY);
+        }
+
+        // 恢復狀態
+        ctx.restore();
       }
 
       if (el.type === "image") {
@@ -175,7 +190,21 @@ const ProductPreview = ({
         if (img) {
           const w = el.width || 100;
           const h = el.height || 100;
-          ctx.drawImage(img, finalX - w / 2, finalY - h / 2, w, h);
+
+          // 保存當前狀態
+          ctx.save();
+
+          // 如果有旋轉，應用旋轉變換
+          if (el.rotation && el.rotation !== 0) {
+            ctx.translate(finalX, finalY);
+            ctx.rotate((el.rotation * Math.PI) / 180);
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+          } else {
+            ctx.drawImage(img, finalX - w / 2, finalY - h / 2, w, h);
+          }
+
+          // 恢復狀態
+          ctx.restore();
         }
       }
     }
@@ -355,7 +384,7 @@ const ProductPreview = ({
                     style={{
                       left: `${(relativeX / areaWidth) * 100}%`,
                       top: `${(relativeY / areaHeight) * 100}%`,
-                      transform: "translate(-50%, -50%)",
+                      transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
                       fontSize: `${
                         element.fontSize * (scaleFactor || width / 400)
                       }px`,
@@ -424,7 +453,7 @@ const ProductPreview = ({
                       style={{
                         left: `${(element.x / 400) * 100}%`,
                         top: `${(element.y / 400) * 100}%`,
-                        transform: "translate(-50%, -50%)",
+                        transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
                         fontSize: `${
                           element.fontSize * (scaleFactor || width / 400)
                         }px`,

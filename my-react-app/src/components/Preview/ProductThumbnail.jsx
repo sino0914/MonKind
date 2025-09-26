@@ -82,7 +82,7 @@ const ProductThumbnail = ({
                 style={{
                   left: `${(relativeX / areaWidth) * 100}%`,
                   top: `${(relativeY / areaHeight) * 100}%`,
-                  transform: "translate(-50%, -50%)",
+                  transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
                   fontSize: `${element.fontSize * scaleFactor}px`,
                   color: element.color,
                   fontFamily: element.fontFamily,

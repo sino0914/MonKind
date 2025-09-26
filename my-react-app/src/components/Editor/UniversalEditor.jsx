@@ -538,6 +538,7 @@ const UniversalEditor = ({
       fontFamily: "Arial",
       fontWeight: "normal",
       fontStyle: "normal",
+      rotation: 0,
     };
     setDesignElements([...designElements, newTextElement]);
   };
@@ -1161,18 +1162,34 @@ const UniversalEditor = ({
         const finalY = elementY + offsetY;
 
         if (element.type === "text") {
+          // 保存當前狀態
+          ctx.save();
+
+          // 設定文字樣式
           ctx.fillStyle = element.color || "#000000";
-          ctx.font = `${element.fontSize || 16}px ${
+          ctx.font = `${element.fontWeight || "normal"} ${element.fontStyle || "normal"} ${element.fontSize || 16}px ${
             element.fontFamily || "Arial"
           }`;
           ctx.textBaseline = "middle";
           ctx.textAlign = "center";
-          ctx.fillText(element.content || "", finalX, finalY);
+
+          // 如果有旋轉，應用旋轉變換
+          if (element.rotation && element.rotation !== 0) {
+            ctx.translate(finalX, finalY);
+            ctx.rotate((element.rotation * Math.PI) / 180);
+            ctx.fillText(element.content || "", 0, 0);
+          } else {
+            ctx.fillText(element.content || "", finalX, finalY);
+          }
+
+          // 恢復狀態
+          ctx.restore();
 
           console.log(
             "✅ 輸出文字元素:",
             element.content,
-            `位置: ${finalX}, ${finalY}`
+            `位置: ${finalX}, ${finalY}`,
+            `旋轉: ${element.rotation || 0}度`
           );
         }
 
@@ -1184,14 +1201,29 @@ const UniversalEditor = ({
           if (img) {
             const imgWidth = element.width || 100;
             const imgHeight = element.height || 100;
-            const centerX = finalX - imgWidth / 2;
-            const centerY = finalY - imgHeight / 2;
-            ctx.drawImage(img, centerX, centerY, imgWidth, imgHeight);
+
+            // 保存當前狀態
+            ctx.save();
+
+            // 如果有旋轉，應用旋轉變換
+            if (element.rotation && element.rotation !== 0) {
+              ctx.translate(finalX, finalY);
+              ctx.rotate((element.rotation * Math.PI) / 180);
+              ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+            } else {
+              const centerX = finalX - imgWidth / 2;
+              const centerY = finalY - imgHeight / 2;
+              ctx.drawImage(img, centerX, centerY, imgWidth, imgHeight);
+            }
+
+            // 恢復狀態
+            ctx.restore();
 
             console.log(
               "✅ 輸出圖片元素:",
               element.url,
-              `位置: ${centerX}, ${centerY}`
+              `位置: ${finalX}, ${finalY}`,
+              `旋轉: ${element.rotation || 0}度`
             );
           } else {
             console.warn("❌ 圖片載入失敗:", element.url);
@@ -2302,32 +2334,68 @@ const UniversalEditor = ({
                                   />
                                 ) : (
                                   <div
-                                    className={`absolute bg-opacity-90 border border-blue-400 p-1 pointer-events-auto select-none ${
+                                    className={`absolute pointer-events-auto select-none ${
                                       draggedElement === element.id
                                         ? "cursor-grabbing z-50"
-                                        : "cursor-grab hover:bg-opacity-100"
+                                        : "cursor-grab"
                                     }`}
                                     style={{
                                       left: `${(element.x / 400) * 100}%`,
                                       top: `${(element.y / 400) * 100}%`,
                                       transform: "translate(-50%, -50%)",
-                                      fontSize: `${
-                                        element.fontSize * (320 / 400)
-                                      }px`,
-                                      color: element.color,
-                                      fontFamily: element.fontFamily,
-                                      fontWeight:
-                                        element.fontWeight || "normal",
-                                      fontStyle: element.fontStyle || "normal",
-                                      userSelect: "none",
-                                      whiteSpace: "nowrap",
+                                      transformOrigin: "center",
                                     }}
                                     onMouseDown={(e) =>
                                       handleMouseDown(e, element)
                                     }
                                     onClick={() => handleSelectElement(element)}
                                   >
-                                    {element.content}
+                                    {/* 文字內容 */}
+                                    <div
+                                      style={{
+                                        fontSize: `${
+                                          element.fontSize * (320 / 400)
+                                        }px`,
+                                        color: element.color,
+                                        fontFamily: element.fontFamily,
+                                        fontWeight:
+                                          element.fontWeight || "normal",
+                                        fontStyle: element.fontStyle || "normal",
+                                        userSelect: "none",
+                                        whiteSpace: "nowrap",
+                                        transform: `rotate(${
+                                          element.rotation || 0
+                                        }deg)`,
+                                        padding: "4px",
+                                        border: "1px solid rgba(59, 130, 246, 0.3)",
+                                        backgroundColor: "rgba(255, 255, 255, 0.1)",
+                                      }}
+                                    >
+                                      {element.content}
+                                    </div>
+
+                                    {/* 選中狀態的邊框和控制點 */}
+                                    {selectedElement &&
+                                      selectedElement.id === element.id && (
+                                        <>
+                                          {/* 選中邊框 */}
+                                          <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none" />
+
+                                          {/* 旋轉控制點 */}
+                                          <div
+                                            className="absolute w-3 h-3 bg-green-500 border border-white rounded-full cursor-grab pointer-events-auto"
+                                            style={{
+                                              top: "-20px",
+                                              left: "50%",
+                                              transform: "translateX(-50%)",
+                                            }}
+                                            onMouseDown={(e) =>
+                                              handleMouseDown(e, element, "rotate")
+                                            }
+                                            title="拖曳旋轉"
+                                          />
+                                        </>
+                                      )}
                                   </div>
                                 )}
                               </div>
