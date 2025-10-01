@@ -26,6 +26,7 @@ const UniversalEditor = ({
   // 設計元素 (可外部控制)
   initialElements = [],
   initialBackgroundColor = "#ffffff",
+  initialWorkName = "",
   onElementsChange = null,
   onBackgroundColorChange = null,
 
@@ -90,6 +91,14 @@ const UniversalEditor = ({
   // 圖層管理狀態
   const [hiddenLayers, setHiddenLayers] = useState(new Set()); // 隱藏的圖層ID集合
 
+  // 作品名稱狀態
+  const [workName, setWorkName] = useState(initialWorkName);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingNameValue, setEditingNameValue] = useState(initialWorkName);
+
+  // 剪貼板狀態（用於複製貼上）
+  const [copiedElement, setCopiedElement] = useState(null);
+
   // 用於避免初始化時觸發 onDesignStateChange 的標記
   const isInitialized = useRef(false);
 
@@ -105,6 +114,13 @@ const UniversalEditor = ({
       setBackgroundColor(initialBackgroundColor);
     }
   }, [initialBackgroundColor, mode]);
+
+  useEffect(() => {
+    if (mode === "product" && initialWorkName !== undefined) {
+      setWorkName(initialWorkName);
+      setEditingNameValue(initialWorkName);
+    }
+  }, [initialWorkName, mode]);
 
   // 版型相關狀態
   const [availableTemplates, setAvailableTemplates] = useState([]);
@@ -437,6 +453,31 @@ const UniversalEditor = ({
     }
   }, [productId, product]);
 
+  // 鍵盤事件監聽器（Ctrl+C 和 Ctrl+V）
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 檢查是否在輸入框中，如果是則不觸發快捷鍵
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === "c" || e.key === "C") {
+          e.preventDefault();
+          handleCopyElement();
+        } else if (e.key === "v" || e.key === "V") {
+          e.preventDefault();
+          handlePasteElement();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedElement, copiedElement]); // 依賴選中元素和剪貼板
+
   // 載入已上傳的圖片
   const loadUploadedImages = () => {
     try {
@@ -475,11 +516,18 @@ const UniversalEditor = ({
   };
 
   const handleSaveDraft = () => {
+    // 如果沒有作品名稱，使用預設名稱
+    const defaultName = `${
+      currentProduct?.title || "作品"
+    } - ${new Date().toLocaleDateString("zh-TW")}`;
+    const finalWorkName = workName.trim() || defaultName;
+
     const draft = {
       productId: currentProduct?.id || productId,
       timestamp: new Date().toISOString(),
       elements: designElements,
       backgroundColor: backgroundColor,
+      name: finalWorkName, // 新增作品名稱
     };
 
     // 如果有 draftId，表示是從"繼續編輯"進入，更新現有草稿
@@ -670,6 +718,13 @@ const UniversalEditor = ({
       setDesignElements((prev) =>
         prev.filter((el) => !(el.type === "image" && el.imageId === imageId))
       );
+    } else {
+      if (!window.confirm("確定要刪除嗎？")) {
+        return;
+      }
+      setDesignElements((prev) =>
+        prev.filter((el) => !(el.type === "image" && el.imageId === imageId))
+      );
     }
 
     const updatedImages = uploadedImages.filter((img) => img.id !== imageId);
@@ -729,6 +784,44 @@ const UniversalEditor = ({
       newSet.delete(elementId);
       return newSet;
     });
+  };
+
+  // 複製元素
+  const handleCopyElement = () => {
+    if (selectedElement) {
+      setCopiedElement({ ...selectedElement });
+      console.log("已複製元素:", selectedElement);
+    }
+  };
+
+  // 貼上元素
+  const handlePasteElement = () => {
+    if (copiedElement) {
+      const newElement = {
+        ...copiedElement,
+        id: Date.now(),
+        x: copiedElement.x + 20, // 偏移一點位置避免完全重疊
+        y: copiedElement.y + 20,
+      };
+      setDesignElements((prev) => [...prev, newElement]);
+      setSelectedElement(newElement);
+      console.log("已貼上元素:", newElement);
+    }
+  };
+
+  // 複製並貼上元素（工具列按鈕使用）
+  const handleCopyAndPaste = () => {
+    if (selectedElement) {
+      const newElement = {
+        ...selectedElement,
+        id: Date.now(),
+        x: selectedElement.x + 20, // 偏移一點位置避免完全重疊
+        y: selectedElement.y + 20,
+      };
+      setDesignElements((prev) => [...prev, newElement]);
+      setSelectedElement(newElement);
+      console.log("已複製並貼上元素:", newElement);
+    }
   };
 
   // 圖層管理函數
@@ -865,6 +958,30 @@ const UniversalEditor = ({
     }
   };
 
+  // 改變文字顏色
+  const handleColorChange = (color) => {
+    if (selectedElement && selectedElement.type === "text") {
+      setDesignElements((prev) =>
+        prev.map((el) =>
+          el.id === selectedElement.id ? { ...el, color: color } : el
+        )
+      );
+      setSelectedElement((prev) => ({ ...prev, color: color }));
+    }
+  };
+
+  // 改變文字字型
+  const handleFontFamilyChange = (fontFamily) => {
+    if (selectedElement && selectedElement.type === "text") {
+      setDesignElements((prev) =>
+        prev.map((el) =>
+          el.id === selectedElement.id ? { ...el, fontFamily: fontFamily } : el
+        )
+      );
+      setSelectedElement((prev) => ({ ...prev, fontFamily: fontFamily }));
+    }
+  };
+
   const handleMouseDown = (e, element, handle = null) => {
     e.preventDefault();
     e.stopPropagation();
@@ -909,19 +1026,10 @@ const UniversalEditor = ({
       const canvasX = (relativeX / canvasWidth) * 400;
       const canvasY = (relativeY / canvasHeight) * 400;
 
-      const minX = printArea.x;
-      const maxX = printArea.x + printArea.width;
-      const minY = printArea.y;
-      const maxY = printArea.y + printArea.height;
-
-      const constrainedX = Math.max(minX, Math.min(maxX, canvasX));
-      const constrainedY = Math.max(minY, Math.min(maxY, canvasY));
-
+      // 移除邊界限制，允許元素超出設計區
       setDesignElements((elements) =>
         elements.map((el) =>
-          el.id === draggedElement
-            ? { ...el, x: constrainedX, y: constrainedY }
-            : el
+          el.id === draggedElement ? { ...el, x: canvasX, y: canvasY } : el
         )
       );
     } else if (resizeHandle && selectedElement) {
@@ -990,33 +1098,7 @@ const UniversalEditor = ({
                 }
               }
 
-              // 限制在設計區域內
-              const halfWidth = newWidth / 2;
-              const halfHeight = newHeight / 2;
-              const minX = printArea.x + halfWidth;
-              const maxX = printArea.x + printArea.width - halfWidth;
-              const minY = printArea.y + halfHeight;
-              const maxY = printArea.y + printArea.height - halfHeight;
-
-              newX = Math.max(minX, Math.min(maxX, el.x));
-              newY = Math.max(minY, Math.min(maxY, el.y));
-
-              if (newX - halfWidth < printArea.x) {
-                newWidth = (newX - printArea.x) * 2;
-                newHeight = newWidth / aspectRatio;
-              }
-              if (newX + halfWidth > printArea.x + printArea.width) {
-                newWidth = (printArea.x + printArea.width - newX) * 2;
-                newHeight = newWidth / aspectRatio;
-              }
-              if (newY - halfHeight < printArea.y) {
-                newHeight = (newY - printArea.y) * 2;
-                newWidth = newHeight * aspectRatio;
-              }
-              if (newY + halfHeight > printArea.y + printArea.height) {
-                newHeight = (printArea.y + printArea.height - newY) * 2;
-                newWidth = newHeight * aspectRatio;
-              }
+              // 移除設計區域限制，允許元素超出邊界
 
               return {
                 ...el,
@@ -1167,9 +1249,9 @@ const UniversalEditor = ({
 
           // 設定文字樣式
           ctx.fillStyle = element.color || "#000000";
-          ctx.font = `${element.fontWeight || "normal"} ${element.fontStyle || "normal"} ${element.fontSize || 16}px ${
-            element.fontFamily || "Arial"
-          }`;
+          ctx.font = `${element.fontWeight || "normal"} ${
+            element.fontStyle || "normal"
+          } ${element.fontSize || 16}px ${element.fontFamily || "Arial"}`;
           ctx.textBaseline = "middle";
           ctx.textAlign = "center";
 
@@ -1209,7 +1291,13 @@ const UniversalEditor = ({
             if (element.rotation && element.rotation !== 0) {
               ctx.translate(finalX, finalY);
               ctx.rotate((element.rotation * Math.PI) / 180);
-              ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+              ctx.drawImage(
+                img,
+                -imgWidth / 2,
+                -imgHeight / 2,
+                imgWidth,
+                imgHeight
+              );
             } else {
               const centerX = finalX - imgWidth / 2;
               const centerY = finalY - imgHeight / 2;
@@ -1326,6 +1414,77 @@ const UniversalEditor = ({
         {title || (mode === "template" ? "📐 版型編輯器" : "編輯器")} -{" "}
         {currentProduct?.title}
       </h1>
+      {mode === "product" && (
+        <>
+          <div className="h-6 w-px bg-gray-300"></div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-gray-600">作品名稱:</label>
+            {isEditingName ? (
+              <>
+                <input
+                  type="text"
+                  value={editingNameValue}
+                  onChange={(e) => setEditingNameValue(e.target.value)}
+                  placeholder={`${
+                    currentProduct?.title || "作品"
+                  } - ${new Date().toLocaleDateString("zh-TW")}`}
+                  className="px-3 py-1 text-sm border border-blue-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{ width: "250px" }}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setWorkName(editingNameValue);
+                      setIsEditingName(false);
+                    } else if (e.key === "Escape") {
+                      setEditingNameValue(workName);
+                      setIsEditingName(false);
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    setWorkName(editingNameValue);
+                    setIsEditingName(false);
+                  }}
+                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                  title="確定"
+                >
+                  ✓
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingNameValue(workName);
+                    setIsEditingName(false);
+                  }}
+                  className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                  title="取消"
+                >
+                  ✗
+                </button>
+              </>
+            ) : (
+              <>
+                <span
+                  className="text-sm font-medium text-gray-900"
+                  style={{ minWidth: "200px" }}
+                >
+                  {workName ||
+                    `${
+                      currentProduct?.title || "作品"
+                    } - ${new Date().toLocaleDateString("zh-TW")}`}
+                </span>
+                <button
+                  onClick={() => setIsEditingName(true)}
+                  className="px-2 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  title="重新命名"
+                >
+                  ✏️
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -1993,9 +2152,10 @@ const UniversalEditor = ({
           {/* Canvas Area */}
           <div className="flex-1 bg-gray-50 p-8">
             <div className="h-full flex items-center justify-center">
-              <div className="bg-white rounded-lg shadow-xl p-8">
+              <div className="bg-white rounded-lg shadow-xl p-8 overflow-visible">
                 <div
-                  className="w-80 h-80 border-2 border-gray-200 rounded-lg relative overflow-hidden bg-white canvas-container"
+                  className="w-80 h-80 border-2 border-gray-200 rounded-lg relative bg-white canvas-container"
+                  style={{ overflow: "visible" }}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
@@ -2196,304 +2356,555 @@ const UniversalEditor = ({
                           zIndex: 2,
                         }}
                       />
-                    </>
-                  )}
 
-                  {/* Design Elements Layer */}
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{ zIndex: 10 }}
-                  >
-                    <div className="w-full h-full relative">
-                      {designElements
-                        .filter((element) => !hiddenLayers.has(element.id)) // 過濾隱藏的圖層
-                        .map((element) => {
-                          if (element.type === "text") {
-                            const isEditing = editingText === element.id;
-                            return (
-                              <div key={element.id}>
-                                {/* 文字工具列 */}
-                                {showTextToolbar &&
-                                  selectedElement &&
-                                  selectedElement.id === element.id && (
-                                    <div
-                                      className="absolute bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 pointer-events-auto"
-                                      style={{
-                                        left: `${(element.x / 400) * 100}%`,
-                                        top: `${(element.y / 400) * 100}%`,
-                                        transform:
-                                          "translate(-50%, calc(-100% - 40px))",
-                                        zIndex: 1000,
-                                      }}
-                                    >
-                                      {/* 編輯文字按鈕 */}
-                                      <button
-                                        onClick={() =>
-                                          handleStartTextEdit(element)
-                                        }
-                                        className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded"
-                                        title="編輯文字"
-                                      >
-                                        ✏️
-                                      </button>
-
-                                      {/* 粗體按鈕 */}
-                                      <button
-                                        onClick={handleToggleBold}
-                                        className={`px-2 py-1 text-xs rounded font-bold ${
-                                          element.fontWeight === "bold"
-                                            ? "bg-yellow-600 text-white"
-                                            : "bg-gray-600 hover:bg-gray-500"
-                                        }`}
-                                        title="粗體"
-                                      >
-                                        B
-                                      </button>
-
-                                      {/* 斜體按鈕 */}
-                                      <button
-                                        onClick={handleToggleItalic}
-                                        className={`px-2 py-1 text-xs rounded italic ${
-                                          element.fontStyle === "italic"
-                                            ? "bg-yellow-600 text-white"
-                                            : "bg-gray-600 hover:bg-gray-500"
-                                        }`}
-                                        title="斜體"
-                                      >
-                                        I
-                                      </button>
-
-                                      {/* 分隔線 */}
-                                      <div className="w-px h-4 bg-gray-500" />
-
-                                      {/* 字體大小調整 */}
-                                      <div className="flex items-center space-x-1">
-                                        <button
-                                          onClick={() =>
-                                            handleFontSizeChange(-2)
-                                          }
-                                          className="px-1 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded"
-                                          title="縮小字體"
-                                        >
-                                          A-
-                                        </button>
-                                        <span className="text-xs px-1 min-w-6 text-center">
-                                          {element.fontSize}
-                                        </span>
-                                        <button
-                                          onClick={() =>
-                                            handleFontSizeChange(2)
-                                          }
-                                          className="px-1 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded"
-                                          title="放大字體"
-                                        >
-                                          A+
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                {/* 文字元素 */}
-                                {isEditing ? (
-                                  <input
-                                    type="text"
-                                    value={editingContent}
-                                    onChange={(e) =>
-                                      setEditingContent(e.target.value)
-                                    }
-                                    onBlur={handleFinishTextEdit}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        handleFinishTextEdit();
-                                      }
-                                      if (e.key === "Escape") {
-                                        setEditingText(null);
-                                        setEditingContent("");
-                                      }
-                                    }}
-                                    autoFocus
-                                    className="absolute bg-white border-2 border-blue-500 p-1 pointer-events-auto z-40"
-                                    style={{
-                                      left: `${(element.x / 400) * 100}%`,
-                                      top: `${(element.y / 400) * 100}%`,
-                                      transform: "translate(-50%, -50%)",
-                                      fontSize: `${
-                                        element.fontSize * (320 / 400)
-                                      }px`,
-                                      color: element.color,
-                                      fontFamily: element.fontFamily,
-                                      fontWeight:
-                                        element.fontWeight || "normal",
-                                      fontStyle: element.fontStyle || "normal",
-                                      width: `${editingInputWidth}px`,
-                                      border: "2px solid #3b82f6",
-                                      borderRadius: "2px",
-                                      outline: "none",
-                                      textAlign: "center",
-                                    }}
-                                  />
-                                ) : (
-                                  <div
-                                    className={`absolute pointer-events-auto select-none ${
-                                      draggedElement === element.id
-                                        ? "cursor-grabbing z-50"
-                                        : "cursor-grab"
-                                    }`}
-                                    style={{
-                                      left: `${(element.x / 400) * 100}%`,
-                                      top: `${(element.y / 400) * 100}%`,
-                                      transform: "translate(-50%, -50%)",
-                                      transformOrigin: "center",
-                                    }}
-                                    onMouseDown={(e) =>
-                                      handleMouseDown(e, element)
-                                    }
-                                    onClick={() => handleSelectElement(element)}
-                                  >
-                                    {/* 文字內容 */}
-                                    <div
-                                      style={{
-                                        fontSize: `${
-                                          element.fontSize * (320 / 400)
-                                        }px`,
-                                        color: element.color,
-                                        fontFamily: element.fontFamily,
-                                        fontWeight:
-                                          element.fontWeight || "normal",
-                                        fontStyle: element.fontStyle || "normal",
-                                        userSelect: "none",
-                                        whiteSpace: "nowrap",
-                                        transform: `rotate(${
-                                          element.rotation || 0
-                                        }deg)`,
-                                        padding: "4px",
-                                        border: "1px solid rgba(59, 130, 246, 0.3)",
-                                        backgroundColor: "rgba(255, 255, 255, 0.1)",
-                                      }}
-                                    >
-                                      {element.content}
-                                    </div>
-
-                                    {/* 選中狀態的邊框和控制點 */}
-                                    {selectedElement &&
-                                      selectedElement.id === element.id && (
-                                        <>
-                                          {/* 選中邊框 */}
-                                          <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none" />
-
-                                          {/* 旋轉控制點 */}
-                                          <div
-                                            className="absolute w-3 h-3 bg-green-500 border border-white rounded-full cursor-grab pointer-events-auto"
+                      {/* Design Elements Layer - 不受設計區裁切，正常渲染 */}
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ zIndex: 10 }}
+                      >
+                        <div className="w-full h-full relative">
+                          {/* 設計區域裁切容器 - 只裁切元素內容，不裁切選取框 */}
+                          <div
+                            className="absolute overflow-hidden"
+                            style={{
+                              left: `${
+                                (currentProduct.printArea.x / 400) * 100
+                              }%`,
+                              top: `${
+                                (currentProduct.printArea.y / 400) * 100
+                              }%`,
+                              width: `${
+                                (currentProduct.printArea.width / 400) * 100
+                              }%`,
+                              height: `${
+                                (currentProduct.printArea.height / 400) * 100
+                              }%`,
+                            }}
+                          >
+                            {/* 元素內容渲染區 - 使用負偏移回到畫布原點 */}
+                            <div
+                              className="absolute"
+                              style={{
+                                left: `${
+                                  -(
+                                    currentProduct.printArea.x /
+                                    currentProduct.printArea.width
+                                  ) * 100
+                                }%`,
+                                top: `${
+                                  -(
+                                    currentProduct.printArea.y /
+                                    currentProduct.printArea.height
+                                  ) * 100
+                                }%`,
+                                width: `${
+                                  (400 / currentProduct.printArea.width) * 100
+                                }%`,
+                                height: `${
+                                  (400 / currentProduct.printArea.height) * 100
+                                }%`,
+                              }}
+                            >
+                              {designElements
+                                .filter(
+                                  (element) => !hiddenLayers.has(element.id)
+                                )
+                                .map((element) => {
+                                  if (element.type === "text") {
+                                    const isEditing =
+                                      editingText === element.id;
+                                    return (
+                                      <div key={element.id}>
+                                        {/* 文字元素 */}
+                                        {isEditing ? (
+                                          <input
+                                            type="text"
+                                            value={editingContent}
+                                            onChange={(e) =>
+                                              setEditingContent(e.target.value)
+                                            }
+                                            onBlur={handleFinishTextEdit}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter") {
+                                                handleFinishTextEdit();
+                                              }
+                                              if (e.key === "Escape") {
+                                                setEditingText(null);
+                                                setEditingContent("");
+                                              }
+                                            }}
+                                            autoFocus
+                                            className="absolute bg-white border-2 border-blue-500 p-1 pointer-events-auto z-40"
                                             style={{
-                                              top: "-20px",
-                                              left: "50%",
-                                              transform: "translateX(-50%)",
+                                              left: `${
+                                                (element.x / 400) * 100
+                                              }%`,
+                                              top: `${
+                                                (element.y / 400) * 100
+                                              }%`,
+                                              transform:
+                                                "translate(-50%, -50%)",
+                                              fontSize: `${
+                                                element.fontSize * (320 / 400)
+                                              }px`,
+                                              color: element.color,
+                                              fontFamily: element.fontFamily,
+                                              fontWeight:
+                                                element.fontWeight || "normal",
+                                              fontStyle:
+                                                element.fontStyle || "normal",
+                                              width: `${editingInputWidth}px`,
+                                              border: "2px solid #3b82f6",
+                                              borderRadius: "2px",
+                                              outline: "none",
+                                              textAlign: "center",
+                                            }}
+                                          />
+                                        ) : (
+                                          <div
+                                            className="absolute pointer-events-none select-none"
+                                            style={{
+                                              left: `${
+                                                (element.x / 400) * 100
+                                              }%`,
+                                              top: `${
+                                                (element.y / 400) * 100
+                                              }%`,
+                                              transform:
+                                                "translate(-50%, -50%)",
+                                              transformOrigin: "center",
+                                            }}
+                                          >
+                                            {/* 文字內容 */}
+                                            <div
+                                              style={{
+                                                fontSize: `${
+                                                  element.fontSize * (320 / 400)
+                                                }px`,
+                                                color: element.color,
+                                                fontFamily: element.fontFamily,
+                                                fontWeight:
+                                                  element.fontWeight ||
+                                                  "normal",
+                                                fontStyle:
+                                                  element.fontStyle || "normal",
+                                                userSelect: "none",
+                                                whiteSpace: "nowrap",
+                                                transform: `rotate(${
+                                                  element.rotation || 0
+                                                }deg)`,
+                                                padding: "4px",
+                                                border:
+                                                  "1px solid rgba(59, 130, 246, 0.3)",
+                                                backgroundColor:
+                                                  "rgba(255, 255, 255, 0.1)",
+                                              }}
+                                            >
+                                              {element.content}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  } else if (element.type === "image") {
+                                    const isSelected =
+                                      selectedElement &&
+                                      selectedElement.id === element.id;
+                                    return (
+                                      <div
+                                        key={element.id}
+                                        className="absolute pointer-events-none select-none"
+                                        style={{
+                                          left: `${(element.x / 400) * 100}%`,
+                                          top: `${(element.y / 400) * 100}%`,
+                                          width: `${
+                                            (element.width / 400) * 100
+                                          }%`,
+                                          height: `${
+                                            (element.height / 400) * 100
+                                          }%`,
+                                          transform: "translate(-50%, -50%)",
+                                          transformOrigin: "center",
+                                          opacity: element.opacity || 1,
+                                        }}
+                                      >
+                                        {/* 圖片內容 */}
+                                        <img
+                                          src={element.url}
+                                          alt="設計圖片"
+                                          className="w-full h-full object-contain pointer-events-none"
+                                          style={{
+                                            transform: `rotate(${
+                                              element.rotation || 0
+                                            }deg)`,
+                                          }}
+                                          draggable={false}
+                                        />
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                            </div>
+                          </div>
+
+                          {/* 互動層 - 在裁切容器外，可拖曳選取 */}
+                          {designElements
+                            .filter((element) => !hiddenLayers.has(element.id))
+                            .map((element) => {
+                              const isSelected =
+                                selectedElement &&
+                                selectedElement.id === element.id;
+
+                              // 計算文字元素的寬高
+                              let elementWidth = element.width || 100;
+                              let elementHeight = element.height || 30;
+
+                              if (element.type === "text") {
+                                // 文字元素使用測量的寬度
+                                const textWidth = measureTextWidth(
+                                  element.content,
+                                  element.fontSize,
+                                  element.fontFamily,
+                                  element.fontWeight,
+                                  element.fontStyle
+                                );
+                                elementWidth = textWidth * (320 / 400);
+                                elementHeight =
+                                  element.fontSize * (320 / 400) * 1.5;
+                              }
+
+                              return (
+                                <div
+                                  key={`interaction-${element.id}`}
+                                  className={`absolute pointer-events-auto ${
+                                    draggedElement === element.id
+                                      ? "cursor-grabbing z-50"
+                                      : "cursor-grab"
+                                  }`}
+                                  style={{
+                                    left: `${(element.x / 400) * 100}%`,
+                                    top: `${(element.y / 400) * 100}%`,
+                                    width:
+                                      element.type === "text"
+                                        ? `${elementWidth}px`
+                                        : `${(element.width / 400) * 100}%`,
+                                    height:
+                                      element.type === "text"
+                                        ? `${elementHeight}px`
+                                        : `${(element.height / 400) * 100}%`,
+                                    transform: `translate(-50%, -50%) rotate(${
+                                      element.rotation || 0
+                                    }deg)`,
+                                    transformOrigin: "center",
+                                  }}
+                                  onMouseDown={(e) =>
+                                    handleMouseDown(e, element)
+                                  }
+                                  onClick={() => handleSelectElement(element)}
+                                >
+                                  {/* 選取框 */}
+                                  {isSelected && (
+                                    <>
+                                      <div className="absolute inset-0 border-2 border-blue-500 bg-blue-50 bg-opacity-10 pointer-events-none" />
+
+                                      {/* 縮放控制點 - 只有圖片才顯示 */}
+                                      {element.type === "image" && (
+                                        <>
+                                          <div
+                                            className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-nw-resize pointer-events-auto"
+                                            style={{
+                                              top: "-6px",
+                                              left: "-6px",
                                             }}
                                             onMouseDown={(e) =>
-                                              handleMouseDown(e, element, "rotate")
+                                              handleMouseDown(e, element, "nw")
                                             }
-                                            title="拖曳旋轉"
+                                          />
+                                          <div
+                                            className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-ne-resize pointer-events-auto"
+                                            style={{
+                                              top: "-6px",
+                                              right: "-6px",
+                                            }}
+                                            onMouseDown={(e) =>
+                                              handleMouseDown(e, element, "ne")
+                                            }
+                                          />
+                                          <div
+                                            className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-sw-resize pointer-events-auto"
+                                            style={{
+                                              bottom: "-6px",
+                                              left: "-6px",
+                                            }}
+                                            onMouseDown={(e) =>
+                                              handleMouseDown(e, element, "sw")
+                                            }
+                                          />
+                                          <div
+                                            className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-se-resize pointer-events-auto"
+                                            style={{
+                                              bottom: "-6px",
+                                              right: "-6px",
+                                            }}
+                                            onMouseDown={(e) =>
+                                              handleMouseDown(e, element, "se")
+                                            }
                                           />
                                         </>
                                       )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          } else if (element.type === "image") {
-                            const isSelected =
-                              selectedElement &&
-                              selectedElement.id === element.id;
-                            return (
+
+                                      {/* 旋轉控制點 - 圖片和文字都顯示 */}
+                                      <div
+                                        className="absolute w-3 h-3 bg-green-500 border border-white rounded-full pointer-events-auto"
+                                        style={{
+                                          top: "-20px",
+                                          left: "50%",
+                                          transform: "translateX(-50%)",
+                                          cursor:
+                                            'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>\') 12 12, auto',
+                                        }}
+                                        onMouseDown={(e) =>
+                                          handleMouseDown(e, element, "rotate")
+                                        }
+                                        title="拖曳旋轉"
+                                      />
+
+                                      {/* 刪除按鈕 */}
+                                      <button
+                                        className="absolute w-6 h-6 bg-red-500 hover:bg-red-600 text-white border border-white rounded-full pointer-events-auto flex items-center justify-center text-xs font-bold transition-colors"
+                                        style={{
+                                          top: "-12px",
+                                          right: "-12px",
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (
+                                            window.confirm(
+                                              `確定要刪除這個${
+                                                element.type === "text"
+                                                  ? "文字"
+                                                  : "圖片"
+                                              }嗎？`
+                                            )
+                                          ) {
+                                            handleDeleteElement(element.id);
+                                          }
+                                        }}
+                                        title="刪除元素"
+                                      >
+                                        ✕
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 文字工具列 - 放在最外層，不受設計區裁切影響 */}
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ zIndex: 1000 }}
+                  >
+                    {designElements
+                      .filter((element) => !hiddenLayers.has(element.id))
+                      .map((element) => {
+                        if (
+                          element.type === "text" &&
+                          showTextToolbar &&
+                          selectedElement &&
+                          selectedElement.id === element.id
+                        ) {
+                          return (
+                            <div key={`toolbar-${element.id}`}>
+                              {/* 文字工具列 */}
                               <div
-                                key={element.id}
-                                className={`absolute pointer-events-auto select-none ${
-                                  draggedElement === element.id
-                                    ? "cursor-grabbing z-50"
-                                    : "cursor-grab"
-                                }`}
+                                className="absolute bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 pointer-events-auto"
                                 style={{
                                   left: `${(element.x / 400) * 100}%`,
                                   top: `${(element.y / 400) * 100}%`,
-                                  width: `${(element.width / 400) * 100}%`,
-                                  height: `${(element.height / 400) * 100}%`,
-                                  transform: "translate(-50%, -50%)",
-                                  transformOrigin: "center",
-                                  opacity: element.opacity || 1,
+                                  transform:
+                                    "translate(-50%, calc(-100% - 80px))",
+                                  zIndex: 1000,
                                 }}
-                                onMouseDown={(e) => handleMouseDown(e, element)}
-                                onClick={() => handleSelectElement(element)}
                               >
-                                {/* 圖片內容 */}
-                                <img
-                                  src={element.url}
-                                  alt="設計圖片"
-                                  className="w-full h-full object-contain pointer-events-none"
-                                  style={{
-                                    transform: `rotate(${
-                                      element.rotation || 0
-                                    }deg)`,
-                                  }}
-                                  draggable={false}
-                                />
+                                {/* 編輯文字按鈕 */}
+                                <button
+                                  onClick={() => handleStartTextEdit(element)}
+                                  className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded"
+                                  title="編輯文字"
+                                >
+                                  ✏️
+                                </button>
 
-                                {/* 選中狀態的邊框和控制點 */}
-                                {isSelected && (
-                                  <>
-                                    {/* 選中邊框 */}
-                                    <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none" />
+                                {/* 粗體按鈕 */}
+                                <button
+                                  onClick={handleToggleBold}
+                                  className={`px-2 py-1 text-xs rounded font-bold ${
+                                    element.fontWeight === "bold"
+                                      ? "bg-yellow-600 text-white"
+                                      : "bg-gray-600 hover:bg-gray-500"
+                                  }`}
+                                  title="粗體"
+                                >
+                                  B
+                                </button>
 
-                                    {/* 縮放控制點 */}
-                                    <div
-                                      className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-nw-resize pointer-events-auto"
-                                      style={{ top: "-6px", left: "-6px" }}
-                                      onMouseDown={(e) =>
-                                        handleMouseDown(e, element, "nw")
-                                      }
-                                    />
-                                    <div
-                                      className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-ne-resize pointer-events-auto"
-                                      style={{ top: "-6px", right: "-6px" }}
-                                      onMouseDown={(e) =>
-                                        handleMouseDown(e, element, "ne")
-                                      }
-                                    />
-                                    <div
-                                      className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-sw-resize pointer-events-auto"
-                                      style={{ bottom: "-6px", left: "-6px" }}
-                                      onMouseDown={(e) =>
-                                        handleMouseDown(e, element, "sw")
-                                      }
-                                    />
-                                    <div
-                                      className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-se-resize pointer-events-auto"
-                                      style={{ bottom: "-6px", right: "-6px" }}
-                                      onMouseDown={(e) =>
-                                        handleMouseDown(e, element, "se")
-                                      }
-                                    />
+                                {/* 斜體按鈕 */}
+                                <button
+                                  onClick={handleToggleItalic}
+                                  className={`px-2 py-1 text-xs rounded italic ${
+                                    element.fontStyle === "italic"
+                                      ? "bg-yellow-600 text-white"
+                                      : "bg-gray-600 hover:bg-gray-500"
+                                  }`}
+                                  title="斜體"
+                                >
+                                  I
+                                </button>
 
-                                    {/* 旋轉控制點 */}
+                                {/* 分隔線 */}
+                                <div className="w-px h-4 bg-gray-500" />
+
+                                {/* 字體大小調整 */}
+                                <div className="flex items-center space-x-1">
+                                  <button
+                                    onClick={() => handleFontSizeChange(-2)}
+                                    className="px-1 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded"
+                                    title="縮小字體"
+                                  >
+                                    A-
+                                  </button>
+                                  <span className="text-xs px-1 min-w-6 text-center">
+                                    {element.fontSize}
+                                  </span>
+                                  <button
+                                    onClick={() => handleFontSizeChange(2)}
+                                    className="px-1 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded"
+                                    title="放大字體"
+                                  >
+                                    A+
+                                  </button>
+                                </div>
+
+                                {/* 分隔線 */}
+                                <div className="w-px h-4 bg-gray-500" />
+
+                                {/* 顏色選擇器 */}
+                                <div className="flex items-center space-x-1">
+                                  <label
+                                    className="cursor-pointer px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded flex items-center"
+                                    title="文字顏色"
+                                  >
+                                    <span className="text-xs mr-1">🎨</span>
+                                    <input
+                                      type="color"
+                                      value={element.color || "#000000"}
+                                      onChange={(e) =>
+                                        handleColorChange(e.target.value)
+                                      }
+                                      className="w-0 h-0 opacity-0 absolute"
+                                    />
                                     <div
-                                      className="absolute w-3 h-3 bg-green-500 border border-white rounded-full cursor-grab pointer-events-auto"
+                                      className="w-4 h-4 rounded border border-white"
                                       style={{
-                                        top: "-20px",
-                                        left: "50%",
-                                        transform: "translateX(-50%)",
+                                        backgroundColor:
+                                          element.color || "#000000",
                                       }}
-                                      onMouseDown={(e) =>
-                                        handleMouseDown(e, element, "rotate")
-                                      }
-                                      title="拖曳旋轉"
                                     />
-                                  </>
-                                )}
+                                  </label>
+                                </div>
+
+                                {/* 分隔線 */}
+                                <div className="w-px h-4 bg-gray-500" />
+
+                                {/* 字型選擇器 */}
+                                <select
+                                  value={element.fontFamily || "Arial"}
+                                  onChange={(e) =>
+                                    handleFontFamilyChange(e.target.value)
+                                  }
+                                  className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded text-white border-none outline-none cursor-pointer"
+                                  title="選擇字型"
+                                >
+                                  <option value="Arial">Arial</option>
+                                  <option value="Helvetica">Helvetica</option>
+                                  <option value="Times New Roman">
+                                    Times New Roman
+                                  </option>
+                                  <option value="Georgia">Georgia</option>
+                                  <option value="Courier New">
+                                    Courier New
+                                  </option>
+                                  <option value="Verdana">Verdana</option>
+                                  <option value="微軟正黑體">微軟正黑體</option>
+                                  <option value="新細明體">新細明體</option>
+                                  <option value="標楷體">標楷體</option>
+                                </select>
+
+                                {/* 分隔線 */}
+                                <div className="w-px h-4 bg-gray-500" />
+
+                                {/* 複製並貼上按鈕 */}
+                                <button
+                                  onClick={handleCopyAndPaste}
+                                  className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
+                                  title="複製並貼上"
+                                >
+                                  📋
+                                </button>
                               </div>
-                            );
-                          }
-                          return null;
-                        })}
-                    </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                  </div>
+
+                  {/* 圖片工具列 - 放在最外層，不受設計區裁切影響 */}
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ zIndex: 1000 }}
+                  >
+                    {designElements
+                      .filter((element) => !hiddenLayers.has(element.id))
+                      .map((element) => {
+                        if (
+                          element.type === "image" &&
+                          selectedElement &&
+                          selectedElement.id === element.id
+                        ) {
+                          return (
+                            <div key={`image-toolbar-${element.id}`}>
+                              {/* 圖片工具列 */}
+                              <div
+                                className="absolute bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 pointer-events-auto"
+                                style={{
+                                  left: `${(element.x / 400) * 100}%`,
+                                  top: `${(element.y / 400) * 100}%`,
+                                  transform:
+                                    "translate(-50%, calc(-100% - 80px))",
+                                  zIndex: 1000,
+                                }}
+                              >
+                                {/* 複製並貼上按鈕 */}
+                                <button
+                                  onClick={handleCopyAndPaste}
+                                  className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
+                                  title="複製並貼上"
+                                >
+                                  📋
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
                   </div>
                 </div>
 

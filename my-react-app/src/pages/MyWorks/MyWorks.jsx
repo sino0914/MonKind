@@ -10,6 +10,8 @@ const MyWorks = () => {
   const { addToCart } = useCart();
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingNameId, setEditingNameId] = useState(null);
+  const [editingNameValue, setEditingNameValue] = useState('');
 
   // 載入草稿資料
   const loadDrafts = async () => {
@@ -80,6 +82,7 @@ const MyWorks = () => {
         elements: draft.elements || [],
         backgroundColor: draft.backgroundColor || '#ffffff'
       },
+      workName: draft.name || '', // 傳遞作品名稱
       timestamp: Date.now()
     };
     sessionStorage.setItem('editingDesignData', JSON.stringify(editData));
@@ -114,6 +117,40 @@ const MyWorks = () => {
     } else {
       alert('此草稿沒有設計內容，無法加入購物車');
     }
+  };
+
+  // 開始重新命名
+  const handleStartRename = (draft) => {
+    setEditingNameId(draft.id);
+    setEditingNameValue(draft.name || draft.product?.title || '');
+  };
+
+  // 儲存重新命名
+  const handleSaveRename = (draftId) => {
+    if (editingNameValue.trim()) {
+      try {
+        const draftData = JSON.parse(localStorage.getItem(draftId));
+        draftData.name = editingNameValue.trim();
+        localStorage.setItem(draftId, JSON.stringify(draftData));
+
+        // 更新本地狀態
+        setDrafts(prev => prev.map(draft =>
+          draft.id === draftId ? { ...draft, name: editingNameValue.trim() } : draft
+        ));
+
+        setEditingNameId(null);
+        setEditingNameValue('');
+      } catch (error) {
+        console.error('重新命名失敗:', error);
+        alert('重新命名失敗');
+      }
+    }
+  };
+
+  // 取消重新命名
+  const handleCancelRename = () => {
+    setEditingNameId(null);
+    setEditingNameValue('');
   };
 
 
@@ -185,9 +222,54 @@ const MyWorks = () => {
                 </div>
 
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2 truncate">
-                    {draft.product?.title || '未知商品'}
-                  </h3>
+                  {editingNameId === draft.id ? (
+                    <div className="mb-2">
+                      <input
+                        type="text"
+                        value={editingNameValue}
+                        onChange={(e) => setEditingNameValue(e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSaveRename(draft.id);
+                          } else if (e.key === 'Escape') {
+                            handleCancelRename();
+                          }
+                        }}
+                      />
+                      <div className="flex space-x-2 mt-2">
+                        <button
+                          onClick={() => handleSaveRename(draft.id)}
+                          className="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          ✓ 確定
+                        </button>
+                        <button
+                          onClick={handleCancelRename}
+                          className="flex-1 px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                        >
+                          ✗ 取消
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-900 truncate flex-1" title={draft.name || draft.product?.title || '未知商品'}>
+                        {draft.name || draft.product?.title || '未知商品'}
+                      </h3>
+                      <button
+                        onClick={() => handleStartRename(draft)}
+                        className="ml-2 px-2 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        title="重新命名"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
+                  <p className="text-gray-500 text-xs mb-2">
+                    商品: {draft.product?.title || '未知商品'}
+                  </p>
                   <p className="text-gray-600 text-sm mb-2">
                     儲存時間: {new Date(draft.timestamp).toLocaleDateString('zh-TW', {
                       year: 'numeric',

@@ -149,10 +149,12 @@ const Editor = () => {
   // 準備傳遞給UniversalEditor的初始化資料
   const initialElements = isNewDesign ? [] : (editingData?.designData?.elements || []);
   const initialBackgroundColor = isNewDesign ? '#ffffff' : (editingData?.designData?.backgroundColor || '#ffffff');
+  const initialWorkName = isNewDesign ? '' : (editingData?.workName || '');
 
   console.log('📤 傳遞給 UniversalEditor 的資料:');
   console.log('- initialElements:', initialElements);
   console.log('- initialBackgroundColor:', initialBackgroundColor);
+  console.log('- initialWorkName:', initialWorkName);
   console.log('- isEditingExisting:', isEditingExisting);
 
   return (
@@ -167,6 +169,7 @@ const Editor = () => {
       // 傳入編輯中的設計資料
       initialElements={initialElements}
       initialBackgroundColor={initialBackgroundColor}
+      initialWorkName={initialWorkName}
       // 傳遞草稿ID用於更新現有草稿
       draftId={editingData?.draftId}
     />
