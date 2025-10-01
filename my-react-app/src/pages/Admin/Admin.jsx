@@ -64,7 +64,7 @@ const Admin = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">🛠️ 開發者後台</h1>
+              <h1 className="text-2xl font-bold text-gray-900">🛠️ 開發者後台(怕你覺得我沒有更新)</h1>
             </div>
             <button
               onClick={() => navigate('/')}
