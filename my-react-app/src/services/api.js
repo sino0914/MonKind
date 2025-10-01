@@ -5,9 +5,6 @@
 
 import { HttpAPI } from './HttpApiService';
 
-// 保留 ElementService 因為它仍使用 localStorage（暫時）
-import elementService from './ElementService';
-
 // 匯出所有服務
 export const API = {
   // 商品相關 API
@@ -119,24 +116,56 @@ export const API = {
 
   // 元素相關 API
   elements: {
-    // 基礎 CRUD
-    getAll: () => elementService.getAll(),
-    getById: (id) => elementService.getById(id),
-    create: (data) => elementService.create(data),
-    update: (id, data) => elementService.update(id, data),
-    delete: (id) => elementService.delete(id),
+    // 基礎 CRUD - 使用 HttpAPI
+    getAll: () => HttpAPI.elements.getAll(),
+    getById: (id) => HttpAPI.elements.getById(id),
+    create: (data) => HttpAPI.elements.create(data),
+    update: (id, data) => HttpAPI.elements.update(id, data),
+    delete: (id) => HttpAPI.elements.delete(id),
 
-    // 批量操作
-    batchDelete: (ids) => elementService.batchDelete(ids),
+    // 批量操作（暫時使用簡單實現）
+    batchDelete: async (ids) => {
+      const results = [];
+      for (const id of ids) {
+        try {
+          const result = await HttpAPI.elements.delete(id);
+          results.push(result);
+        } catch (error) {
+          console.error(`刪除元素 ${id} 失敗:`, error);
+        }
+      }
+      return results;
+    },
 
     // 搜尋和統計
-    search: (criteria) => elementService.search(criteria),
-    getStats: () => elementService.getStats(),
+    search: async (criteria) => {
+      const allElements = await HttpAPI.elements.getAll();
+      let filtered = allElements;
 
-    // 工具功能
-    resetToDefault: () => elementService.resetToDefault(),
-    exportData: () => elementService.exportData(),
-    importData: (data) => elementService.importData(data)
+      if (criteria.name) {
+        filtered = filtered.filter(element =>
+          element.name.toLowerCase().includes(criteria.name.toLowerCase())
+        );
+      }
+
+      if (criteria.type) {
+        filtered = filtered.filter(element => element.type === criteria.type);
+      }
+
+      return filtered;
+    },
+    getStats: () => HttpAPI.elements.getStats(),
+
+    // 工具功能（暫時保持簡單實現）
+    resetToDefault: () => Promise.resolve({ success: true }),
+    exportData: async () => {
+      const elements = await HttpAPI.elements.getAll();
+      return {
+        elements,
+        exportedAt: new Date().toISOString()
+      };
+    },
+    importData: (data) => Promise.resolve({ success: true, imported: 0 })
   }
 };
 

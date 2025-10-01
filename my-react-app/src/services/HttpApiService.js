@@ -338,6 +338,34 @@ export const HttpAPI = {
     getStorageInfo: () => httpApiService.getStorageInfo(),
   },
 
+  // 元素相關 API
+  elements: {
+    getAll: async () => {
+      const response = await httpApiService.get('/elements');
+      return response.data;
+    },
+    getById: async (id) => {
+      const response = await httpApiService.get(`/elements/${id}`);
+      return response.data;
+    },
+    create: async (data) => {
+      const response = await httpApiService.post('/elements', data);
+      return response.data;
+    },
+    update: async (id, data) => {
+      const response = await httpApiService.put(`/elements/${id}`, data);
+      return response.data;
+    },
+    delete: async (id) => {
+      const response = await httpApiService.delete(`/elements/${id}`);
+      return response.data;
+    },
+    getStats: async () => {
+      const response = await httpApiService.get('/elements/stats');
+      return response.data;
+    },
+  },
+
   // 系統相關 API
   system: {
     health: () => httpApiService.checkHealth(),

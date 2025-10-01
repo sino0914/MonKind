@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API } from '../../services/api';
 
 const ElementManagement = () => {
+  const navigate = useNavigate();
   const [elements, setElements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,20 +34,51 @@ const ElementManagement = () => {
     if (!files || files.length === 0) return;
 
     setUploading(true);
+    setError(null);
+
     try {
+      const uploadedElements = [];
+
       for (const file of files) {
         // 檢查文件類型
         if (!file.type.startsWith('image/')) {
-          alert(`檔案 ${file.name} 不是圖片格式`);
+          console.warn(`檔案 ${file.name} 不是圖片格式，已跳過`);
           continue;
         }
 
-        // 創建元素
-        await API.elements.create({
-          name: file.name.replace(/\.[^/.]+$/, ''), // 移除副檔名
-          type: 'image',
-          file: file
-        });
+        try {
+          // 使用 HttpAPI 上傳圖片到伺服器
+          const formData = new FormData();
+          formData.append('image', file);
+
+          const response = await fetch('http://localhost:3001/api/upload/image', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error(`上傳 ${file.name} 失敗`);
+          }
+
+          const result = await response.json();
+
+          if (result.success) {
+            // 創建元素記錄
+            const element = await API.elements.create({
+              name: file.name.replace(/\.[^/.]+$/, ''), // 移除副檔名
+              type: 'image',
+              url: `http://localhost:3001${result.data.url}`,
+              fileName: result.data.originalName,
+              fileSize: result.data.size,
+              mimeType: result.data.mimetype
+            });
+
+            uploadedElements.push(element);
+          }
+        } catch (fileError) {
+          console.error(`上傳 ${file.name} 失敗:`, fileError);
+          setError(`部分檔案上傳失敗: ${file.name}`);
+        }
       }
 
       // 重新載入元素列表
@@ -53,6 +86,10 @@ const ElementManagement = () => {
 
       // 清空文件選擇
       event.target.value = '';
+
+      if (uploadedElements.length > 0) {
+        console.log(`成功上傳 ${uploadedElements.length} 個元素`);
+      }
 
     } catch (err) {
       setError('上傳失敗');
@@ -64,7 +101,7 @@ const ElementManagement = () => {
 
   // 刪除元素
   const handleDelete = async (elementId) => {
-    if (!confirm('確定要刪除這個元素嗎？')) return;
+    if (!window.confirm('確定要刪除這個元素嗎？')) return;
 
     try {
       await API.elements.delete(elementId);
@@ -98,12 +135,32 @@ const ElementManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* 標題區域 */}
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <button
+                onClick={() => navigate('/admin')}
+                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mr-4"
+              >
+                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                返回
+              </button>
+              <h1 className="text-2xl font-bold text-gray-900">🎨 元素管理</h1>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 說明區域 */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">元素管理</h1>
-          <p className="text-gray-600 mt-2">管理設計元素，上傳圖片資源供編輯器使用</p>
+          <p className="text-gray-600">管理設計元素，上傳圖片資源供編輯器使用</p>
         </div>
 
         {/* 錯誤提示 */}
