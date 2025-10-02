@@ -16,8 +16,27 @@ const ToolSidebar = ({
   setSelectedTool,
   children
 }) => {
+  // 處理整個側邊欄區域的 hover
+  const handleSidebarMouseEnter = () => {
+    // 當滑鼠進入側邊欄區域時，如果還沒有 hoveredTool，設置第一個工具
+    if (!hoveredTool && !selectedTool && tools.length > 0) {
+      setHoveredTool(tools[0].id);
+    }
+  };
+
+  const handleSidebarMouseLeave = () => {
+    // 只有當沒有選中的工具時，才清除 hover 狀態
+    if (!selectedTool) {
+      setHoveredTool(null);
+    }
+  };
+
   return (
-    <div className="bg-white border-r border-gray-200 transition-all duration-300 ease-in-out">
+    <div
+      className="bg-white border-r border-gray-200 transition-all duration-300 ease-in-out"
+      onMouseEnter={handleSidebarMouseEnter}
+      onMouseLeave={handleSidebarMouseLeave}
+    >
       <div className="flex">
         {/* Tool Icons */}
         <div className="w-16 bg-gray-50 border-r border-gray-200">
@@ -29,7 +48,7 @@ const ToolSidebar = ({
                 isHovered={hoveredTool === tool.id}
                 isSelected={selectedTool === tool.id}
                 onMouseEnter={() => setHoveredTool(tool.id)}
-                onMouseLeave={() => setHoveredTool(null)}
+                onMouseLeave={() => {}} // 移除單個圖標的 onMouseLeave，改由整個側邊欄控制
                 onClick={() =>
                   setSelectedTool(selectedTool === tool.id ? null : tool.id)
                 }
