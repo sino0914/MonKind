@@ -143,7 +143,7 @@ const UVMapper = ({
   return (
     <div className={`rounded-lg p-4 ${className}`}>
       <div className="flex justify-between items-center mb-3">
-        <h5 className="font-medium text-gray-900">UV 貼圖控制</h5>
+        <h5 className="font-medium text-gray-900">測試UV貼圖</h5>
         <div className="text-xs text-gray-500">(0,0 到 1,1)</div>
       </div>
 

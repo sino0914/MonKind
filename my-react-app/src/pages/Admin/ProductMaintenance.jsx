@@ -170,46 +170,60 @@ const ProductMaintenance = () => {
         throw new Error("只支援 GLB 或 GLTF 格式的 3D 模型文件");
       }
 
-      // 使用後端API上傳GLB文件
-      const uploadResult = await API.products.uploadGLB(
+      // 使用後端API上傳GLB文件 (API會自動更新產品資料)
+      const updatedProduct = await API.products.uploadGLB(
         selectedProduct.id,
         file
       );
 
-      if (uploadResult.success) {
-        const { data } = uploadResult;
+      // 更新本地狀態
+      setSelectedProduct(updatedProduct);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p))
+      );
 
-        // 更新產品的3D模型資訊
-        const updatedProduct = {
-          ...selectedProduct,
-          model3D: {
-            ...selectedProduct.model3D,
-            glbUrl: `http://localhost:3001${data.url}`, // 完整的URL
-            fileName: data.originalName,
-            fileSize: data.size,
-            fileSizeMB: data.sizeMB,
-            uploadedAt: data.uploadedAt,
-          },
-        };
-
-        // 更新產品資料
-        await API.products.update(selectedProduct.id, updatedProduct);
-        setSelectedProduct(updatedProduct);
-        setProducts((prev) =>
-          prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p))
-        );
-
-        showNotification(
-          `3D模型上傳成功！文件大小: ${data.sizeMB}MB`,
-          "success"
-        );
-        console.log("GLB上傳成功:", data);
-      } else {
-        throw new Error(uploadResult.message || "上傳失敗");
-      }
+      showNotification(
+        `3D模型上傳成功！文件大小: ${updatedProduct.model3D.fileSizeMB}MB`,
+        "success"
+      );
+      console.log("GLB上傳成功:", updatedProduct);
     } catch (error) {
       console.error("GLB上傳失敗:", error);
       showNotification("GLB上傳失敗: " + error.message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 移除 GLB 模型
+  const handleRemoveGLB = async () => {
+    if (!selectedProduct || selectedProduct.type !== "3D") return;
+
+    try {
+      setSaving(true);
+
+      const updatedProduct = {
+        ...selectedProduct,
+        model3D: {
+          ...selectedProduct.model3D,
+          glbUrl: null,
+          fileName: null,
+          fileSize: null,
+          fileSizeMB: null,
+          uploadedAt: null,
+        },
+      };
+
+      await API.products.update(selectedProduct.id, updatedProduct);
+      setSelectedProduct(updatedProduct);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p))
+      );
+
+      showNotification("3D模型已移除", "success");
+    } catch (error) {
+      console.error("移除GLB失敗:", error);
+      showNotification("移除GLB失敗: " + error.message, "error");
     } finally {
       setSaving(false);
     }
@@ -1489,7 +1503,6 @@ const ProductMaintenance = () => {
                           )}
                           <div className="mt-2 flex justify-between items-center text-xs text-gray-600">
                             <span>🎯 實時預覽</span>
-                            <span>🖱️ 拖拽旋轉</span>
                           </div>
                         </div>
 
@@ -1525,6 +1538,17 @@ const ProductMaintenance = () => {
                         >
                           📁 選擇 GLB 文件
                         </label>
+
+                        {/* 移除模型按鈕 - 只在已上傳模型時顯示 */}
+                        {selectedProduct.model3D?.glbUrl && (
+                          <button
+                            onClick={handleRemoveGLB}
+                            disabled={saving}
+                            className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            🗑️ 移除模型
+                          </button>
+                        )}
                       </div>
 
                       {/* 狀態顯示 */}

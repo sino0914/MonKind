@@ -283,11 +283,6 @@ const ProductPreview = ({
             uvMapping={uvMapping}
             testTexture={uvTestTexture} 
           />
-          {showControls && (
-            <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-              🖱️ 拖曳旋轉 • 滾輪縮放
-            </div>
-          )}
         </div>
       ) : product.category === "mug" ? (
         /* 傳統 3D 馬克杯預覽 (向後兼容) */
@@ -296,11 +291,6 @@ const ProductPreview = ({
           style={{ width, height }}
         >
           <Mug3D designElements={designElements} product={product} />
-          {showControls && (
-            <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-              🖱️ 拖曳旋轉 • 滾輪縮放
-            </div>
-          )}
         </div>
       ) : (
         /* 2D 預覽 (T恤等其他產品) */
@@ -511,10 +501,7 @@ const ProductPreview = ({
           {product.category === "mug" ? (
             <div>
               <p className="text-xs text-gray-600">
-                3D 即時預覽 - 可旋轉查看效果
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                設計會環繞在馬克杯表面
+                🖱️ 拖拽旋轉 | 🔄 滾輪縮放 | ⌨️ 右鍵平移
               </p>
             </div>
           ) : (

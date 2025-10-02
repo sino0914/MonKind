@@ -96,7 +96,7 @@
     "featured": true,
     "type": "3D",
     "model3D": {
-      "glbUrl": null,
+      "glbUrl": "http://localhost:3001/uploads/glb/3d682d94-5793-4a75-a854-7ab8e5bd0044.glb",
       "uvMapping": {
         "defaultUV": {
           "u": 0.5,
@@ -117,9 +117,13 @@
           "y": 0,
           "z": 0
         }
-      }
+      },
+      "fileName": "é¦¬åæ¯2.glb",
+      "fileSize": 683484,
+      "fileSizeMB": "0.65",
+      "uploadedAt": "2025-10-02T07:01:12.928Z"
     },
-    "updatedAt": "2025-09-25T01:31:18.157Z"
+    "updatedAt": "2025-10-02T07:01:13.008Z"
   },
   {
     "id": 5,
@@ -200,7 +204,7 @@
     "featured": true,
     "type": "3D",
     "model3D": {
-      "glbUrl": null,
+      "glbUrl": "http://localhost:3001/uploads/glb/d44c4773-d9e3-40af-be05-d808ea72c9c8.glb",
       "uvMapping": {
         "defaultUV": {
           "u": 0.5,
@@ -236,8 +240,13 @@
           "y": 0,
           "z": 0
         }
-      }
-    }
+      },
+      "fileName": "é¦¬åæ¯2.glb",
+      "fileSize": 683484,
+      "fileSizeMB": "0.65",
+      "uploadedAt": "2025-10-02T07:09:12.786Z"
+    },
+    "updatedAt": "2025-10-02T07:09:12.869Z"
   },
   {
     "id": 10,

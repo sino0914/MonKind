@@ -169,12 +169,6 @@ export default function GLBViewer({
           />
         </Suspense>
       </Canvas>
-      {/* 底部資訊 */}
-      <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 rounded-lg px-3 py-1">
-        <div className="text-white text-xs">
-          🖱️ 拖拽旋轉 | 🔄 滾輪縮放 | ⌨️ 右鍵平移
-        </div>
-      </div>
     </div>
   );
 }
