@@ -2,6 +2,35 @@ import React, { createContext, useContext, useReducer, useEffect, useState } fro
 
 const CartContext = createContext();
 
+// 簡化版的圖片優化（從 storageUtils.js 借用邏輯）
+const optimizeCartData = (cart) => {
+  return cart.map(item => {
+    if (item.designData && item.designData.elements) {
+      // 優化設計數據中的圖片
+      const optimizedElements = item.designData.elements.map(element => {
+        if (element.type === 'image' && element.url && element.url.startsWith('data:')) {
+          // 移除 base64 圖片，只保留引用標記
+          return {
+            ...element,
+            url: 'removed_for_storage', // 標記為已移除
+            _note: '圖片因容量限制已移除，請重新設計'
+          };
+        }
+        return element;
+      });
+
+      return {
+        ...item,
+        designData: {
+          ...item.designData,
+          elements: optimizedElements
+        }
+      };
+    }
+    return item;
+  });
+};
+
 const cartReducer = (state, action) => {
   switch (action.type) {
     case 'LOAD_CART':
@@ -57,7 +86,28 @@ export const CartProvider = ({ children }) => {
     // 只有在初始化完成後才保存
     if (isInitialized) {
       console.log('💾 保存購物車到 localStorage:', cart);
-      localStorage.setItem('shopping-cart', JSON.stringify(cart));
+
+      try {
+        // 優化購物車數據，移除大型圖片
+        const optimizedCart = optimizeCartData(cart);
+        const cartString = JSON.stringify(optimizedCart);
+
+        // 檢查大小
+        const sizeKB = new Blob([cartString]).size / 1024;
+        console.log(`購物車大小: ${sizeKB.toFixed(2)} KB`);
+
+        if (sizeKB > 2048) {
+          console.warn('購物車數據過大，已優化但仍可能導致儲存失敗');
+        }
+
+        localStorage.setItem('shopping-cart', cartString);
+      } catch (error) {
+        console.error('購物車儲存失敗:', error);
+
+        if (error.name === 'QuotaExceededError' || error.code === 22 || error.code === 1014) {
+          alert('購物車儲存失敗：儲存空間不足！\n\n建議：\n1. 清理舊草稿或圖片\n2. 直接結帳而不儲存到購物車\n3. 使用「測試輸出」功能匯出設計');
+        }
+      }
     }
   }, [cart, isInitialized]);
 

@@ -1,1 +1,35 @@
-[]
+[
+  {
+    "id": 1,
+    "name": "LightweightSummerRunningT-Shirt_4",
+    "type": "image",
+    "url": "http://localhost:3001/uploads/images/3f7d8ec5-5d0e-42a4-83db-93880d3f115c.webp",
+    "fileName": "3f7d8ec5-5d0e-42a4-83db-93880d3f115c.webp",
+    "fileSize": 28712,
+    "mimeType": "image/webp",
+    "createdAt": "2025-10-02T05:58:45.911Z",
+    "updatedAt": "2025-10-02T05:58:45.911Z"
+  },
+  {
+    "id": 2,
+    "name": "250g-ribbed-collar-T-shirt_8",
+    "type": "image",
+    "url": "http://localhost:3001/uploads/images/8ae168ac-3962-4a44-bf7b-1490cebec16c.webp",
+    "fileName": "8ae168ac-3962-4a44-bf7b-1490cebec16c.webp",
+    "fileSize": 12860,
+    "mimeType": "image/webp",
+    "createdAt": "2025-10-02T05:58:48.506Z",
+    "updatedAt": "2025-10-02T05:58:48.506Z"
+  },
+  {
+    "id": 3,
+    "name": "Quick-DryIceSilkCrewNeckTee_9-removebg-preview",
+    "type": "image",
+    "url": "http://localhost:3001/uploads/images/46ad4dfd-c1b6-4ebc-a81b-06819e2b3e6f.png",
+    "fileName": "46ad4dfd-c1b6-4ebc-a81b-06819e2b3e6f.png",
+    "fileSize": 88938,
+    "mimeType": "image/png",
+    "createdAt": "2025-10-02T05:58:51.127Z",
+    "updatedAt": "2025-10-02T05:58:51.127Z"
+  }
+]

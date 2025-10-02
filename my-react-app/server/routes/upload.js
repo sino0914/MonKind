@@ -151,6 +151,76 @@ router.post('/image', upload.single('image'), async (req, res) => {
   }
 });
 
+// POST /api/upload/element - 上傳元素圖片（與 /image 相同，但使用 element 字段名）
+router.post('/element', upload.single('element'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: '沒有接收到元素圖片文件'
+      });
+    }
+
+    const fileInfo = await getFileInfo(req.file.path);
+
+    res.json({
+      success: true,
+      message: '元素圖片上傳成功',
+      data: {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        sizeKB: (req.file.size / 1024).toFixed(2),
+        mimetype: req.file.mimetype,
+        url: `http://localhost:3001/uploads/images/${req.file.filename}`,
+        uploadedAt: new Date().toISOString(),
+        fileInfo
+      }
+    });
+  } catch (error) {
+    console.error('元素圖片上傳失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '元素圖片上傳失敗'
+    });
+  }
+});
+
+// POST /api/upload/editor-image - 上傳編輯器圖片（與 /image 相同，但使用 editorImage 字段名）
+router.post('/editor-image', upload.single('editorImage'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: '沒有接收到編輯器圖片文件'
+      });
+    }
+
+    const fileInfo = await getFileInfo(req.file.path);
+
+    res.json({
+      success: true,
+      message: '編輯器圖片上傳成功',
+      data: {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        sizeKB: (req.file.size / 1024).toFixed(2),
+        mimetype: req.file.mimetype,
+        url: `http://localhost:3001/uploads/images/${req.file.filename}`,
+        uploadedAt: new Date().toISOString(),
+        fileInfo
+      }
+    });
+  } catch (error) {
+    console.error('編輯器圖片上傳失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '編輯器圖片上傳失敗'
+    });
+  }
+});
+
 // POST /api/upload/multiple - 批量上傳文件
 router.post('/multiple', upload.array('files', 5), async (req, res) => {
   try {
@@ -198,8 +268,32 @@ router.post('/multiple', upload.array('files', 5), async (req, res) => {
 // GET /api/upload/files - 獲取上傳的文件列表
 router.get('/files', async (req, res) => {
   try {
-    const { type } = req.query; // glb, images, all
+    const { type } = req.query; // glb, images, editor-image, element, all
 
+    // 如果請求的是 editor-image 或 element，都返回 images 目錄的文件
+    if (type === 'editor-image' || type === 'element') {
+      const imagesDir = path.join(uploadsDir, 'images');
+      const filesList = [];
+
+      if (await fs.pathExists(imagesDir)) {
+        const imageFiles = await fs.readdir(imagesDir);
+        for (const filename of imageFiles) {
+          const filePath = path.join(imagesDir, filename);
+          const fileInfo = await getFileInfo(filePath);
+          if (fileInfo) {
+            filesList.push({
+              filename,
+              url: `http://localhost:3001/uploads/images/${filename}`,
+              ...fileInfo
+            });
+          }
+        }
+      }
+
+      return res.json(filesList);
+    }
+
+    // 原有的邏輯
     const result = {
       success: true,
       data: {
@@ -219,7 +313,7 @@ router.get('/files', async (req, res) => {
           if (fileInfo) {
             result.data.glb.push({
               filename,
-              url: `/uploads/glb/${filename}`,
+              url: `http://localhost:3001/uploads/glb/${filename}`,
               ...fileInfo
             });
           }
@@ -238,7 +332,7 @@ router.get('/files', async (req, res) => {
           if (fileInfo) {
             result.data.images.push({
               filename,
-              url: `/uploads/images/${filename}`,
+              url: `http://localhost:3001/uploads/images/${filename}`,
               ...fileInfo
             });
           }
@@ -261,17 +355,24 @@ router.delete('/file/:type/:filename', async (req, res) => {
   try {
     const { type, filename } = req.params;
 
-    if (!['glb', 'images'].includes(type)) {
+    // 將 editor-image 和 element 映射到 images 目錄
+    let actualType = type;
+    if (type === 'editor-image' || type === 'element') {
+      actualType = 'images';
+    }
+
+    if (!['glb', 'images'].includes(actualType)) {
       return res.status(400).json({
         success: false,
         message: '無效的文件類型'
       });
     }
 
-    const filePath = path.join(uploadsDir, type, filename);
+    const filePath = path.join(uploadsDir, actualType, filename);
 
     if (await fs.pathExists(filePath)) {
       await fs.remove(filePath);
+      console.log(`✅ 文件已刪除: ${filePath}`);
       res.json({
         success: true,
         message: '文件刪除成功'

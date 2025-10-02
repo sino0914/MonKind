@@ -121,6 +121,10 @@ const ProductThumbnail = ({
                   style={{
                     transform: `rotate(${element.rotation || 0}deg)`,
                   }}
+                  onError={(e) => {
+                    // 圖片載入失敗時完全隱藏
+                    e.target.parentElement.style.display = 'none';
+                  }}
                 />
               </div>
             );

@@ -341,8 +341,8 @@ const TemplateManagement = () => {
                     <div className="aspect-square bg-gray-100 relative overflow-hidden">
                       <TemplateThumbnail
                         template={template}
-                        width={300}
-                        height={300}
+                        width={270}
+                        height={270}
                         showName={false}
                         showElementCount={true}
                         className="absolute inset-0 w-full h-full group-hover:scale-105 transition-transform duration-200"

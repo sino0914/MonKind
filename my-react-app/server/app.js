@@ -75,7 +75,10 @@ const initializeData = async () => {
 };
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false
+}));
 app.use(compression());
 app.use(cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],

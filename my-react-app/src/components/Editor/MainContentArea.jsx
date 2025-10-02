@@ -1,0 +1,201 @@
+import React, { useMemo } from "react";
+import ProductPreview from "../Preview/ProductPreview";
+import TextToolbar from "./components/TextToolbar";
+import CanvasArea from "./components/CanvasArea";
+
+const MainContentArea = ({
+  // 商品相關
+  currentProduct,
+
+  // 設計元素
+  designElements,
+  backgroundColor,
+  hiddenLayers,
+
+  // 選擇和編輯狀態
+  selectedElement,
+  editingText,
+  editingContent,
+  setEditingContent,
+  showTextToolbar,
+
+  // 拖曳相關
+  draggedElement,
+
+  // 事件處理函數
+  handleMouseMove,
+  handleMouseUp,
+  handleCanvasClick,
+  handleMouseDown,
+  handleSelectElement,
+  handleFinishTextEdit,
+  handleDeleteElement,
+  handleStartTextEdit,
+  handleToggleBold,
+  handleToggleItalic,
+  handleFontSizeChange,
+  handleColorChange,
+  handleFontFamilyChange,
+  handleCopyAndPaste,
+
+  // 測量函數
+  measureTextWidth,
+  editingInputWidth,
+
+  // 處理後的底圖
+  processedMockupImage,
+}) => {
+  return (
+    <div className="flex-1 flex">
+      {/* Canvas Area */}
+      <div className="flex-1 bg-gray-50 p-8">
+        <div className="h-full flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl p-8 overflow-visible">
+            <div className="relative">
+              <CanvasArea
+                currentProduct={currentProduct}
+                processedMockupImage={processedMockupImage}
+                designElements={designElements}
+                backgroundColor={backgroundColor}
+                hiddenLayers={hiddenLayers}
+                selectedElement={selectedElement}
+                editingText={editingText}
+                editingContent={editingContent}
+                setEditingContent={setEditingContent}
+                draggedElement={draggedElement}
+                handleMouseMove={handleMouseMove}
+                handleMouseUp={handleMouseUp}
+                handleCanvasClick={handleCanvasClick}
+                handleMouseDown={handleMouseDown}
+                handleSelectElement={handleSelectElement}
+                handleFinishTextEdit={handleFinishTextEdit}
+                handleDeleteElement={handleDeleteElement}
+                measureTextWidth={measureTextWidth}
+                editingInputWidth={editingInputWidth}
+              />
+
+              {/* 文字工具列 - 放在最外層，不受設計區裁切影響 */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ zIndex: 1000 }}
+              >
+              {designElements
+                .filter((element) => !hiddenLayers.has(element.id))
+                .map((element) => {
+                  if (
+                    element.type === "text" &&
+                    showTextToolbar &&
+                    selectedElement &&
+                    selectedElement.id === element.id
+                  ) {
+                    return (
+                      <div key={`toolbar-${element.id}`}>
+                        <TextToolbar
+                          element={element}
+                          onStartEdit={handleStartTextEdit}
+                          onToggleBold={handleToggleBold}
+                          onToggleItalic={handleToggleItalic}
+                          onFontSizeChange={handleFontSizeChange}
+                          onColorChange={handleColorChange}
+                          onFontFamilyChange={handleFontFamilyChange}
+                          onCopyAndPaste={handleCopyAndPaste}
+                        />
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+            </div>
+
+            {/* 圖片工具列 - 放在最外層，不受設計區裁切影響 */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ zIndex: 1000 }}
+            >
+              {designElements
+                .filter((element) => !hiddenLayers.has(element.id))
+                .map((element) => {
+                  if (
+                    element.type === "image" &&
+                    selectedElement &&
+                    selectedElement.id === element.id
+                  ) {
+                    return (
+                      <div key={`image-toolbar-${element.id}`}>
+                        {/* 圖片工具列 */}
+                        <div
+                          className="absolute bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 pointer-events-auto"
+                          style={{
+                            left: `${(element.x / 400) * 100}%`,
+                            top: `${(element.y / 400) * 100}%`,
+                            transform:
+                              "translate(-50%, calc(-100% - 80px))",
+                            zIndex: 1000,
+                          }}
+                        >
+                          {/* 複製並貼上按鈕 */}
+                          <button
+                            onClick={handleCopyAndPaste}
+                            className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
+                            title="複製並貼上"
+                          >
+                            📋
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            </div>
+
+            <div className="mt-4 text-center">
+              <p className="text-sm font-medium text-gray-700">
+                {currentProduct.title}
+              </p>
+              <p className="text-xs text-gray-500">
+                可印刷區域:{" "}
+                {currentProduct.printArea
+                  ? `${currentProduct.printArea.width} x ${currentProduct.printArea.height} px`
+                  : "準備中..."}
+              </p>
+              <div className="mt-2 flex justify-center space-x-4 text-xs text-gray-500">
+                <span>🎯 點擊工具開始設計</span>
+                <span>📏 虛線框為可印刷區域</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Sidebar - Preview */}
+      <div className="flex-1 bg-white border-l border-gray-200">
+        <div className="h-full flex flex-col">
+          {/* Live Preview */}
+          <div className="flex-1 p-8">
+            <div className="h-full flex items-center justify-center">
+              <div
+                className="bg-white rounded-lg shadow-xl p-8"
+                style={{ marginTop: "-48px" }}
+              >
+                <h3 className="font-semibold text-gray-900 mb-4 text-center">
+                  即時預覽
+                </h3>
+                <ProductPreview
+                  productId={currentProduct.id}
+                  designElements={designElements}
+                  backgroundColor={backgroundColor}
+                  width={320}
+                  height={320}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MainContentArea;

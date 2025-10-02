@@ -47,34 +47,20 @@ const ElementManagement = () => {
         }
 
         try {
-          // 使用 HttpAPI 上傳圖片到伺服器
-          const formData = new FormData();
-          formData.append('image', file);
+          // 使用 API 服務上傳圖片到伺服器
+          const uploadResult = await API.elements.uploadImage(file);
 
-          const response = await fetch('http://localhost:3001/api/upload/image', {
-            method: 'POST',
-            body: formData
+          // 創建元素記錄
+          const element = await API.elements.create({
+            name: file.name.replace(/\.[^/.]+$/, ''), // 移除副檔名
+            type: 'image',
+            url: uploadResult.url, // 使用 API 返回的完整 URL
+            fileName: uploadResult.filename,
+            fileSize: file.size,
+            mimeType: file.type
           });
 
-          if (!response.ok) {
-            throw new Error(`上傳 ${file.name} 失敗`);
-          }
-
-          const result = await response.json();
-
-          if (result.success) {
-            // 創建元素記錄
-            const element = await API.elements.create({
-              name: file.name.replace(/\.[^/.]+$/, ''), // 移除副檔名
-              type: 'image',
-              url: `http://localhost:3001${result.data.url}`,
-              fileName: result.data.originalName,
-              fileSize: result.data.size,
-              mimeType: result.data.mimetype
-            });
-
-            uploadedElements.push(element);
-          }
+          uploadedElements.push(element);
         } catch (fileError) {
           console.error(`上傳 ${file.name} 失敗:`, fileError);
           setError(`部分檔案上傳失敗: ${file.name}`);

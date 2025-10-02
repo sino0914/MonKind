@@ -146,6 +146,15 @@ const Editor = () => {
     }
   };
 
+  // 處理返回按鈕 - 添加確認提示
+  const handleNavigateBack = () => {
+    if (window.confirm("確定要離開編輯器嗎？未儲存的變更將會遺失。")) {
+      // 清除編輯資料
+      sessionStorage.removeItem('editingDesignData');
+      navigate(-1);
+    }
+  };
+
   // 準備傳遞給UniversalEditor的初始化資料
   const initialElements = isNewDesign ? [] : (editingData?.designData?.elements || []);
   const initialBackgroundColor = isNewDesign ? '#ffffff' : (editingData?.designData?.backgroundColor || '#ffffff');
@@ -163,7 +172,7 @@ const Editor = () => {
       product={product}
       loading={loading}
       error={error}
-      onNavigateBack={() => navigate(-1)}
+      onNavigateBack={handleNavigateBack}
       onAddToCart={handleAddToCart}
       showTemplateTools={true}
       // 傳入編輯中的設計資料

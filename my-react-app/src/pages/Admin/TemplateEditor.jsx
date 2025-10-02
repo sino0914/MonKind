@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { API } from "../../services/api";
 import UniversalEditor from "../../components/Editor/UniversalEditor";
@@ -176,6 +176,15 @@ const TemplateEditor = () => {
     setCurrentDesignState(designState);
   }, []);
 
+  // 使用 useMemo 穩定初始元素引用,避免無限循環
+  const memoizedInitialElements = useMemo(() => {
+    return template?.elements || [];
+  }, [template?.elements]);
+
+  const memoizedInitialBackgroundColor = useMemo(() => {
+    return template?.backgroundColor || '#ffffff';
+  }, [template?.backgroundColor]);
+
   // 建立版型工具列按鈕
   const templateToolbarRight = (
     <div className="flex items-center space-x-3">
@@ -247,6 +256,9 @@ const TemplateEditor = () => {
       title={`版型編輯器`}
       templateDescription={templateDescription}
       topToolbarRight={templateToolbarRight}
+      // 傳入現有版型的設計資料 (使用 memoized 值避免無限循環)
+      initialElements={memoizedInitialElements}
+      initialBackgroundColor={memoizedInitialBackgroundColor}
     />
   );
 };

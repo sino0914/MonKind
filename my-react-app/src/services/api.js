@@ -123,6 +123,9 @@ export const API = {
     update: (id, data) => HttpAPI.elements.update(id, data),
     delete: (id) => HttpAPI.elements.delete(id),
 
+    // 圖片上傳
+    uploadImage: (file) => HttpAPI.elements.uploadImage(file),
+
     // 批量操作（暫時使用簡單實現）
     batchDelete: async (ids) => {
       const results = [];

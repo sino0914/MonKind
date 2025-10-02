@@ -333,6 +333,10 @@ export const HttpAPI = {
   upload: {
     glb: (file) => httpApiService.uploadGLB(file),
     image: (file) => httpApiService.uploadImage(file),
+    editorImage: async (file) => {
+      const response = await httpApiService.uploadFile('/upload/editor-image', file, 'editorImage');
+      return response.data; // 返回 { url: '伺服器圖片 URL', filename: '檔名' }
+    },
     getFiles: (type) => httpApiService.getUploadedFiles(type),
     deleteFile: (type, filename) => httpApiService.deleteFile(type, filename),
     getStorageInfo: () => httpApiService.getStorageInfo(),
@@ -363,6 +367,11 @@ export const HttpAPI = {
     getStats: async () => {
       const response = await httpApiService.get('/elements/stats');
       return response.data;
+    },
+    // 上傳元素圖片
+    uploadImage: async (file) => {
+      const response = await httpApiService.uploadFile('/upload/element', file, 'element');
+      return response.data; // 返回 { url: '伺服器圖片 URL', filename: '檔名' }
     },
   },
 

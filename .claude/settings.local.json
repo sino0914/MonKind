@@ -11,7 +11,14 @@
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
       "Bash(npx eslint:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Read(//c/**)",
+      "Bash(python:*)",
+      "Bash(git checkout:*)",
+      "Bash(del \"C:\\WorkShop\\ClaudeCode\\MonKind\\refactor_script.py\")",
+      "Bash(echo \"Object.keys(localStorage).filter(k => k.startsWith(''draft_''))\")",
+      "Bash(echo:*)",
+      "Bash(dir \"C:\\WorkShop\\ClaudeCode\\MonKind\\my-react-app\\data\\uploads\\images\")"
     ],
     "deny": [],
     "ask": []
