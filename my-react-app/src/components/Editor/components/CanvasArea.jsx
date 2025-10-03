@@ -46,10 +46,12 @@ const CanvasArea = ({
 }) => {
   return (
     <div
-      className="w-80 h-80 border-2 border-gray-200 rounded-lg relative bg-white canvas-container"
+      className="border-2 border-gray-200 rounded-lg relative bg-white canvas-container"
       style={{
         overflow: "visible",
-        cursor: isHoveringImage ? 'none' : 'auto'
+        cursor: isHoveringImage ? 'none' : 'auto',
+        width: '400px',
+        height: '400px',
       }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

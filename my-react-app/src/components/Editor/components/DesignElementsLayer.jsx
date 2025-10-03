@@ -1,5 +1,6 @@
 import React from 'react';
 import TextEditingInput from './TextEditingInput';
+import { CANVAS_SIZE, DISPLAY_SIZE } from '../constants/editorConfig';
 
 /**
  * 設計元素圖層組件
@@ -94,7 +95,7 @@ const DesignElementsLayer = ({
                           {/* 文字內容 */}
                           <div
                             style={{
-                              fontSize: `${element.fontSize * (320 / 400)}px`,
+                              fontSize: `${element.fontSize * (DISPLAY_SIZE / CANVAS_SIZE)}px`,
                               color: element.color,
                               fontFamily: element.fontFamily,
                               fontWeight: element.fontWeight || "normal",
@@ -199,8 +200,8 @@ const DesignElementsLayer = ({
                 element.fontWeight,
                 element.fontStyle
               );
-              elementWidth = textWidth * (320 / 400);
-              elementHeight = element.fontSize * (320 / 400) * 1.5;
+              elementWidth = textWidth * (DISPLAY_SIZE / CANVAS_SIZE);
+              elementHeight = element.fontSize * (DISPLAY_SIZE / CANVAS_SIZE) * 1.5;
             }
 
             return (

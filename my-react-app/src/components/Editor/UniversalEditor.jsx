@@ -24,6 +24,9 @@ import {
   LayerPanel,
 } from "./components/ToolPanels";
 
+// Constants
+import { CANVAS_SIZE, DISPLAY_SIZE } from "./constants/editorConfig";
+
 // Utils
 import {
   calculateCenter,
@@ -132,9 +135,9 @@ const UniversalEditor = ({
     );
     if (!element) return 100;
 
-    const scaledFontSize = element.fontSize * (320 / 400);
+    const scaledFontSize = element.fontSize * (DISPLAY_SIZE / CANVAS_SIZE);
     const maxWidth = currentProduct?.printArea
-      ? (currentProduct.printArea.width / 400) * 320 * 0.8
+      ? (currentProduct.printArea.width / CANVAS_SIZE) * DISPLAY_SIZE * 0.8
       : 300;
 
     return calculateInputWidth(

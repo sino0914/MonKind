@@ -1,4 +1,5 @@
 import React from 'react';
+import { CANVAS_SIZE, DISPLAY_SIZE } from '../constants/editorConfig';
 
 /**
  * 文字編輯輸入框組件
@@ -30,10 +31,10 @@ const TextEditingInput = ({
       autoFocus
       className="absolute bg-white border-2 border-blue-500 p-1 pointer-events-auto z-40"
       style={{
-        left: `${(element.x / 400) * 100}%`,
-        top: `${(element.y / 400) * 100}%`,
+        left: `${(element.x / CANVAS_SIZE) * 100}%`,
+        top: `${(element.y / CANVAS_SIZE) * 100}%`,
         transform: "translate(-50%, -50%)",
-        fontSize: `${element.fontSize * (320 / 400)}px`,
+        fontSize: `${element.fontSize * (DISPLAY_SIZE / CANVAS_SIZE)}px`,
         color: element.color,
         fontFamily: element.fontFamily,
         fontWeight: element.fontWeight || "normal",
