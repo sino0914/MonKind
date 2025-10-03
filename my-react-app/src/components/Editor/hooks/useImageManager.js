@@ -101,7 +101,7 @@ const useImageManager = (editorState, imageReplace = null) => {
    * 將已上傳的圖片添加到畫布
    * @param {Object} image - 圖片對象
    */
-  const handleAddImageToCanvas = useCallback((image) => {
+  const handleAddImageToCanvas = useCallback(async (image) => {
     if (!image || !image.url) return;
 
     // 如果處於替換模式，執行替換
@@ -110,17 +110,52 @@ const useImageManager = (editorState, imageReplace = null) => {
       return;
     }
 
-    // 否則新增圖片
-    addElement({
-      id: `image-${Date.now()}`,
-      type: 'image',
-      url: image.url,
-      width: 100,
-      height: 100,
-      x: 150,
-      y: 150,
-      rotation: 0,
-      opacity: 1,
+    // 載入圖片獲取原始尺寸
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = image.url;
+
+    await new Promise((resolve) => {
+      img.onload = () => {
+        // 計算保持寬高比的尺寸（最大邊設為 100）
+        const maxSize = 100;
+        let width = img.naturalWidth;
+        let height = img.naturalHeight;
+
+        if (width > height) {
+          // 寬圖：寬度固定為 maxSize
+          height = (height / width) * maxSize;
+          width = maxSize;
+        } else {
+          // 高圖或正方形：高度固定為 maxSize
+          width = (width / height) * maxSize;
+          height = maxSize;
+        }
+
+        console.log('📐 圖片尺寸計算:', {
+          original: { width: img.naturalWidth, height: img.naturalHeight },
+          scaled: { width, height }
+        });
+
+        // 否則新增圖片（保持寬高比）
+        addElement({
+          id: `image-${Date.now()}`,
+          type: 'image',
+          url: image.url,
+          width,
+          height,
+          x: 150,
+          y: 150,
+          rotation: 0,
+          opacity: 1,
+        });
+        resolve();
+      };
+      img.onerror = () => {
+        console.error('圖片載入失敗:', image.url);
+        alert('圖片載入失敗，請重試');
+        resolve();
+      };
     });
   }, [addElement, imageReplace]);
 
@@ -160,7 +195,7 @@ const useImageManager = (editorState, imageReplace = null) => {
    * 從元素庫添加圖片到設計
    * @param {Object} element - 元素對象
    */
-  const addManagedElementToDesign = useCallback((element) => {
+  const addManagedElementToDesign = useCallback(async (element) => {
     if (!element || !element.url) return;
 
     // 如果處於替換模式，執行替換
@@ -169,17 +204,52 @@ const useImageManager = (editorState, imageReplace = null) => {
       return;
     }
 
-    // 否則新增圖片
-    addElement({
-      id: `image-${Date.now()}`,
-      type: 'image',
-      url: element.url,
-      width: 100,
-      height: 100,
-      x: 150,
-      y: 150,
-      rotation: 0,
-      opacity: 1,
+    // 載入圖片獲取原始尺寸
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = element.url;
+
+    await new Promise((resolve) => {
+      img.onload = () => {
+        // 計算保持寬高比的尺寸（最大邊設為 100）
+        const maxSize = 100;
+        let width = img.naturalWidth;
+        let height = img.naturalHeight;
+
+        if (width > height) {
+          // 寬圖：寬度固定為 maxSize
+          height = (height / width) * maxSize;
+          width = maxSize;
+        } else {
+          // 高圖或正方形：高度固定為 maxSize
+          width = (width / height) * maxSize;
+          height = maxSize;
+        }
+
+        console.log('📐 元素庫圖片尺寸計算:', {
+          original: { width: img.naturalWidth, height: img.naturalHeight },
+          scaled: { width, height }
+        });
+
+        // 否則新增圖片（保持寬高比）
+        addElement({
+          id: `image-${Date.now()}`,
+          type: 'image',
+          url: element.url,
+          width,
+          height,
+          x: 150,
+          y: 150,
+          rotation: 0,
+          opacity: 1,
+        });
+        resolve();
+      };
+      img.onerror = () => {
+        console.error('元素圖片載入失敗:', element.url);
+        alert('圖片載入失敗，請重試');
+        resolve();
+      };
     });
   }, [addElement, imageReplace]);
 
