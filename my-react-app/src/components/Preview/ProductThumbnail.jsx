@@ -12,7 +12,8 @@ const ProductThumbnail = ({
   width = 80,
   height = 80,
   className = '',
-  showElementCount = false
+  showElementCount = false,
+  snapshot3D = null // 新增：3D 快照
 }) => {
   if (!product) {
     return (
@@ -21,6 +22,34 @@ const ProductThumbnail = ({
         style={{ width, height }}
       >
         <span className="text-gray-500 text-xs">無圖</span>
+      </div>
+    );
+  }
+
+  // 如果是 3D 商品且有快照，優先顯示快照
+  if (product.type === '3D' && snapshot3D) {
+    // 判斷 snapshot3D 是 URL 還是 base64
+    const isUrl = typeof snapshot3D === 'string' && snapshot3D.startsWith('/');
+    const snapshotSrc = isUrl
+      ? `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3001'}${snapshot3D}`
+      : snapshot3D;
+
+    return (
+      <div
+        className={`relative overflow-hidden rounded ${className}`}
+        style={{ width, height }}
+      >
+        <img
+          src={snapshotSrc}
+          alt={product.title}
+          className="w-full h-full object-contain"
+        />
+        {/* 元素數量標示 */}
+        {showElementCount && designElements.length > 0 && (
+          <div className="absolute top-1 right-1 bg-blue-600 text-white text-xs px-1 py-0.5 rounded-full text-center leading-none">
+            {designElements.length}
+          </div>
+        )}
       </div>
     );
   }

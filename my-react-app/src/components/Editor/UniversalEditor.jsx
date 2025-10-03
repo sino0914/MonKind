@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { API } from "../../services/api";
@@ -11,6 +11,7 @@ import useImageManager from "./hooks/useImageManager";
 import useTemplateManager from "./hooks/useTemplateManager";
 import useLayerManager from "./hooks/useLayerManager";
 import useTextEditor from "./hooks/useTextEditor";
+import useImageReplace from "./hooks/useImageReplace";
 
 // Components
 import { ToolSidebar, TopToolbar, LoadingState, ErrorState } from "./components";
@@ -66,6 +67,7 @@ const UniversalEditor = ({
 
   // 草稿相關
   draftId = null, // 用於更新現有草稿的ID
+  isEditingFromCart = false, // 是否從購物車編輯
 
   // 狀態相關
   loading = false,
@@ -98,9 +100,17 @@ const UniversalEditor = ({
     initialWorkName
   );
 
+  // 使用圖片替換 Hook
+  const imageReplace = useImageReplace(editorState);
+
   // 使用其他 Hooks
-  const canvasInteraction = useCanvasInteraction(editorState, currentProduct);
-  const imageManager = useImageManager(editorState, currentProduct);
+  const imageManager = useImageManager(editorState, imageReplace);
+  const canvasInteraction = useCanvasInteraction(
+    editorState,
+    currentProduct,
+    imageReplace,
+    imageManager.draggingImageUrl
+  );
   const templateManager = useTemplateManager(
     currentProduct,
     mode,
@@ -255,10 +265,17 @@ const UniversalEditor = ({
     }
   }, [productId, product]);
 
-  // 鍵盤事件監聽器（Ctrl+C 和 Ctrl+V）
+  // 鍵盤事件監聽器（Ctrl+C、Ctrl+V、ESC）
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+        return;
+      }
+
+      // ESC 鍵取消替換模式
+      if (e.key === "Escape" && imageReplace.isReplacingImage) {
+        e.preventDefault();
+        imageReplace.cancelReplaceMode();
         return;
       }
 
@@ -277,23 +294,28 @@ const UniversalEditor = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [editorState.selectedElement, canvasInteraction.copiedElement]);
+  }, [
+    editorState.selectedElement,
+    canvasInteraction.copiedElement,
+    imageReplace.isReplacingImage,
+  ]);
 
   // 保存草稿
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     const defaultName = `${
       currentProduct?.title || "作品"
     } - ${new Date().toLocaleDateString("zh-TW")}`;
     const finalWorkName = editorState.workName.trim() || defaultName;
 
-    const result = saveDraft(
+    const result = await saveDraft(
       currentProduct?.id || productId,
       {
         elements: editorState.designElements,
         backgroundColor: editorState.backgroundColor,
         workName: finalWorkName,
       },
-      draftId
+      draftId,
+      currentProduct // 傳遞商品資料用於生成 3D 快照
     );
 
     console.log('儲存結果:', result);
@@ -314,23 +336,58 @@ const UniversalEditor = ({
   };
 
   // 加入購物車
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (onAddToCart) {
       onAddToCart({
         elements: editorState.designElements,
         backgroundColor: editorState.backgroundColor,
       });
     } else if (currentProduct) {
+      // 如果是 3D 商品，生成快照並上傳到伺服器
+      let snapshot3D = null;
+      const glbUrl = currentProduct?.glbUrl || currentProduct?.model3D?.glbUrl;
+      if (currentProduct.type === '3D' && glbUrl) {
+        try {
+          const { generate3DSnapshot } = await import('./utils/snapshot3D');
+          const snapshotBase64 = await generate3DSnapshot(
+            currentProduct,
+            editorState.designElements,
+            editorState.backgroundColor,
+            400,
+            400
+          );
+          console.log('✅ 購物車 3D 快照已生成');
+
+          // 上傳快照到伺服器
+          try {
+            const uploadResult = await API.upload.snapshot(snapshotBase64, currentProduct.id);
+            snapshot3D = uploadResult.url; // 儲存 URL 而非 base64
+            console.log('✅ 購物車快照已上傳到伺服器:', uploadResult.url);
+          } catch (uploadError) {
+            console.error('❌ 上傳快照失敗，使用 base64 儲存:', uploadError);
+            snapshot3D = snapshotBase64; // 失敗時回退到 base64
+          }
+        } catch (error) {
+          console.error('❌ 生成購物車 3D 快照失敗:', error);
+        }
+      }
+
+      // 只複製必要的商品欄位，排除 GLB 等大型資料
+      const { model3D, ...productWithoutModel } = currentProduct;
+
       const customProduct = {
-        ...currentProduct,
-        id: `custom_${Date.now()}`,
+        ...productWithoutModel,
+        id: `custom_${currentProduct.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        originalProductId: currentProduct.id, // 保存原始商品 ID
         title: `客製化 ${currentProduct.title}`,
         price: currentProduct.price + 50,
         isCustom: true,
+        type: currentProduct.type, // 保留類型
         designData: {
           elements: editorState.designElements,
           backgroundColor: editorState.backgroundColor,
         },
+        snapshot3D, // 添加快照（URL 或 base64）
       };
       addToCart(customProduct);
       alert("客製化商品已加入購物車！");
@@ -370,6 +427,26 @@ const UniversalEditor = ({
     };
     editorState.addElement(newTextElement);
   };
+
+  // 處理替換按鈕點擊
+  const handleReplaceClick = useCallback(() => {
+    if (imageReplace.isReplacingImage) {
+      // 如果已經在替換模式，則取消
+      imageReplace.cancelReplaceMode();
+    } else {
+      // 啟動替換模式
+      if (editorState.selectedElement && editorState.selectedElement.type === 'image') {
+        imageReplace.startReplaceMode(editorState.selectedElement.id);
+        // 自動切換到圖片工具面板
+        editorState.setSelectedTool('image');
+      }
+    }
+  }, [
+    imageReplace.isReplacingImage,
+    editorState.selectedElement,
+    imageReplace,
+    editorState,
+  ]);
 
   // 載入狀態
   if (currentLoading) {
@@ -419,6 +496,7 @@ const UniversalEditor = ({
         onSaveDraft={handleSaveDraft}
         onAddToCart={handleAddToCart}
         onTestOutput={handleTestOutput}
+        isEditingFromCart={isEditingFromCart}
       />
 
       <div className="flex-1 flex">
@@ -453,6 +531,9 @@ const UniversalEditor = ({
                     loadingElements={imageManager.loadingElements}
                     loadManagedElements={imageManager.loadManagedElements}
                     addManagedElementToDesign={imageManager.addManagedElementToDesign}
+                    handleDragStart={imageManager.handleDragStart}
+                    handleDragEnd={imageManager.handleDragEnd}
+                    isReplacingImage={imageReplace.isReplacingImage}
                   />
                 );
               case "text":
@@ -465,6 +546,9 @@ const UniversalEditor = ({
                     handleImageUpload={imageManager.handleImageUpload}
                     handleAddImageToCanvas={imageManager.handleAddImageToCanvas}
                     handleDeleteUploadedImage={imageManager.handleDeleteUploadedImage}
+                    handleDragStart={imageManager.handleDragStart}
+                    handleDragEnd={imageManager.handleDragEnd}
+                    isReplacingImage={imageReplace.isReplacingImage}
                   />
                 );
               case "background":
@@ -506,6 +590,11 @@ const UniversalEditor = ({
           setEditingContent={editorState.setEditingContent}
           showTextToolbar={editorState.showTextToolbar}
           draggedElement={canvasInteraction.draggedElement}
+          isReplacingImage={imageReplace.isReplacingImage}
+          replacingImageId={imageReplace.replacingImageId}
+          getDisplayUrl={imageReplace.getDisplayUrl}
+          onReplaceClick={handleReplaceClick}
+          isHoveringImage={canvasInteraction.isHoveringImage}
           handleMouseMove={canvasInteraction.handleMouseMove}
           handleMouseUp={canvasInteraction.handleMouseUp}
           handleCanvasClick={canvasInteraction.handleCanvasClick}
@@ -520,6 +609,8 @@ const UniversalEditor = ({
           handleColorChange={textEditor.handleColorChange}
           handleFontFamilyChange={textEditor.handleFontFamilyChange}
           handleCopyAndPaste={canvasInteraction.handleCopyAndPaste}
+          handleDragOver={canvasInteraction.handleDragOver}
+          handleDrop={canvasInteraction.handleDrop}
           measureTextWidth={textEditor.measureTextWidth}
           editingInputWidth={editingInputWidth}
           processedMockupImage={processedMockupImage}

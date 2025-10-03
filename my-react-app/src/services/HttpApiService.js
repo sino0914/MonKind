@@ -337,6 +337,13 @@ export const HttpAPI = {
       const response = await httpApiService.uploadFile('/upload/editor-image', file, 'editorImage');
       return response.data; // 返回 { url: '伺服器圖片 URL', filename: '檔名' }
     },
+    snapshot: async (base64Image, productId) => {
+      const response = await httpApiService.post('/upload/snapshot', {
+        base64Image,
+        productId
+      });
+      return response.data; // 返回 { url: '伺服器圖片 URL', filename: '檔名', sizeKB: '檔案大小' }
+    },
     getFiles: (type) => httpApiService.getUploadedFiles(type),
     deleteFile: (type, filename) => httpApiService.deleteFile(type, filename),
     getStorageInfo: () => httpApiService.getStorageInfo(),
@@ -372,6 +379,40 @@ export const HttpAPI = {
     uploadImage: async (file) => {
       const response = await httpApiService.uploadFile('/upload/element', file, 'element');
       return response.data; // 返回 { url: '伺服器圖片 URL', filename: '檔名' }
+    },
+  },
+
+  // 購物車相關 API
+  cart: {
+    // 獲取購物車
+    get: async () => {
+      const response = await httpApiService.get('/cart');
+      return response.cart || [];
+    },
+    // 更新整個購物車
+    update: async (cart) => {
+      const response = await httpApiService.post('/cart', { cart });
+      return response.cart || [];
+    },
+    // 添加商品
+    add: async (product) => {
+      const response = await httpApiService.post('/cart/add', { product });
+      return response.cart || [];
+    },
+    // 移除商品
+    remove: async (productId) => {
+      const response = await httpApiService.delete(`/cart/${productId}`);
+      return response.cart || [];
+    },
+    // 更新數量
+    updateQuantity: async (productId, quantity) => {
+      const response = await httpApiService.put(`/cart/${productId}`, { quantity });
+      return response.cart || [];
+    },
+    // 清空購物車
+    clear: async () => {
+      const response = await httpApiService.delete('/cart');
+      return response.cart || [];
     },
   },
 

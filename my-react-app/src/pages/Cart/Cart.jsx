@@ -29,6 +29,7 @@ const Cart = () => {
         cartItemId: item.id,
         originalProductId: item.originalProductId,
         designData: item.designData,
+        snapshot3D: item.snapshot3D, // 保存 3D 快照
         timestamp: Date.now()
       };
       console.log('💾 保存編輯資料到 sessionStorage:', editData);
@@ -81,6 +82,7 @@ const Cart = () => {
                           width={80}
                           height={80}
                           className=""
+                          snapshot3D={item.snapshot3D || null}
                         />
                       ) : (
                         <ProductThumbnail
@@ -99,14 +101,14 @@ const Cart = () => {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
+                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 select-none"
                       >
                         -
                       </button>
                       <span className="w-8 text-center">{item.quantity}</span>
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
+                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 select-none"
                       >
                         +
                       </button>

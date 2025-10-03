@@ -169,6 +169,22 @@ export const API = {
       };
     },
     importData: (data) => Promise.resolve({ success: true, imported: 0 })
+  },
+
+  // 購物車相關 API
+  cart: {
+    // 獲取購物車
+    get: () => HttpAPI.cart.get(),
+    // 更新整個購物車
+    update: (cart) => HttpAPI.cart.update(cart),
+    // 添加商品
+    add: (product) => HttpAPI.cart.add(product),
+    // 移除商品
+    remove: (productId) => HttpAPI.cart.remove(productId),
+    // 更新數量
+    updateQuantity: (productId, quantity) => HttpAPI.cart.updateQuantity(productId, quantity),
+    // 清空購物車
+    clear: () => HttpAPI.cart.clear(),
   }
 };
 

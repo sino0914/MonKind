@@ -22,6 +22,13 @@ const CanvasArea = ({
   setEditingContent,
   draggedElement,
 
+  // 圖片替換相關
+  isReplacingImage,
+  replacingImageId,
+  getDisplayUrl,
+  onReplaceClick,
+  isHoveringImage,
+
   // 事件處理函數
   handleMouseMove,
   handleMouseUp,
@@ -30,6 +37,8 @@ const CanvasArea = ({
   handleSelectElement,
   handleFinishTextEdit,
   handleDeleteElement,
+  handleDragOver,
+  handleDrop,
 
   // 測量函數
   measureTextWidth,
@@ -38,11 +47,16 @@ const CanvasArea = ({
   return (
     <div
       className="w-80 h-80 border-2 border-gray-200 rounded-lg relative bg-white canvas-container"
-      style={{ overflow: "visible" }}
+      style={{
+        overflow: "visible",
+        cursor: isHoveringImage ? 'none' : 'auto'
+      }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onClick={handleCanvasClick}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       {/* 產品背景 - 3D和2D產品使用不同顯示方式 */}
       {currentProduct.type === "3D" ? (
@@ -199,6 +213,9 @@ const CanvasArea = ({
             editingContent={editingContent}
             setEditingContent={setEditingContent}
             draggedElement={draggedElement}
+            isReplacingImage={isReplacingImage}
+            replacingImageId={replacingImageId}
+            getDisplayUrl={getDisplayUrl}
             handleMouseDown={handleMouseDown}
             handleSelectElement={handleSelectElement}
             handleFinishTextEdit={handleFinishTextEdit}

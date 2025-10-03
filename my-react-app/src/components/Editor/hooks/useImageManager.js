@@ -6,7 +6,7 @@ import { API } from '../../../services/api';
  * 圖片管理 Hook
  * 處理圖片上傳、管理已上傳圖片、從元素庫添加圖片
  */
-const useImageManager = (editorState) => {
+const useImageManager = (editorState, imageReplace = null) => {
   const { addElement } = editorState;
 
   // 已上傳圖片列表
@@ -17,6 +17,8 @@ const useImageManager = (editorState) => {
   const [managedElements, setManagedElements] = useState([]);
   // 載入元素中狀態
   const [loadingElements, setLoadingElements] = useState(false);
+  // 拖曳中的圖片 URL
+  const [draggingImageUrl, setDraggingImageUrl] = useState(null);
 
   // 初始化：從伺服器載入已上傳的圖片列表
   useEffect(() => {
@@ -102,6 +104,13 @@ const useImageManager = (editorState) => {
   const handleAddImageToCanvas = useCallback((image) => {
     if (!image || !image.url) return;
 
+    // 如果處於替換模式，執行替換
+    if (imageReplace?.isReplacingImage) {
+      imageReplace.executeReplace(image.url);
+      return;
+    }
+
+    // 否則新增圖片
     addElement({
       id: `image-${Date.now()}`,
       type: 'image',
@@ -113,7 +122,7 @@ const useImageManager = (editorState) => {
       rotation: 0,
       opacity: 1,
     });
-  }, [addElement]);
+  }, [addElement, imageReplace]);
 
   /**
    * 刪除已上傳的圖片
@@ -154,6 +163,13 @@ const useImageManager = (editorState) => {
   const addManagedElementToDesign = useCallback((element) => {
     if (!element || !element.url) return;
 
+    // 如果處於替換模式，執行替換
+    if (imageReplace?.isReplacingImage) {
+      imageReplace.executeReplace(element.url);
+      return;
+    }
+
+    // 否則新增圖片
     addElement({
       id: `image-${Date.now()}`,
       type: 'image',
@@ -165,7 +181,7 @@ const useImageManager = (editorState) => {
       rotation: 0,
       opacity: 1,
     });
-  }, [addElement]);
+  }, [addElement, imageReplace]);
 
   /**
    * 載入管理的元素（從元素庫）
@@ -188,16 +204,37 @@ const useImageManager = (editorState) => {
     loadManagedElements();
   }, [loadManagedElements]);
 
+  /**
+   * 拖曳開始
+   * @param {string} imageUrl - 圖片 URL
+   */
+  const handleDragStart = useCallback((imageUrl) => {
+    setDraggingImageUrl(imageUrl);
+  }, []);
+
+  /**
+   * 拖曳結束
+   */
+  const handleDragEnd = useCallback(() => {
+    setDraggingImageUrl(null);
+    if (imageReplace) {
+      imageReplace.clearPreview();
+    }
+  }, [imageReplace]);
+
   return {
     uploadedImages,
     isUploading,
     managedElements,
     loadingElements,
+    draggingImageUrl,
     handleImageUpload,
     handleAddImageToCanvas,
     handleDeleteUploadedImage,
     addManagedElementToDesign,
     loadManagedElements,
+    handleDragStart,
+    handleDragEnd,
   };
 };
 

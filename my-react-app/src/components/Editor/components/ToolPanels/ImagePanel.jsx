@@ -11,9 +11,27 @@ const ImagePanel = ({
   handleImageUpload,
   handleAddImageToCanvas,
   handleDeleteUploadedImage,
+  handleDragStart,
+  handleDragEnd,
+  isReplacingImage,
 }) => {
   return (
     <div className="space-y-4">
+      {/* 替換模式提示 */}
+      {isReplacingImage && (
+        <div className="bg-blue-50 border border-blue-300 rounded-lg p-3 mb-2">
+          <div className="flex items-center gap-2 text-blue-800">
+            <span className="text-lg">🔄</span>
+            <div className="flex-1">
+              <div className="text-sm font-medium">替換模式已啟用</div>
+              <div className="text-xs text-blue-600 mt-0.5">
+                點擊圖片以替換選取的元素
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 圖片上傳區 */}
       <div>
         <input
@@ -63,13 +81,25 @@ const ImagePanel = ({
               <div key={image.id} className="relative group">
                 <button
                   onClick={() => handleAddImageToCanvas(image)}
-                  className="aspect-square bg-gray-100 rounded border hover:border-blue-400 transition-colors overflow-hidden w-full"
+                  draggable={handleDragStart ? true : false}
+                  onDragStart={(e) => {
+                    if (handleDragStart) {
+                      e.dataTransfer.effectAllowed = 'copy';
+                      handleDragStart(image.url);
+                    }
+                  }}
+                  onDragEnd={() => {
+                    if (handleDragEnd) {
+                      handleDragEnd();
+                    }
+                  }}
+                  className="aspect-square bg-gray-100 rounded border hover:border-blue-400 transition-colors overflow-hidden w-full cursor-pointer"
                   title={`點擊添加到畫布 - ${image.name}`}
                 >
                   <img
                     src={image.url}
                     alt={image.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover pointer-events-none"
                   />
                 </button>
 
@@ -121,6 +151,9 @@ ImagePanel.propTypes = {
   handleImageUpload: PropTypes.func.isRequired,
   handleAddImageToCanvas: PropTypes.func.isRequired,
   handleDeleteUploadedImage: PropTypes.func.isRequired,
+  handleDragStart: PropTypes.func,
+  handleDragEnd: PropTypes.func,
+  isReplacingImage: PropTypes.bool,
 };
 
 export default ImagePanel;

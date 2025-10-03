@@ -11,7 +11,7 @@ const Footer = () => {
               <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
                 <span className="text-white font-bold text-lg">M</span>
               </div>
-              <span className="text-xl font-bold">MonKind</span>
+              <span className="text-xl font-bold">小怪禮</span>
             </div>
             <p className="text-gray-300 mb-4">
               專業的客製化商品製作平台，讓您的創意變成實體商品。

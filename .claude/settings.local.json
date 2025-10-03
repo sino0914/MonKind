@@ -18,7 +18,9 @@
       "Bash(del \"C:\\WorkShop\\ClaudeCode\\MonKind\\refactor_script.py\")",
       "Bash(echo \"Object.keys(localStorage).filter(k => k.startsWith(''draft_''))\")",
       "Bash(echo:*)",
-      "Bash(dir \"C:\\WorkShop\\ClaudeCode\\MonKind\\my-react-app\\data\\uploads\\images\")"
+      "Bash(dir \"C:\\WorkShop\\ClaudeCode\\MonKind\\my-react-app\\data\\uploads\\images\")",
+      "Bash(cat:*)",
+      "Bash(del check-product.js)"
     ],
     "deny": [],
     "ask": []

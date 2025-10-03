@@ -1,5 +1,8 @@
 // LocalStorage 操作工具
 
+import { generate3DSnapshot } from './snapshot3D';
+import { API } from '../../../services/api';
+
 const STORAGE_KEYS = {
   UPLOADED_IMAGES: 'editor_uploaded_images',
   DRAFT_PREFIX: 'draft_',
@@ -98,7 +101,7 @@ const restoreElementsFromStorage = (elements) => {
 };
 
 // 儲存草稿
-export const saveDraft = (productId, designData, draftId = null) => {
+export const saveDraft = async (productId, designData, draftId = null, product = null) => {
   const { elements, backgroundColor, workName } = designData;
 
   // 優化元素儲存
@@ -111,6 +114,45 @@ export const saveDraft = (productId, designData, draftId = null) => {
     backgroundColor,
     name: workName,
   };
+
+  // 如果是 3D 商品，生成快照並上傳到伺服器
+  const glbUrl = product?.glbUrl || product?.model3D?.glbUrl;
+  console.log('🔍 檢查商品類型:', product?.type, '是否有 GLB:', !!glbUrl);
+  if (product && product.type === '3D' && glbUrl) {
+    console.log('🎨 正在生成 3D 預覽快照...', {
+      productId: product.id,
+      productTitle: product.title,
+      elementsCount: elements.length
+    });
+    try {
+      const snapshot = await generate3DSnapshot(
+        product,
+        elements, // 使用原始元素，不是優化後的
+        backgroundColor,
+        400,
+        400
+      );
+      if (snapshot) {
+        console.log('✅ 3D 快照已生成，大小:', (snapshot.length / 1024).toFixed(2), 'KB');
+
+        // 上傳快照到伺服器
+        try {
+          const uploadResult = await API.upload.snapshot(snapshot, productId);
+          draft.snapshot3D = uploadResult.url; // 儲存 URL 而非 base64
+          console.log('✅ 快照已上傳到伺服器:', uploadResult.url, '檔案大小:', uploadResult.sizeKB, 'KB');
+        } catch (uploadError) {
+          console.error('❌ 上傳快照失敗，使用 base64 儲存:', uploadError);
+          draft.snapshot3D = snapshot; // 失敗時回退到 base64
+        }
+      } else {
+        console.warn('⚠️ 生成的快照為 null');
+      }
+    } catch (error) {
+      console.error('❌ 生成 3D 快照失敗，但草稿仍會儲存:', error);
+    }
+  } else {
+    console.log('⏭️ 跳過 3D 快照生成（非 3D 商品或缺少 GLB）');
+  }
 
   try {
     const draftString = JSON.stringify(draft);

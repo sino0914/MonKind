@@ -6,7 +6,7 @@ import PropTypes from 'prop-types';
  * 包含撤銷、重做、測試輸出、儲存、加入購物車等按鈕
  * 僅在 product 模式下顯示
  */
-const ToolbarActions = ({ mode, onSaveDraft, onAddToCart, onTestOutput }) => {
+const ToolbarActions = ({ mode, onSaveDraft, onAddToCart, onTestOutput, isEditingFromCart = false }) => {
   // 版型模式不顯示預設按鈕
   if (mode !== 'product') {
     return null;
@@ -39,7 +39,7 @@ const ToolbarActions = ({ mode, onSaveDraft, onAddToCart, onTestOutput }) => {
         onClick={onAddToCart}
         className="px-4 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
       >
-        🛒 加入購物車
+        {isEditingFromCart ? '🔄 更新購物車' : '🛒 加入購物車'}
       </button>
     </div>
   );

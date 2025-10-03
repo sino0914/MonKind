@@ -83,6 +83,7 @@ const MyWorks = () => {
         backgroundColor: draft.backgroundColor || '#ffffff'
       },
       workName: draft.name || '', // 傳遞作品名稱
+      snapshot3D: draft.snapshot3D, // 傳遞 3D 快照
       timestamp: Date.now()
     };
     sessionStorage.setItem('editingDesignData', JSON.stringify(editData));
@@ -100,17 +101,23 @@ const MyWorks = () => {
   // 加入購物車
   const handleAddToCart = (draft) => {
     if (draft.elements && draft.elements.length > 0) {
+      // 只複製必要的商品欄位，排除 GLB 等大型資料
+      const { model3D, ...productWithoutModel } = draft.product;
+
       const customProduct = {
-        ...draft.product,
-        id: `custom_${Date.now()}`,
+        ...productWithoutModel,
+        id: `custom_${draft.product.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         originalProductId: draft.product.id,
         title: `客製化 ${draft.product.title}`,
         price: draft.product.price + 50,
         isCustom: true,
+        type: draft.product.type, // 保留類型（用於判斷是否為 3D）
         designData: {
-          elements: draft.elements,
+          elements: draft.elements, // 保留完整的設計元素（包括圖片）
           backgroundColor: draft.backgroundColor || '#ffffff'
-        }
+        },
+        // 保留 3D 快照用於顯示（如果有）
+        snapshot3D: draft.snapshot3D
       };
       addToCart(customProduct);
       alert('已加入購物車！');
@@ -218,6 +225,7 @@ const MyWorks = () => {
                     height={160}
                     showElementCount={true}
                     className="shadow-sm"
+                    snapshot3D={draft.snapshot3D || null}
                   />
                 </div>
 

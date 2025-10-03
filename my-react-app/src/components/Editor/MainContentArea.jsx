@@ -22,6 +22,15 @@ const MainContentArea = ({
   // 拖曳相關
   draggedElement,
 
+  // 圖片替換相關
+  isReplacingImage,
+  replacingImageId,
+  getDisplayUrl,
+  onReplaceClick,
+  isHoveringImage,
+  handleDragOver,
+  handleDrop,
+
   // 事件處理函數
   handleMouseMove,
   handleMouseUp,
@@ -63,6 +72,11 @@ const MainContentArea = ({
                 editingContent={editingContent}
                 setEditingContent={setEditingContent}
                 draggedElement={draggedElement}
+                isReplacingImage={isReplacingImage}
+                replacingImageId={replacingImageId}
+                getDisplayUrl={getDisplayUrl}
+                onReplaceClick={onReplaceClick}
+                isHoveringImage={isHoveringImage}
                 handleMouseMove={handleMouseMove}
                 handleMouseUp={handleMouseUp}
                 handleCanvasClick={handleCanvasClick}
@@ -70,6 +84,8 @@ const MainContentArea = ({
                 handleSelectElement={handleSelectElement}
                 handleFinishTextEdit={handleFinishTextEdit}
                 handleDeleteElement={handleDeleteElement}
+                handleDragOver={handleDragOver}
+                handleDrop={handleDrop}
                 measureTextWidth={measureTextWidth}
                 editingInputWidth={editingInputWidth}
               />
@@ -124,7 +140,7 @@ const MainContentArea = ({
                       <div key={`image-toolbar-${element.id}`}>
                         {/* 圖片工具列 */}
                         <div
-                          className="absolute bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 pointer-events-auto"
+                          className="absolute bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 pointer-events-auto whitespace-nowrap"
                           style={{
                             left: `${(element.x / 400) * 100}%`,
                             top: `${(element.y / 400) * 100}%`,
@@ -133,13 +149,26 @@ const MainContentArea = ({
                             zIndex: 1000,
                           }}
                         >
+                          {/* 替換按鈕 */}
+                          <button
+                            onClick={onReplaceClick}
+                            className={`px-2 py-1 text-xs rounded transition-all ${
+                              isReplacingImage
+                                ? 'bg-blue-500 hover:bg-blue-600'
+                                : 'bg-gray-600 hover:bg-gray-700'
+                            }`}
+                            title={isReplacingImage ? '取消替換模式' : '替換圖片'}
+                          >
+                            🔄替換
+                          </button>
+
                           {/* 複製並貼上按鈕 */}
                           <button
                             onClick={handleCopyAndPaste}
                             className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
                             title="複製並貼上"
                           >
-                            📋
+                            📋複製
                           </button>
                         </div>
                       </div>
@@ -186,8 +215,8 @@ const MainContentArea = ({
                   productId={currentProduct.id}
                   designElements={designElements}
                   backgroundColor={backgroundColor}
-                  width={320}
-                  height={320}
+                  width={440}
+                  height={440}
                 />
               </div>
             </div>

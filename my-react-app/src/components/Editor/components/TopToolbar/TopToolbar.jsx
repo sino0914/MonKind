@@ -25,6 +25,7 @@ const TopToolbar = ({
   onSaveDraft,
   onAddToCart,
   onTestOutput,
+  isEditingFromCart = false,
 }) => {
   const navigate = useNavigate();
 
@@ -76,6 +77,7 @@ const TopToolbar = ({
       onSaveDraft={onSaveDraft}
       onAddToCart={onAddToCart}
       onTestOutput={onTestOutput}
+      isEditingFromCart={isEditingFromCart}
     />
   );
 

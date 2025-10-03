@@ -139,10 +139,10 @@ const TextToolbar = ({
       {/* 複製並貼上按鈕 */}
       <button
         onClick={onCopyAndPaste}
-        className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
+        className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded whitespace-nowrap"
         title="複製並貼上"
       >
-        📋
+        📋複製
       </button>
     </div>
   );

@@ -1,18 +1,19 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { validatePrintArea } from '../utils/validationUtils';
 import { MIN_ELEMENT_SIZE } from '../constants/editorConfig';
 
 /**
  * 畫布交互邏輯 Hook
- * 處理拖曳、縮放、旋轉
+ * 處理拖曳、縮放、旋轉、圖片替換拖曳預覽
  */
-const useCanvasInteraction = (editorState, currentProduct) => {
+const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, draggingImageUrl = null) => {
   const {
     draggedElement,
     dragOffset,
     resizeHandle,
     selectedElement,
     copiedElement,
+    designElements,
     setResizeHandle,
     updateElement,
     startDrag,
@@ -22,6 +23,9 @@ const useCanvasInteraction = (editorState, currentProduct) => {
     copyElement,
     pasteElement,
   } = editorState;
+
+  // 追蹤是否懸停在圖片元素上
+  const [isHoveringImage, setIsHoveringImage] = useState(false);
 
   // 處理滑鼠按下
   const handleMouseDown = useCallback((e, element, handle = null) => {
@@ -169,6 +173,150 @@ const useCanvasInteraction = (editorState, currentProduct) => {
     }
   }, [selectedElement, editorState]);
 
+  /**
+   * 檢測滑鼠位置是否在圖片元素內（考慮旋轉）
+   * @param {number} mouseX - 滑鼠 X 座標（畫布座標系）
+   * @param {number} mouseY - 滑鼠 Y 座標（畫布座標系）
+   * @param {object} element - 圖片元素
+   * @returns {boolean} - 是否在元素內
+   */
+  const isMouseOverElement = useCallback((mouseX, mouseY, element) => {
+    if (element.type !== 'image') return false;
+
+    const { x, y, width, height, rotation = 0 } = element;
+
+    // 將滑鼠座標轉換到元素的本地座標系（考慮旋轉）
+    const rad = (-rotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    const dx = mouseX - x;
+    const dy = mouseY - y;
+
+    const localX = dx * cos - dy * sin;
+    const localY = dx * sin + dy * cos;
+
+    // 檢查是否在邊界框內
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    return (
+      localX >= -halfWidth &&
+      localX <= halfWidth &&
+      localY >= -halfHeight &&
+      localY <= halfHeight
+    );
+  }, []);
+
+  /**
+   * 拖曳懸停檢測（用於圖片替換預覽）
+   * @param {Event} e - 拖曳事件
+   */
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+
+    // 如果沒有拖曳圖片，直接返回
+    if (!draggingImageUrl) {
+      setIsHoveringImage(false);
+      return;
+    }
+
+    const canvasRect = e.currentTarget.getBoundingClientRect();
+    const canvasWidth = canvasRect.width;
+    const canvasHeight = canvasRect.height;
+
+    const relativeX = e.clientX - canvasRect.left;
+    const relativeY = e.clientY - canvasRect.top;
+
+    const canvasX = (relativeX / canvasWidth) * 400;
+    const canvasY = (relativeY / canvasHeight) * 400;
+
+    // 找到滑鼠懸停的圖片元素（從後往前找，優先選擇 z-index 較高的）
+    let hoveredImageElement = null;
+    for (let i = designElements.length - 1; i >= 0; i--) {
+      const element = designElements[i];
+      if (isMouseOverElement(canvasX, canvasY, element)) {
+        hoveredImageElement = element;
+        break;
+      }
+    }
+
+    if (hoveredImageElement) {
+      // 設置預覽
+      if (imageReplace) {
+        imageReplace.setPreview(hoveredImageElement.id, draggingImageUrl);
+      }
+      setIsHoveringImage(true);
+    } else {
+      // 清除預覽
+      if (imageReplace) {
+        imageReplace.clearPreview();
+      }
+      setIsHoveringImage(false);
+    }
+  }, [draggingImageUrl, imageReplace, designElements, isMouseOverElement]);
+
+  /**
+   * 拖曳放下（用於圖片替換或新增）
+   * @param {Event} e - 放下事件
+   */
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+
+    if (!draggingImageUrl) return;
+
+    const canvasRect = e.currentTarget.getBoundingClientRect();
+    const canvasWidth = canvasRect.width;
+    const canvasHeight = canvasRect.height;
+
+    const relativeX = e.clientX - canvasRect.left;
+    const relativeY = e.clientY - canvasRect.top;
+
+    const canvasX = (relativeX / canvasWidth) * 400;
+    const canvasY = (relativeY / canvasHeight) * 400;
+
+    // 找到放下位置的圖片元素
+    let targetImageElement = null;
+    for (let i = designElements.length - 1; i >= 0; i--) {
+      const element = designElements[i];
+      if (isMouseOverElement(canvasX, canvasY, element)) {
+        targetImageElement = element;
+        break;
+      }
+    }
+
+    if (targetImageElement && imageReplace) {
+      // 替換圖片
+      updateElement(targetImageElement.id, { url: draggingImageUrl });
+    } else {
+      // 新增圖片到畫布
+      editorState.addElement({
+        id: `image-${Date.now()}`,
+        type: 'image',
+        url: draggingImageUrl,
+        width: 100,
+        height: 100,
+        x: canvasX,
+        y: canvasY,
+        rotation: 0,
+        opacity: 1,
+      });
+    }
+
+    // 清除預覽
+    if (imageReplace) {
+      imageReplace.clearPreview();
+    }
+    setIsHoveringImage(false);
+  }, [draggingImageUrl, imageReplace, designElements, isMouseOverElement, updateElement, editorState]);
+
+  // 當拖曳結束時重置懸停狀態
+  useEffect(() => {
+    if (!draggingImageUrl) {
+      setIsHoveringImage(false);
+    }
+  }, [draggingImageUrl]);
+
   return {
     handleMouseDown,
     handleMouseMove,
@@ -177,8 +325,11 @@ const useCanvasInteraction = (editorState, currentProduct) => {
     handleCopyElement,
     handlePasteElement,
     handleCopyAndPaste,
+    handleDragOver,
+    handleDrop,
     copiedElement,
     draggedElement,
+    isHoveringImage,
   };
 };
 

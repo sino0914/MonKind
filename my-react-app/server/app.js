@@ -12,6 +12,7 @@ const userRoutes = require('./routes/users');
 const templateRoutes = require('./routes/templates');
 const uploadRoutes = require('./routes/upload');
 const elementRoutes = require('./routes/elements');
+const cartRoutes = require('./routes/cart');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -68,6 +69,9 @@ const initializeData = async () => {
     // 初始化元素數據
     await initDataFile('elements.json', []);
 
+    // 初始化購物車數據
+    await initDataFile('carts.json', {});
+
     console.log('✅ 數據文件初始化完成');
   } catch (error) {
     console.error('❌ 數據文件初始化失敗:', error);
@@ -97,6 +101,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/elements', elementRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

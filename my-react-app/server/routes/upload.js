@@ -221,6 +221,72 @@ router.post('/editor-image', upload.single('editorImage'), async (req, res) => {
   }
 });
 
+// POST /api/upload/snapshot - 上傳 3D 快照（接收 base64）
+router.post('/snapshot', async (req, res) => {
+  try {
+    const { base64Image, productId } = req.body;
+
+    if (!base64Image) {
+      return res.status(400).json({
+        success: false,
+        message: '沒有接收到快照資料'
+      });
+    }
+
+    // 解析 base64（移除 data:image/... 前綴）
+    const matches = base64Image.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({
+        success: false,
+        message: '無效的 base64 圖片格式'
+      });
+    }
+
+    const imageType = matches[1];
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // 建立 snapshots 資料夾
+    const snapshotsDir = path.join(uploadsDir, 'snapshots');
+    await fs.ensureDir(snapshotsDir);
+
+    // 生成唯一檔名
+    const filename = `${uuidv4()}.jpg`;
+    const filePath = path.join(snapshotsDir, filename);
+
+    // 儲存圖片
+    await fs.writeFile(filePath, buffer);
+
+    const fileSize = buffer.length;
+    const url = `/uploads/snapshots/${filename}`;
+
+    console.log('✅ 3D 快照已儲存:', {
+      filename,
+      size: (fileSize / 1024).toFixed(2) + ' KB',
+      productId
+    });
+
+    res.json({
+      success: true,
+      message: '快照上傳成功',
+      data: {
+        filename,
+        size: fileSize,
+        sizeKB: (fileSize / 1024).toFixed(2),
+        url,
+        uploadedAt: new Date().toISOString(),
+        productId
+      }
+    });
+  } catch (error) {
+    console.error('快照上傳失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '快照上傳失敗'
+    });
+  }
+});
+
 // POST /api/upload/multiple - 批量上傳文件
 router.post('/multiple', upload.array('files', 5), async (req, res) => {
   try {

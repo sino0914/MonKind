@@ -20,6 +20,11 @@ const DesignElementsLayer = ({
   setEditingContent,
   draggedElement,
 
+  // 圖片替換相關
+  isReplacingImage,
+  replacingImageId,
+  getDisplayUrl,
+
   // 事件處理函數
   handleMouseDown,
   handleSelectElement,
@@ -109,6 +114,9 @@ const DesignElementsLayer = ({
                     </div>
                   );
                 } else if (element.type === "image") {
+                  // 使用 getDisplayUrl 獲取實際顯示的 URL（考慮預覽狀態）
+                  const displayUrl = getDisplayUrl ? getDisplayUrl(element) : element.url;
+
                   return (
                     <div
                       key={element.id}
@@ -125,7 +133,7 @@ const DesignElementsLayer = ({
                     >
                       {/* 圖片內容 */}
                       <img
-                        src={element.url}
+                        src={displayUrl}
                         alt="設計圖片"
                         className="w-full h-full object-contain pointer-events-none"
                         style={{
@@ -151,6 +159,18 @@ const DesignElementsLayer = ({
                           }
                         }}
                       />
+
+                      {/* 替換模式提示 */}
+                      {isReplacingImage && replacingImageId === element.id && (
+                        <div
+                          className="absolute inset-0 flex items-center justify-center bg-blue-500 bg-opacity-20 border-2 border-blue-500 border-dashed rounded pointer-events-none"
+                          style={{
+                            transform: `rotate(${element.rotation || 0}deg)`,
+                          }}
+                        >
+                          <div className="text-4xl">🔄</div>
+                        </div>
+                      )}
                     </div>
                   );
                 }

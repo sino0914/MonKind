@@ -105,18 +105,53 @@ const Editor = () => {
     }
   }, [id, searchParams]);
 
-  const handleAddToCart = (designData) => {
+  const handleAddToCart = async (designData) => {
     if (product) {
-      if (isEditingExisting && editingData) {
+      // 只有當 cartItemId 存在時，才是真正從購物車編輯
+      if (isEditingExisting && editingData && editingData.cartItemId) {
+        // 生成 3D 快照並上傳到伺服器（如果是 3D 商品）
+        let snapshot3D = editingData.snapshot3D; // 保留原有快照
+        const glbUrl = product?.glbUrl || product?.model3D?.glbUrl;
+        if (product.type === '3D' && glbUrl) {
+          try {
+            const { generate3DSnapshot } = await import('../../components/Editor/utils/snapshot3D');
+            const snapshotBase64 = await generate3DSnapshot(
+              product,
+              designData.elements,
+              designData.backgroundColor,
+              400,
+              400
+            );
+            console.log('✅ 更新購物車時已重新生成 3D 快照');
+
+            // 上傳快照到伺服器
+            try {
+              const uploadResult = await API.upload.snapshot(snapshotBase64, product.id);
+              snapshot3D = uploadResult.url; // 儲存 URL 而非 base64
+              console.log('✅ 購物車更新快照已上傳到伺服器:', uploadResult.url);
+            } catch (uploadError) {
+              console.error('❌ 上傳快照失敗，使用 base64 儲存:', uploadError);
+              snapshot3D = snapshotBase64; // 失敗時回退到 base64
+            }
+          } catch (error) {
+            console.error('❌ 生成 3D 快照失敗:', error);
+          }
+        }
+
+        // 排除 model3D 以避免儲存大型 GLB 資料
+        const { model3D, ...productWithoutModel } = product;
+
         // 如果是編輯現有商品，更新購物車中的該項目
         const updatedProduct = {
-          ...product,
+          ...productWithoutModel,
           id: editingData.cartItemId,
           originalProductId: product.id,
           title: `客製化 ${product.title}`,
           price: product.price + 50,
           isCustom: true,
-          designData // 更新設計資料
+          type: product.type, // 保留類型
+          designData, // 更新設計資料
+          snapshot3D // 更新快照
         };
 
         // 先移除舊的項目，然後加入更新的項目
@@ -130,16 +165,42 @@ const Editor = () => {
         alert("客製化商品已更新！");
       } else {
         // 新建客製化商品
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substr(2, 9);
+        const uniqueId = editingData?.draftId
+          ? `custom_${product.id}_${editingData.draftId}_${timestamp}_${randomStr}`
+          : `custom_${product.id}_${timestamp}_${randomStr}`;
+
+        console.log('🆔 生成購物車商品 ID:', {
+          productId: product.id,
+          draftId: editingData?.draftId,
+          timestamp,
+          randomStr,
+          finalId: uniqueId
+        });
+
         const customProduct = {
           ...product,
-          id: `custom_${Date.now()}`,
+          id: uniqueId,
           originalProductId: product.id, // 保存原始產品ID
           title: `客製化 ${product.title}`,
           price: product.price + 50, // 客製化加價
           isCustom: true,
-          designData // 包含設計資料
+          designData, // 包含設計資料
+          snapshot3D: editingData?.snapshot3D // 包含 3D 快照（如果有）
         };
-        addToCart(customProduct);
+
+        // 排除 model3D 以避免儲存大型 GLB 資料
+        const { model3D, ...productWithoutModel } = product;
+        const optimizedProduct = {
+          ...customProduct,
+          ...productWithoutModel,
+          id: customProduct.id, // 保留生成的唯一 ID
+          type: product.type // 保留類型
+        };
+
+        console.log('🛒 準備加入購物車的商品:', optimizedProduct);
+        addToCart(optimizedProduct);
         navigate("/cart");
         alert("客製化商品成功加入購物車！");
       }
@@ -159,12 +220,14 @@ const Editor = () => {
   const initialElements = isNewDesign ? [] : (editingData?.designData?.elements || []);
   const initialBackgroundColor = isNewDesign ? '#ffffff' : (editingData?.designData?.backgroundColor || '#ffffff');
   const initialWorkName = isNewDesign ? '' : (editingData?.workName || '');
+  const isEditingFromCart = !!(editingData?.cartItemId); // 判斷是否從購物車編輯
 
   console.log('📤 傳遞給 UniversalEditor 的資料:');
   console.log('- initialElements:', initialElements);
   console.log('- initialBackgroundColor:', initialBackgroundColor);
   console.log('- initialWorkName:', initialWorkName);
   console.log('- isEditingExisting:', isEditingExisting);
+  console.log('- isEditingFromCart:', isEditingFromCart);
 
   return (
     <UniversalEditor
@@ -181,6 +244,8 @@ const Editor = () => {
       initialWorkName={initialWorkName}
       // 傳遞草稿ID用於更新現有草稿
       draftId={editingData?.draftId}
+      // 傳遞是否從購物車編輯的標記
+      isEditingFromCart={isEditingFromCart}
     />
   );
 };
