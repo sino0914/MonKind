@@ -183,6 +183,11 @@ const useImageManager = (editorState) => {
     }
   }, []);
 
+  // 初始化時自動載入元素
+  useEffect(() => {
+    loadManagedElements();
+  }, [loadManagedElements]);
+
   return {
     uploadedImages,
     isUploading,
