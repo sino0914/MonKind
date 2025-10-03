@@ -3,14 +3,25 @@ import PropTypes from 'prop-types';
 
 /**
  * 頂部工具列操作按鈕組件
- * 包含撤銷、重做、測試輸出、儲存、加入購物車等按鈕
+ * 包含撤銷、重做、顯示全圖、測試輸出、儲存、加入購物車等按鈕
  * 僅在 product 模式下顯示
  */
-const ToolbarActions = ({ mode, onSaveDraft, onAddToCart, onTestOutput, isEditingFromCart = false }) => {
+const ToolbarActions = ({
+  mode,
+  onSaveDraft,
+  onAddToCart,
+  onTestOutput,
+  isEditingFromCart = false,
+  onResetView,
+  currentZoom = 1.0,
+}) => {
   // 版型模式不顯示預設按鈕
   if (mode !== 'product') {
     return null;
   }
+
+  // 計算縮放百分比
+  const zoomPercentage = Math.round(currentZoom * 100);
 
   return (
     <div className="flex items-center space-x-3">

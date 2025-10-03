@@ -53,6 +53,9 @@ const MainContentArea = ({
 
   // 處理後的底圖
   processedMockupImage,
+
+  // 視窗控制
+  viewport,
 }) => {
   return (
     <div className="flex-1 flex">
@@ -60,6 +63,21 @@ const MainContentArea = ({
       <div className="flex-1 bg-gray-50 p-8">
         <div className="h-full flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-xl p-8 overflow-visible">
+            {/* 顯示全圖按鈕 - 放在 Canvas 上方 */}
+            {viewport && (
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm text-gray-500">
+                  {Math.round(viewport.zoom * 100)}%
+                </div>
+                <button
+                  onClick={viewport.resetView}
+                  className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors shadow-sm"
+                  title="重置視圖縮放和位置 (Ctrl+0)"
+                >
+                  <span className="mr-1">🔍</span> 顯示全圖 
+                </button>
+              </div>
+            )}
             <div className="relative">
               <CanvasArea
                 currentProduct={currentProduct}
@@ -88,6 +106,7 @@ const MainContentArea = ({
                 handleDrop={handleDrop}
                 measureTextWidth={measureTextWidth}
                 editingInputWidth={editingInputWidth}
+                viewport={viewport}
               />
 
               {/* 文字工具列 - 放在最外層，不受設計區裁切影響 */}

@@ -4,6 +4,7 @@ import DesignElementsLayer from './DesignElementsLayer';
 /**
  * 畫布區域組件
  * 負責渲染畫布的所有視覺元素：底圖、背景、設計區邊框、設計元素層
+ * 支援縮放和平移功能
  */
 const CanvasArea = ({
   // 商品相關
@@ -43,23 +44,74 @@ const CanvasArea = ({
   // 測量函數
   measureTextWidth,
   editingInputWidth,
+
+  // 視窗控制
+  viewport = null,
 }) => {
+  // 合併滑鼠移動事件
+  const combinedMouseMove = (e) => {
+    if (viewport?.isPanning) {
+      viewport.handleMouseMove(e);
+    } else {
+      handleMouseMove(e);
+    }
+  };
+
+  // 合併滑鼠放開事件
+  const combinedMouseUp = (e) => {
+    handleMouseUp(e);
+    if (viewport) {
+      viewport.handleMouseUp(e);
+    }
+  };
+
+  // 合併滑鼠按下事件
+  const combinedMouseDown = (e) => {
+    if (viewport && e.button === 2) {
+      viewport.handleMouseDown(e);
+    }
+  };
+
+  // 合併滑鼠離開事件
+  const combinedMouseLeave = (e) => {
+    handleMouseUp(e);
+    if (viewport) {
+      viewport.handleMouseLeave(e);
+    }
+  };
   return (
     <div
       className="border-2 border-gray-200 rounded-lg relative bg-white canvas-container"
       style={{
-        overflow: "visible",
-        cursor: isHoveringImage ? 'none' : 'auto',
+        overflow: "hidden",
+        cursor: viewport?.isPanning ? 'grabbing' : (isHoveringImage ? 'none' : 'auto'),
         width: '400px',
         height: '400px',
       }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onWheel={viewport ? viewport.handleWheel : undefined}
+      onMouseDown={combinedMouseDown}
+      onMouseMove={combinedMouseMove}
+      onMouseUp={combinedMouseUp}
+      onMouseLeave={combinedMouseLeave}
       onClick={handleCanvasClick}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      onContextMenu={(e) => e.preventDefault()}
     >
+      <div
+        className="absolute"
+        style={{
+          transformOrigin: 'center center',
+          transform: viewport
+            ? `scale(${viewport.zoom}) translate(${viewport.pan.x}px, ${viewport.pan.y}px)`
+            : 'none',
+          transition: viewport?.isPanning ? 'none' : 'transform 0.1s ease-out',
+          width: '400px',
+          height: '400px',
+          left: '0',
+          top: '0',
+        }}
+      >
       {/* 產品背景 - 3D和2D產品使用不同顯示方式 */}
       {currentProduct.type === "3D" ? (
         /* 3D產品：只在設計區域顯示底圖 */
@@ -227,6 +279,7 @@ const CanvasArea = ({
           />
         </>
       )}
+      </div>
     </div>
   );
 };

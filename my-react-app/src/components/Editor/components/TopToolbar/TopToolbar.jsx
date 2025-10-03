@@ -26,6 +26,8 @@ const TopToolbar = ({
   onAddToCart,
   onTestOutput,
   isEditingFromCart = false,
+  onResetView,
+  currentZoom,
 }) => {
   const navigate = useNavigate();
 
@@ -78,6 +80,8 @@ const TopToolbar = ({
       onAddToCart={onAddToCart}
       onTestOutput={onTestOutput}
       isEditingFromCart={isEditingFromCart}
+      onResetView={onResetView}
+      currentZoom={currentZoom}
     />
   );
 

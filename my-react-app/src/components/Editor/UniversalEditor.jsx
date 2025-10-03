@@ -12,6 +12,7 @@ import useTemplateManager from "./hooks/useTemplateManager";
 import useLayerManager from "./hooks/useLayerManager";
 import useTextEditor from "./hooks/useTextEditor";
 import useImageReplace from "./hooks/useImageReplace";
+import useCanvasViewport from "./hooks/useCanvasViewport";
 
 // Components
 import { ToolSidebar, TopToolbar, LoadingState, ErrorState } from "./components";
@@ -105,6 +106,9 @@ const UniversalEditor = ({
 
   // 使用圖片替換 Hook
   const imageReplace = useImageReplace(editorState);
+
+  // 使用畫布視窗控制 Hook
+  const viewport = useCanvasViewport();
 
   // 使用其他 Hooks
   const imageManager = useImageManager(editorState, imageReplace);
@@ -500,6 +504,8 @@ const UniversalEditor = ({
         onAddToCart={handleAddToCart}
         onTestOutput={handleTestOutput}
         isEditingFromCart={isEditingFromCart}
+        onResetView={viewport.resetView}
+        currentZoom={viewport.zoom}
       />
 
       <div className="flex-1 flex">
@@ -617,6 +623,7 @@ const UniversalEditor = ({
           measureTextWidth={textEditor.measureTextWidth}
           editingInputWidth={editingInputWidth}
           processedMockupImage={processedMockupImage}
+          viewport={viewport}
         />
       </div>
     </div>
