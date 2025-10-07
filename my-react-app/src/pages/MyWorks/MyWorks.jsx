@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API } from '../../services/api';
+import { HttpAPI } from '../../services/HttpApiService';
 import { useCart } from '../../context/CartContext';
 import ProductThumbnail from '../../components/Preview/ProductThumbnail';
-import DatabaseCleaner from '../../utils/DatabaseCleaner';
 
 const MyWorks = () => {
   const navigate = useNavigate();
@@ -17,45 +17,26 @@ const MyWorks = () => {
   const loadDrafts = async () => {
     try {
       setLoading(true);
+
+      // 獲取當前用戶（暫時使用 guest，未來整合登入系統）
+      const currentUser = HttpAPI.users.getCurrentUser();
+      const userId = currentUser?.id || 'guest';
+
+      // 載入產品資料
       const allProducts = await API.products.getAll();
       const productMap = {};
       allProducts.forEach(product => {
         productMap[product.id] = product;
       });
 
-      // 從 localStorage 中載入所有草稿
-      const draftList = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('draft_')) {
-          try {
-            const draftData = JSON.parse(localStorage.getItem(key));
+      // 從伺服器載入草稿
+      const serverDrafts = await HttpAPI.drafts.getAll(userId);
 
-            // 處理新舊格式的草稿ID
-            let extractedProductId;
-            if (key.includes('_') && key.split('_').length > 2) {
-              // 新格式: draft_productId_timestamp
-              extractedProductId = key.split('_')[1];
-            } else {
-              // 舊格式: draft_productId
-              extractedProductId = key.replace('draft_', '');
-            }
-
-            const product = productMap[extractedProductId];
-
-            if (product && draftData) {
-              draftList.push({
-                id: key,
-                productId: parseInt(extractedProductId),
-                product: product,
-                ...draftData
-              });
-            }
-          } catch (error) {
-            console.error('解析草稿失敗:', key, error);
-          }
-        }
-      }
+      // 將產品資料附加到草稿
+      const draftList = serverDrafts.map(draft => ({
+        ...draft,
+        product: productMap[draft.productId]
+      })).filter(draft => draft.product); // 過濾掉找不到產品的草稿
 
       // 按時間排序，最新的在前面
       draftList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -91,10 +72,18 @@ const MyWorks = () => {
   };
 
   // 刪除草稿
-  const handleDeleteDraft = (draftId) => {
+  const handleDeleteDraft = async (draftId) => {
     if (window.confirm('確定要刪除這個草稿嗎？')) {
-      localStorage.removeItem(draftId);
-      setDrafts(prev => prev.filter(draft => draft.id !== draftId));
+      try {
+        const currentUser = HttpAPI.users.getCurrentUser();
+        const userId = currentUser?.id || 'guest';
+
+        await HttpAPI.drafts.delete(userId, draftId);
+        setDrafts(prev => prev.filter(draft => draft.id !== draftId));
+      } catch (error) {
+        console.error('刪除草稿失敗:', error);
+        alert('刪除草稿失敗，請稍後重試');
+      }
     }
   };
 
@@ -133,16 +122,26 @@ const MyWorks = () => {
   };
 
   // 儲存重新命名
-  const handleSaveRename = (draftId) => {
+  const handleSaveRename = async (draftId) => {
     if (editingNameValue.trim()) {
       try {
-        const draftData = JSON.parse(localStorage.getItem(draftId));
-        draftData.name = editingNameValue.trim();
-        localStorage.setItem(draftId, JSON.stringify(draftData));
+        const currentUser = HttpAPI.users.getCurrentUser();
+        const userId = currentUser?.id || 'guest';
+
+        const draft = drafts.find(d => d.id === draftId);
+        if (!draft) return;
+
+        // 更新草稿名稱
+        const updatedDraft = {
+          ...draft,
+          name: editingNameValue.trim()
+        };
+
+        await HttpAPI.drafts.save(userId, updatedDraft);
 
         // 更新本地狀態
-        setDrafts(prev => prev.map(draft =>
-          draft.id === draftId ? { ...draft, name: editingNameValue.trim() } : draft
+        setDrafts(prev => prev.map(d =>
+          d.id === draftId ? { ...d, name: editingNameValue.trim() } : d
         ));
 
         setEditingNameId(null);
@@ -183,16 +182,6 @@ const MyWorks = () => {
             <div className="text-sm text-gray-500">
               共 {drafts.length} 個草稿
             </div>
-            {/* 開發工具 */}
-            {process.env.NODE_ENV === 'development' && (
-              <button
-                onClick={() => DatabaseCleaner.resetToDefault()}
-                className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-                title="重置資料庫（開發工具）"
-              >
-                🗑️ 重置DB
-              </button>
-            )}
           </div>
         </div>
 

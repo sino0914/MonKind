@@ -14,6 +14,10 @@ const ToolbarActions = ({
   isEditingFromCart = false,
   onResetView,
   currentZoom = 1.0,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
 }) => {
   // 版型模式不顯示預設按鈕
   if (mode !== 'product') {
@@ -25,10 +29,28 @@ const ToolbarActions = ({
 
   return (
     <div className="flex items-center space-x-3">
-      <button className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+      <button
+        onClick={onUndo}
+        disabled={!canUndo}
+        className={`px-3 py-2 text-sm rounded-md transition-colors ${
+          canUndo
+            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+        }`}
+        title="撤銷 (Ctrl+Z)"
+      >
         <span className="mr-1">↶</span> 撤銷
       </button>
-      <button className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+      <button
+        onClick={onRedo}
+        disabled={!canRedo}
+        className={`px-3 py-2 text-sm rounded-md transition-colors ${
+          canRedo
+            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+        }`}
+        title="重做 (Ctrl+Y)"
+      >
         <span className="mr-1">↷</span> 重做
       </button>
       <div className="h-6 w-px bg-gray-300"></div>

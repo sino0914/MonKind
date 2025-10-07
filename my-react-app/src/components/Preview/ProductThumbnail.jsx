@@ -1,6 +1,6 @@
 /**
  * 輕量級商品縮略圖組件
- * 專門用於列表項目的快速預覽，不包含載入邏輯
+ * 專門用於列表項目的快速預覽，不包含載入邏輯0
  */
 
 import React from 'react';
@@ -28,11 +28,18 @@ const ProductThumbnail = ({
 
   // 如果是 3D 商品且有快照，優先顯示快照
   if (product.type === '3D' && snapshot3D) {
-    // 判斷 snapshot3D 是 URL 還是 base64
-    const isUrl = typeof snapshot3D === 'string' && snapshot3D.startsWith('/');
-    const snapshotSrc = isUrl
-      ? `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3001'}${snapshot3D}`
-      : snapshot3D;
+    // 判斷 snapshot3D 是相對路徑、完整 URL 還是 base64
+    let snapshotSrc = snapshot3D;
+    if (typeof snapshot3D === 'string') {
+      if (snapshot3D.startsWith('/')) {
+        // 相對路徑，需要加上 base URL
+        snapshotSrc = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}${snapshot3D}`;
+      } else if (!snapshot3D.startsWith('http') && !snapshot3D.startsWith('data:')) {
+        // 可能是檔名，加上完整路徑
+        snapshotSrc = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}/uploads/snapshots/${snapshot3D}`;
+      }
+      // 如果已經是完整 URL (http...) 或 base64 (data:...)，直接使用
+    }
 
     return (
       <div

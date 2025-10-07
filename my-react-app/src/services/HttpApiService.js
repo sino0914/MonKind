@@ -3,7 +3,7 @@
  * 替代 localStorage 的解決方案
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
 
 class HttpApiService {
   constructor() {
@@ -179,7 +179,7 @@ class HttpProductService {
       model3D: {
         ...product.model3D,
         glbUrl: `${this.api.baseURL.replace('/api', '')}${uploadResponse.data.url}`,
-        fileName: uploadResponse.data.originalName,
+        fileName: uploadResponse.data.filename, // 使用伺服器生成的檔名，避免中文編碼問題
         fileSize: uploadResponse.data.size,
         fileSizeMB: uploadResponse.data.sizeMB,
         uploadedAt: uploadResponse.data.uploadedAt
@@ -332,7 +332,11 @@ export const HttpAPI = {
   // 文件上傳相關 API
   upload: {
     glb: (file) => httpApiService.uploadGLB(file),
-    image: (file) => httpApiService.uploadImage(file),
+    image: async (file) => {
+      const response = await httpApiService.uploadImage(file);
+      // 後端返回 { success: true, data: { url, filename, ... } }
+      return response.success ? response.data : null;
+    },
     editorImage: async (file) => {
       const response = await httpApiService.uploadFile('/upload/editor-image', file, 'editorImage');
       return response.data; // 返回 { url: '伺服器圖片 URL', filename: '檔名' }
@@ -342,7 +346,8 @@ export const HttpAPI = {
         base64Image,
         productId
       });
-      return response.data; // 返回 { url: '伺服器圖片 URL', filename: '檔名', sizeKB: '檔案大小' }
+      // 後端返回 { success: true, data: { url, filename, ... } }
+      return response.success ? response.data : null;
     },
     getFiles: (type) => httpApiService.getUploadedFiles(type),
     deleteFile: (type, filename) => httpApiService.deleteFile(type, filename),
@@ -413,6 +418,54 @@ export const HttpAPI = {
     clear: async () => {
       const response = await httpApiService.delete('/cart');
       return response.cart || [];
+    },
+  },
+
+  // 草稿相關 API
+  drafts: {
+    // 獲取用戶的所有草稿
+    getAll: async (userId) => {
+      const response = await httpApiService.get(`/drafts/${userId}`);
+      return response;
+    },
+    // 儲存草稿
+    save: async (userId, draftData) => {
+      const response = await httpApiService.post(`/drafts/${userId}`, draftData);
+      return response.draft;
+    },
+    // 刪除草稿
+    delete: async (userId, draftId) => {
+      const response = await httpApiService.delete(`/drafts/${userId}/${draftId}`);
+      return response;
+    },
+    // 批量遷移草稿（從 localStorage）
+    migrate: async (userId, drafts) => {
+      const response = await httpApiService.post(`/drafts/${userId}/migrate`, { drafts });
+      return response;
+    },
+  },
+
+  // 訂單相關 API
+  orders: {
+    // 建立訂單
+    create: async (orderData) => {
+      const response = await httpApiService.post('/orders', orderData);
+      return response;
+    },
+    // 獲取訂單詳情
+    getById: async (orderId) => {
+      const response = await httpApiService.get(`/orders/${orderId}`);
+      return response.order;
+    },
+    // 獲取用戶所有訂單
+    getUserOrders: async (userId) => {
+      const response = await httpApiService.get(`/orders/users/${userId}/orders`);
+      return response.orders || [];
+    },
+    // 更新訂單狀態
+    updateStatus: async (orderId, status) => {
+      const response = await httpApiService.patch(`/orders/${orderId}/status`, { status });
+      return response.order;
     },
   },
 

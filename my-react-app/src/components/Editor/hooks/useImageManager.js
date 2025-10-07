@@ -27,13 +27,22 @@ const useImageManager = (editorState, imageReplace = null) => {
         const files = await HttpAPI.upload.getFiles('editor-image');
         console.log('✅ 從伺服器載入圖片:', files);
 
+        // 構建完整 URL
+        const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+
         // 轉換為統一格式
-        const images = files.map((file, index) => ({
-          id: file.filename || Date.now() + index,
-          url: file.url,
-          name: file.filename,
-          uploadedAt: file.uploadedAt || new Date().toISOString(),
-        }));
+        const images = files.map((file, index) => {
+          const imageUrl = file.url.startsWith('http')
+            ? file.url
+            : `${API_BASE_URL.replace('/api', '')}${file.url}`;
+
+          return {
+            id: file.filename || Date.now() + index,
+            url: imageUrl,
+            name: file.filename,
+            uploadedAt: file.uploadedAt || new Date().toISOString(),
+          };
+        });
         setUploadedImages(images);
 
         // 清除舊的 localStorage 數據
@@ -74,10 +83,16 @@ const useImageManager = (editorState, imageReplace = null) => {
       // 上傳到伺服器
       const uploadResult = await HttpAPI.upload.editorImage(file);
 
+      // 構建完整的圖片 URL
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+      const imageUrl = uploadResult.url.startsWith('http')
+        ? uploadResult.url
+        : `${API_BASE_URL.replace('/api', '')}${uploadResult.url}`;
+
       // 添加到已上傳圖片列表
       const newImage = {
         id: uploadResult.filename || Date.now(),
-        url: uploadResult.url, // 伺服器返回的圖片 URL
+        url: imageUrl, // 完整的圖片 URL
         name: file.name,
         uploadedAt: new Date().toISOString(),
       };
@@ -260,7 +275,22 @@ const useImageManager = (editorState, imageReplace = null) => {
     setLoadingElements(true);
     try {
       const elements = await API.elements.getAll();
-      setManagedElements(elements);
+
+      // 🔧 轉換相對路徑為完整 URL
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+      const baseUrl = API_BASE_URL.replace('/api', '');
+
+      const elementsWithFullUrl = elements.map(element => {
+        if (element.url && !element.url.startsWith('http') && !element.url.startsWith('data:')) {
+          return {
+            ...element,
+            url: `${baseUrl}${element.url}`
+          };
+        }
+        return element;
+      });
+
+      setManagedElements(elementsWithFullUrl);
     } catch (error) {
       console.error('載入元素失敗:', error);
       alert('載入元素失敗，請重試');

@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+gwgw-gift-admin/server/node_modules/
+gwgw-gift-admin/data/uploads/
+gwgw-gift-admin/server/data/

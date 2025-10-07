@@ -715,65 +715,22 @@ const ProductMaintenance = () => {
 
     try {
       // 顯示處理中狀態
-      showNotification("正在處理圖片...", "info");
+      showNotification("正在上傳底圖...", "info");
 
-      let imageUrl;
+      // 上傳圖片到伺服器
+      const uploadResult = await API.upload.image(file);
 
-      // 如果檔案太大，進行壓縮
-      if (file.size > 1 * 1024 * 1024) {
-        // 大於 1MB 就壓縮
-        console.log("檔案較大，開始壓縮...");
-
-        // 根據檔案大小選擇不同的壓縮參數
-        let maxWidth = 800,
-          maxHeight = 800,
-          quality = 0.8;
-
-        if (file.size > 5 * 1024 * 1024) {
-          // 大於 5MB
-          maxWidth = 600;
-          maxHeight = 600;
-          quality = 0.6;
-        } else if (file.size > 3 * 1024 * 1024) {
-          // 大於 3MB
-          maxWidth = 700;
-          maxHeight = 700;
-          quality = 0.7;
-        }
-
-        imageUrl = await compressImage(file, maxWidth, maxHeight, quality);
-        showNotification("圖片壓縮完成，正在上傳...", "info");
-      } else {
-        // 小檔案直接讀取
-        console.log("檔案較小，直接上傳");
-        imageUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+      if (!uploadResult || !uploadResult.url) {
+        throw new Error("上傳失敗：伺服器回應無效");
       }
 
-      console.log("圖片處理成功:", {
-        productId: selectedProduct.id,
-        finalSize: imageUrl.length,
-        sizeMB: (imageUrl.length / 1024 / 1024).toFixed(2),
-      });
+      // 組合完整 URL（加上伺服器 base URL）
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+      const baseUrl = API_BASE_URL.replace('/api', '');
+      const imageUrl = `${baseUrl}${uploadResult.url}`;
+      console.log("底圖已上傳到伺服器:", imageUrl);
 
-      // 檢查 Base64 資料是否有效
-      if (!imageUrl || !imageUrl.startsWith("data:image/")) {
-        throw new Error("圖片資料格式無效");
-      }
-
-      // 檢查最終大小
-      const finalSizeMB = imageUrl.length / 1024 / 1024;
-      if (finalSizeMB > 3) {
-        throw new Error(
-          `處理後的圖片仍然太大 (${finalSizeMB.toFixed(2)}MB)，請使用更小的圖片`
-        );
-      }
-
-      // 更新產品資料
+      // 更新產品資料 - 儲存到 mockupImage 欄位
       showNotification("正在儲存底圖...", "info");
       const result = await handleUpdateProduct("mockupImage", imageUrl);
       console.log("API 更新結果:", result);
@@ -808,14 +765,7 @@ const ProductMaintenance = () => {
       });
 
       let errorMessage = "底圖上傳失敗";
-      if (
-        error.message.includes("存儲空間不足") ||
-        error.message.includes("quota")
-      ) {
-        errorMessage = "存儲空間不足，請嘗試使用更小的圖片或清除瀏覽器數據";
-      } else if (error.message.includes("太大")) {
-        errorMessage = error.message;
-      } else if (error.message.includes("network")) {
+      if (error.message.includes("network")) {
         errorMessage = "網絡錯誤，請檢查連接";
       } else if (error.message) {
         errorMessage = `上傳失敗: ${error.message}`;

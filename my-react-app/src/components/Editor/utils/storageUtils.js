@@ -1,7 +1,8 @@
-// LocalStorage 操作工具
+// LocalStorage 操作工具（改用伺服器儲存）
 
 import { generate3DSnapshot } from './snapshot3D';
 import { API } from '../../../services/api';
+import { HttpAPI } from '../../../services/HttpApiService';
 
 const STORAGE_KEYS = {
   UPLOADED_IMAGES: 'editor_uploaded_images',
@@ -84,15 +85,30 @@ const optimizeElementsForStorage = (elements) => {
 
 // 還原元素：將引用 ID 替換回圖片 URL
 const restoreElementsFromStorage = (elements) => {
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+  const baseUrl = API_BASE_URL.replace('/api', '');
+
   return elements.map(element => {
-    if (element.type === 'image' && element.url && element.url.startsWith('ref:')) {
+    if (element.type === 'image' && element.url) {
       // 如果是引用 ID，從圖片庫獲取實際 URL
-      const imageId = element.url.replace('ref:', '');
-      const imageUrl = getImageFromLibrary(imageId);
-      if (imageUrl) {
+      if (element.url.startsWith('ref:')) {
+        const imageId = element.url.replace('ref:', '');
+        const imageUrl = getImageFromLibrary(imageId);
+        if (imageUrl) {
+          return {
+            ...element,
+            url: imageUrl,
+          };
+        }
+      }
+
+      // 🔧 修正舊的 localhost:3001 URL
+      if (element.url.includes('localhost:3001')) {
+        const fixedUrl = element.url.replace('http://localhost:3001', baseUrl);
+        console.log('🔧 修正舊 URL:', element.url, '→', fixedUrl);
         return {
           ...element,
-          url: imageUrl,
+          url: fixedUrl,
         };
       }
     }
@@ -100,20 +116,33 @@ const restoreElementsFromStorage = (elements) => {
   });
 };
 
-// 儲存草稿
-export const saveDraft = async (productId, designData, draftId = null, product = null) => {
+// 儲存草稿（改用伺服器儲存）
+export const saveDraft = async (productId, designData, draftId = null, product = null, previewElement = null) => {
   const { elements, backgroundColor, workName } = designData;
 
-  // 優化元素儲存
-  const optimizedElements = optimizeElementsForStorage(elements);
+  // 獲取當前用戶（暫時使用 guest）
+  const currentUser = HttpAPI.users.getCurrentUser();
+  const userId = currentUser?.id || 'guest';
 
   const draft = {
+    id: draftId || `${STORAGE_KEYS.DRAFT_PREFIX}${productId}_${Date.now()}`,
     productId,
     timestamp: new Date().toISOString(),
-    elements: optimizedElements,
+    elements, // 不再需要優化，直接儲存
     backgroundColor,
     name: workName,
   };
+
+  // 如果沒有傳入 product，從伺服器載入
+  if (!product) {
+    try {
+      product = await HttpAPI.products.getById(productId);
+      console.log('📦 已從伺服器載入商品資料:', product?.title);
+    } catch (error) {
+      console.error('❌ 載入商品資料失敗:', error);
+      product = null;
+    }
+  }
 
   // 如果是 3D 商品，生成快照並上傳到伺服器
   const glbUrl = product?.glbUrl || product?.model3D?.glbUrl;
@@ -127,10 +156,11 @@ export const saveDraft = async (productId, designData, draftId = null, product =
     try {
       const snapshot = await generate3DSnapshot(
         product,
-        elements, // 使用原始元素，不是優化後的
+        elements,
         backgroundColor,
         400,
-        400
+        400,
+        previewElement // 傳遞 ProductPreview 的 DOM 元素
       );
       if (snapshot) {
         console.log('✅ 3D 快照已生成，大小:', (snapshot.length / 1024).toFixed(2), 'KB');
@@ -138,11 +168,20 @@ export const saveDraft = async (productId, designData, draftId = null, product =
         // 上傳快照到伺服器
         try {
           const uploadResult = await API.upload.snapshot(snapshot, productId);
-          draft.snapshot3D = uploadResult.url; // 儲存 URL 而非 base64
-          console.log('✅ 快照已上傳到伺服器:', uploadResult.url, '檔案大小:', uploadResult.sizeKB, 'KB');
+          if (uploadResult && uploadResult.url) {
+            // 組合完整 URL（加上伺服器 base URL）
+            const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+            const baseUrl = API_BASE_URL.replace('/api', '');
+            const fullUrl = `${baseUrl}${uploadResult.url}`;
+            draft.snapshot3D = fullUrl; // 儲存完整 URL
+            console.log('✅ 快照已上傳到伺服器:', fullUrl, '檔案大小:', uploadResult.sizeKB, 'KB');
+          } else {
+            console.error('❌ 上傳快照失敗：回應無效');
+            // 不儲存 snapshot3D，保持為 undefined
+          }
         } catch (uploadError) {
-          console.error('❌ 上傳快照失敗，使用 base64 儲存:', uploadError);
-          draft.snapshot3D = snapshot; // 失敗時回退到 base64
+          console.error('❌ 上傳快照失敗:', uploadError);
+          // 不儲存 snapshot3D，保持為 undefined
         }
       } else {
         console.warn('⚠️ 生成的快照為 null');
@@ -155,104 +194,41 @@ export const saveDraft = async (productId, designData, draftId = null, product =
   }
 
   try {
-    const draftString = JSON.stringify(draft);
+    // 儲存到伺服器
+    await HttpAPI.drafts.save(userId, draft);
+    console.log('✅ 草稿已儲存到伺服器:', draft.id);
 
-    // 檢查草稿大小（以 KB 為單位）
-    const draftSizeKB = new Blob([draftString]).size / 1024;
-    console.log(`優化後草稿大小: ${draftSizeKB.toFixed(2)} KB`);
-
-    // 如果草稿超過 4MB，警告用戶
-    if (draftSizeKB > 4096) {
-      console.warn('草稿大小超過 4MB，可能會導致儲存失敗');
-      return {
-        success: false,
-        message: '草稿過大（超過4MB），請減少圖片元素或降低圖片品質',
-        draftId: null
-      };
-    }
-
-    if (draftId) {
-      // 更新現有草稿
-      localStorage.setItem(draftId, draftString);
-      return { success: true, message: '草稿已更新！', draftId };
-    } else {
-      // 創建新草稿
-      const newDraftId = `${STORAGE_KEYS.DRAFT_PREFIX}${productId}_${Date.now()}`;
-      localStorage.setItem(newDraftId, draftString);
-      return { success: true, message: '草稿已儲存！', draftId: newDraftId };
-    }
+    return {
+      success: true,
+      message: draftId ? '草稿已更新！' : '草稿已儲存！',
+      draftId: draft.id
+    };
   } catch (error) {
     console.error('儲存草稿失敗:', error);
-
-    // 檢查是否是容量限制錯誤
-    if (error.name === 'QuotaExceededError' ||
-        error.code === 22 ||
-        error.code === 1014) {
-      return {
-        success: false,
-        message: '儲存空間不足！請刪除舊草稿或減少圖片數量',
-        draftId: null
-      };
-    }
-
-    return { success: false, message: `儲存失敗: ${error.message}`, draftId: null };
+    return {
+      success: false,
+      message: `儲存失敗: ${error.message}`,
+      draftId: null
+    };
   }
 };
 
-// 載入草稿
+// 載入草稿（已廢棄，改用 MyWorks 頁面直接從 API 載入）
 export const loadDraft = (draftId) => {
-  try {
-    const draftData = localStorage.getItem(draftId);
-    if (draftData) {
-      const draft = JSON.parse(draftData);
-
-      // 還原圖片引用
-      if (draft.elements) {
-        draft.elements = restoreElementsFromStorage(draft.elements);
-      }
-
-      return draft;
-    }
-    return null;
-  } catch (error) {
-    console.error('載入草稿失敗:', error);
-    return null;
-  }
+  console.warn('loadDraft 已廢棄，草稿已改為伺服器儲存');
+  return null;
 };
 
-// 刪除草稿
+// 刪除草稿（已廢棄，改用 API）
 export const deleteDraft = (draftId) => {
-  try {
-    localStorage.removeItem(draftId);
-    return true;
-  } catch (error) {
-    console.error('刪除草稿失敗:', error);
-    return false;
-  }
+  console.warn('deleteDraft 已廢棄，請使用 HttpAPI.drafts.delete()');
+  return false;
 };
 
-// 獲取所有草稿
+// 獲取所有草稿（已廢棄，改用 API）
 export const getAllDrafts = () => {
-  const drafts = [];
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(STORAGE_KEYS.DRAFT_PREFIX)) {
-        const draftData = localStorage.getItem(key);
-        if (draftData) {
-          drafts.push({
-            id: key,
-            ...JSON.parse(draftData),
-          });
-        }
-      }
-    }
-    // 按時間戳排序，最新的在前
-    return drafts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  } catch (error) {
-    console.error('獲取草稿列表失敗:', error);
-    return [];
-  }
+  console.warn('getAllDrafts 已廢棄，請使用 HttpAPI.drafts.getAll()');
+  return [];
 };
 
 // 儲存已上傳的圖片
@@ -280,22 +256,10 @@ export const loadUploadedImages = () => {
   }
 };
 
-// 清除所有草稿
+// 清除所有草稿（已廢棄）
 export const clearAllDrafts = () => {
-  try {
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(STORAGE_KEYS.DRAFT_PREFIX)) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    return true;
-  } catch (error) {
-    console.error('清除草稿失敗:', error);
-    return false;
-  }
+  console.warn('clearAllDrafts 已廢棄，草稿已改為伺服器儲存');
+  return false;
 };
 
 // 清除所有圖片

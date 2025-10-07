@@ -22,7 +22,8 @@ const GLBTestPage = () => {
       const formData = new FormData();
       formData.append('glb', file);
 
-      const response = await fetch('http://localhost:3001/api/upload/glb', {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${API_URL}/upload/glb`, {
         method: 'POST',
         body: formData
       });
@@ -30,7 +31,7 @@ const GLBTestPage = () => {
       const result = await response.json();
 
       if (result.success) {
-        const fullUrl = `http://localhost:3001${result.data.url}`;
+        const fullUrl = `${API_URL.replace('/api', '')}${result.data.url}`;
         setGlbUrl(fullUrl);
         console.log('GLB上傳成功:', fullUrl);
       } else {

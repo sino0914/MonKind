@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import ProductPreview from "../Preview/ProductPreview";
 import TextToolbar from "./components/TextToolbar";
 import CanvasArea from "./components/CanvasArea";
@@ -56,6 +56,9 @@ const MainContentArea = ({
 
   // 視窗控制
   viewport,
+
+  // Preview Ref (用於快照)
+  previewRef,
 }) => {
   return (
     <div className="flex-1 flex">
@@ -224,6 +227,7 @@ const MainContentArea = ({
           <div className="flex-1 p-8">
             <div className="h-full flex items-center justify-center">
               <div
+                ref={previewRef}
                 className="bg-white rounded-lg shadow-xl p-8"
                 style={{ marginTop: "-48px" }}
               >

@@ -185,6 +185,36 @@ export const API = {
     updateQuantity: (productId, quantity) => HttpAPI.cart.updateQuantity(productId, quantity),
     // 清空購物車
     clear: () => HttpAPI.cart.clear(),
+  },
+
+  // 訂單相關 API
+  orders: {
+    // 建立訂單
+    create: (orderData) => HttpAPI.orders.create(orderData),
+    // 獲取訂單詳情
+    getById: (orderId) => HttpAPI.orders.getById(orderId),
+    // 獲取用戶所有訂單
+    getUserOrders: (userId) => HttpAPI.orders.getUserOrders(userId),
+    // 更新訂單狀態
+    updateStatus: (orderId, status) => HttpAPI.orders.updateStatus(orderId, status),
+  },
+
+  // 文件上傳相關 API
+  upload: {
+    // GLB 文件上傳
+    glb: (file) => HttpAPI.upload.glb(file),
+    // 圖片上傳
+    image: (file) => HttpAPI.upload.image(file),
+    // 編輯器圖片上傳
+    editorImage: (file) => HttpAPI.upload.editorImage(file),
+    // 3D 快照上傳
+    snapshot: (base64Image, productId) => HttpAPI.upload.snapshot(base64Image, productId),
+    // 獲取已上傳的文件列表
+    getFiles: (type) => HttpAPI.upload.getFiles(type),
+    // 刪除文件
+    deleteFile: (type, filename) => HttpAPI.upload.deleteFile(type, filename),
+    // 獲取存儲信息
+    getStorageInfo: () => HttpAPI.upload.getStorageInfo(),
   }
 };
 

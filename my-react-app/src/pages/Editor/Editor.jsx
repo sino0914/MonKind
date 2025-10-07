@@ -207,13 +207,11 @@ const Editor = () => {
     }
   };
 
-  // 處理返回按鈕 - 添加確認提示
+  // 處理返回按鈕 - 不再需要確認提示，由 TopToolbar 處理
   const handleNavigateBack = () => {
-    if (window.confirm("確定要離開編輯器嗎？未儲存的變更將會遺失。")) {
-      // 清除編輯資料
-      sessionStorage.removeItem('editingDesignData');
-      navigate(-1);
-    }
+    // 清除編輯資料
+    sessionStorage.removeItem('editingDesignData');
+    navigate(-1);
   };
 
   // 準備傳遞給UniversalEditor的初始化資料

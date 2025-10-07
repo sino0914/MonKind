@@ -50,11 +50,18 @@ const ElementManagement = () => {
           // 使用 API 服務上傳圖片到伺服器
           const uploadResult = await API.elements.uploadImage(file);
 
+          // 組合完整 URL
+          const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+          const baseUrl = API_BASE_URL.replace('/api', '');
+          const fullUrl = uploadResult.url.startsWith('http')
+            ? uploadResult.url
+            : `${baseUrl}${uploadResult.url}`;
+
           // 創建元素記錄
           const element = await API.elements.create({
             name: file.name.replace(/\.[^/.]+$/, ''), // 移除副檔名
             type: 'image',
-            url: uploadResult.url, // 使用 API 返回的完整 URL
+            url: fullUrl, // 使用完整 URL
             fileName: uploadResult.filename,
             fileSize: file.size,
             mimeType: file.type

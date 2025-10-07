@@ -28,14 +28,38 @@ const TopToolbar = ({
   isEditingFromCart = false,
   onResetView,
   currentZoom,
+  isDirty = false, // 骯髒狀態
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
 }) => {
   const navigate = useNavigate();
+
+  // 處理返回，只在有變更時才提示
+  const handleNavigateBack = () => {
+    if (isDirty) {
+      if (window.confirm("確定要離開編輯器嗎？未儲存的變更將會遺失。")) {
+        if (onNavigateBack) {
+          onNavigateBack();
+        } else {
+          navigate(-1);
+        }
+      }
+    } else {
+      if (onNavigateBack) {
+        onNavigateBack();
+      } else {
+        navigate(-1);
+      }
+    }
+  };
 
   // 默認左側內容
   const defaultTopToolbarLeft = (
     <div className="flex items-center space-x-4">
       <button
-        onClick={onNavigateBack || (() => navigate(-1))}
+        onClick={handleNavigateBack}
         className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
       >
         <svg
@@ -82,6 +106,10 @@ const TopToolbar = ({
       isEditingFromCart={isEditingFromCart}
       onResetView={onResetView}
       currentZoom={currentZoom}
+      onUndo={onUndo}
+      onRedo={onRedo}
+      canUndo={canUndo}
+      canRedo={canRedo}
     />
   );
 

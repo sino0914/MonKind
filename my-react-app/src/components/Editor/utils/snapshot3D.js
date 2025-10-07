@@ -198,6 +198,22 @@ export const generate3DSnapshot = async (
       );
     });
 
+    // 手動收集所有材質（模擬 useGLTF 的行為）
+    const materials = {};
+    gltf.scene.traverse((child) => {
+      if (child.isMesh && child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((mat, index) => {
+            const key = mat.name || `material_${Object.keys(materials).length}`;
+            materials[key] = mat;
+          });
+        } else {
+          const key = child.material.name || `material_${Object.keys(materials).length}`;
+          materials[key] = child.material;
+        }
+      }
+    });
+
     const model = gltf.scene;
     model.rotation.y = 2.5;
     scene.add(model);
@@ -208,7 +224,7 @@ export const generate3DSnapshot = async (
     texture.wrapT = THREE.RepeatWrapping;
     texture.colorSpace = THREE.SRGBColorSpace;
 
-    // 應用 UV 映射設定
+    // 應用 UV 映射設定（與 ProductPreview 保持一致，使用固定的完整範圍）
     const uvMapping = {
       defaultUV: {
         u: 0.5,
@@ -224,10 +240,11 @@ export const generate3DSnapshot = async (
       texture.repeat.set(uvWidth, -uvHeight);
     }
 
-    model.traverse((child) => {
-      if (child.isMesh && child.material) {
-        child.material.map = texture;
-        child.material.needsUpdate = true;
+    // 使用收集到的 materials 應用貼圖
+    Object.values(materials).forEach((material) => {
+      if (material) {
+        material.map = texture;
+        material.needsUpdate = true;
       }
     });
 

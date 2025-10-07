@@ -9,6 +9,9 @@ import Products from './pages/Products/Products';
 import ProductDetail from './pages/ProductDetail/ProductDetail';
 import MyWorks from './pages/MyWorks/MyWorks';
 import Cart from './pages/Cart/Cart';
+import Checkout from './pages/Checkout/Checkout';
+import Orders from './pages/Orders/Orders';
+import OrderDetail from './pages/OrderDetail/OrderDetail';
 import Account from './pages/Account/Account';
 import Editor from './pages/Editor/Editor';
 import Admin from './pages/Admin/Admin';
@@ -16,8 +19,6 @@ import ProductMaintenance from './pages/Admin/ProductMaintenance';
 import TemplateManagement from './pages/Admin/TemplateManagement';
 import TemplateEditor from './pages/Admin/TemplateEditor';
 import ElementManagement from './pages/Admin/ElementManagement';
-import DatabaseReset from './pages/DatabaseReset';
-import TestTemplateEditor from './pages/TestTemplateEditor';
 import GLBTestPage from './pages/GLBTestPage';
 
 function App() {
@@ -32,8 +33,6 @@ function App() {
   <Route path="/admin/templates" element={<TemplateManagement />} />
   <Route path="/admin/templates/editor/:id" element={<TemplateEditor />} />
   <Route path="/admin/elements" element={<ElementManagement />} />
-  <Route path="/admin/database-reset" element={<DatabaseReset />} />
-  <Route path="/test-template-editor" element={<TestTemplateEditor />} />
   <Route path="/glb-test" element={<GLBTestPage />} />
 
   {/* Editor 也是獨立 */}
@@ -46,6 +45,9 @@ function App() {
     <Route path="/products" element={<Products />} />
     <Route path="/products/:id" element={<ProductDetail />} />
     <Route path="/cart" element={<Cart />} />
+    <Route path="/checkout" element={<Checkout />} />
+    <Route path="/orders" element={<Orders />} />
+    <Route path="/orders/:orderId" element={<OrderDetail />} />
     <Route path="/account" element={<Account />} />
   </Route>
 

@@ -299,23 +299,15 @@ const ProductPreview = ({
           style={{ width, height }}
         >
           {/* Product Mockup as Background */}
-          {product.mockupImage ? (
-            <img
-              src={processedMockupImage || product.mockupImage}
-              alt={`${product.title} 預覽`}
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                e.target.style.display = "none";
-                e.target.nextSibling.style.display = "block";
-              }}
-            />
-          ) : (
-            <img
-              src={product.image}
-              alt={product.title}
-              className="w-full h-full object-cover"
-            />
-          )}
+          <img
+            src={processedMockupImage || product.mockupImage}
+            alt={`${product.title} 預覽`}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              console.error('2D產品底圖載入失敗:', product.mockupImage);
+              e.target.style.display = "none";
+            }}
+          />
 
           {/* 設計區域背景色 - 與編輯器設計區域保持一致 */}
           {backgroundColor && product.printArea && (
@@ -423,6 +415,10 @@ const ProductPreview = ({
                       style={{
                         transform: `rotate(${element.rotation || 0}deg)`,
                       }}
+                      onLoad={(e) => {
+                        // 圖片載入成功時，恢復顯示
+                        e.target.parentElement.style.display = '';
+                      }}
                       onError={(e) => {
                         // 圖片載入失敗時完全隱藏
                         e.target.parentElement.style.display = 'none';
@@ -480,6 +476,10 @@ const ProductPreview = ({
                         className="w-full h-full object-contain"
                         style={{
                           transform: `rotate(${element.rotation || 0}deg)`,
+                        }}
+                        onLoad={(e) => {
+                          // 圖片載入成功時，恢復顯示
+                          e.target.parentElement.style.display = '';
                         }}
                         onError={(e) => {
                           // 圖片載入失敗時完全隱藏

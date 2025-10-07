@@ -141,6 +141,15 @@ const DesignElementsLayer = ({
                           transform: `rotate(${element.rotation || 0}deg)`,
                         }}
                         draggable={false}
+                        onLoad={(e) => {
+                          // 圖片載入成功時，移除錯誤提示（如果有）
+                          e.target.style.display = '';
+                          const parent = e.target.parentElement;
+                          const placeholder = parent?.querySelector('.image-error-placeholder');
+                          if (placeholder) {
+                            placeholder.remove();
+                          }
+                        }}
                         onError={(e) => {
                           // 圖片載入失敗時顯示錯誤提示
                           e.target.style.display = 'none';

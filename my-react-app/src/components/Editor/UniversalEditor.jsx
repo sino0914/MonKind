@@ -92,6 +92,9 @@ const UniversalEditor = ({
   // 用於避免初始化時觸發 onDesignStateChange 的標記
   const isInitialized = useRef(false);
 
+  // Preview 的 ref，用於截取快照
+  const previewRef = useRef(null);
+
   // 使用外部傳入的product或內部載入的product
   const currentProduct = product || internalProduct;
   const currentLoading = loading || internalLoading;
@@ -272,7 +275,7 @@ const UniversalEditor = ({
     }
   }, [productId, product]);
 
-  // 鍵盤事件監聽器（Ctrl+C、Ctrl+V、ESC）
+  // 鍵盤事件監聽器（Ctrl+C、Ctrl+V、Ctrl+Z、Ctrl+Y、ESC）
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
@@ -293,6 +296,12 @@ const UniversalEditor = ({
         } else if (e.key === "v" || e.key === "V") {
           e.preventDefault();
           canvasInteraction.handlePasteElement();
+        } else if (e.key === "z" || e.key === "Z") {
+          e.preventDefault();
+          editorState.undo();
+        } else if (e.key === "y" || e.key === "Y") {
+          e.preventDefault();
+          editorState.redo();
         }
       }
     };
@@ -322,12 +331,14 @@ const UniversalEditor = ({
         workName: finalWorkName,
       },
       draftId,
-      currentProduct // 傳遞商品資料用於生成 3D 快照
+      currentProduct, // 傳遞商品資料用於生成 3D 快照
+      previewRef.current // 傳遞 ProductPreview 的 DOM 元素
     );
 
     console.log('儲存結果:', result);
 
     if (result.success) {
+      editorState.resetDirty(); // 儲存成功後重置骯髒狀態
       alert(`${result.message}`);
     } else {
       const storageInfo = getStorageInfo();
@@ -345,6 +356,7 @@ const UniversalEditor = ({
   // 加入購物車
   const handleAddToCart = async () => {
     if (onAddToCart) {
+      editorState.resetDirty(); // 加入購物車後重置骯髒狀態
       onAddToCart({
         elements: editorState.designElements,
         backgroundColor: editorState.backgroundColor,
@@ -397,6 +409,7 @@ const UniversalEditor = ({
         snapshot3D, // 添加快照（URL 或 base64）
       };
       addToCart(customProduct);
+      editorState.resetDirty(); // 加入購物車成功後重置骯髒狀態
       alert("客製化商品已加入購物車！");
     }
   };
@@ -506,6 +519,11 @@ const UniversalEditor = ({
         isEditingFromCart={isEditingFromCart}
         onResetView={viewport.resetView}
         currentZoom={viewport.zoom}
+        isDirty={editorState.isDirty}
+        onUndo={editorState.undo}
+        onRedo={editorState.redo}
+        canUndo={editorState.canUndo}
+        canRedo={editorState.canRedo}
       />
 
       <div className="flex-1 flex">
@@ -564,7 +582,7 @@ const UniversalEditor = ({
                 return (
                   <BackgroundPanel
                     backgroundColor={editorState.backgroundColor}
-                    setBackgroundColor={editorState.setBackgroundColor}
+                    setBackgroundColor={editorState.changeBackgroundColor}
                   />
                 );
               case "layers":
@@ -624,6 +642,7 @@ const UniversalEditor = ({
           editingInputWidth={editingInputWidth}
           processedMockupImage={processedMockupImage}
           viewport={viewport}
+          previewRef={previewRef}
         />
       </div>
     </div>
