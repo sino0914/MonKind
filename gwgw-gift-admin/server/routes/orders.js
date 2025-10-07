@@ -95,6 +95,59 @@ async function saveOrderIndexToUser(userId, orderIndex) {
 }
 
 /**
+ * 獲取所有訂單（管理後台用）
+ * GET /api/orders
+ */
+router.get('/', async (req, res) => {
+  try {
+    await ensureDir(ORDERS_DIR);
+
+    // 讀取所有訂單目錄
+    const orderDirs = await fs.readdir(ORDERS_DIR);
+    const orders = [];
+
+    for (const orderId of orderDirs) {
+      try {
+        const orderPath = path.join(ORDERS_DIR, orderId, 'order.json');
+        const data = await fs.readFile(orderPath, 'utf-8');
+        const order = JSON.parse(data);
+
+        // 轉換訂單格式以符合前端需求
+        orders.push({
+          orderId: order.orderId,
+          createdAt: order.createdAt,
+          status: order.status,
+          totalAmount: order.totalAmount,
+          itemCount: order.items?.length || 0,
+          customerInfo: {
+            name: order.shipping?.name || '',
+            email: order.userId || '',
+            phone: order.shipping?.phone || '',
+            address: order.shipping?.address || ''
+          },
+          items: order.items || []
+        });
+      } catch (error) {
+        console.warn(`無法讀取訂單 ${orderId}:`, error.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: orders
+    });
+
+  } catch (error) {
+    console.error('獲取訂單列表失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '獲取訂單列表失敗',
+      error: error.message
+    });
+  }
+});
+
+/**
  * 建立訂單
  * POST /api/orders
  * Body: { userId, cartItems, shipping, payment }

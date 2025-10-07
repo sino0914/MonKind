@@ -15,6 +15,8 @@ const elementRoutes = require('./routes/elements');
 const cartRoutes = require('./routes/cart');
 const draftRoutes = require('./routes/drafts');
 const orderRoutes = require('./routes/orders');
+const vendorRoutes = require('./routes/vendors');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -108,6 +110,8 @@ app.use('/api/elements', elementRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/drafts', draftRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/vendors', vendorRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
