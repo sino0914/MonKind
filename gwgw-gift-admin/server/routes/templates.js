@@ -3,7 +3,7 @@ const fs = require('fs-extra');
 const path = require('path');
 
 const router = express.Router();
-const dataDir = path.join(__dirname, '../../data');
+const dataDir = path.join(__dirname, '../data');
 const templatesFile = path.join(dataDir, 'templates.json');
 
 // 讀取模板數據

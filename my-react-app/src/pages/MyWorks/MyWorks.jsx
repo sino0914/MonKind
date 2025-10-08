@@ -71,6 +71,15 @@ const MyWorks = () => {
     navigate(`/editor/${draft.productId}`);
   };
 
+  // 獲取草稿快照（優先使用對應類型的快照）
+  const getDraftSnapshot = (draft) => {
+    if (draft.product?.type === '3D') {
+      return draft.snapshot3D;
+    } else {
+      return draft.snapshot2D;
+    }
+  };
+
   // 刪除草稿
   const handleDeleteDraft = async (draftId) => {
     if (window.confirm('確定要刪除這個草稿嗎？')) {
@@ -105,8 +114,9 @@ const MyWorks = () => {
           elements: draft.elements, // 保留完整的設計元素（包括圖片）
           backgroundColor: draft.backgroundColor || '#ffffff'
         },
-        // 保留 3D 快照用於顯示（如果有）
-        snapshot3D: draft.snapshot3D
+        // 保留快照用於顯示
+        snapshot3D: draft.snapshot3D,
+        snapshot2D: draft.snapshot2D
       };
       addToCart(customProduct);
       alert('已加入購物車！');
@@ -215,6 +225,7 @@ const MyWorks = () => {
                     showElementCount={true}
                     className="shadow-sm"
                     snapshot3D={draft.snapshot3D || null}
+                    snapshot2D={draft.snapshot2D || null}
                   />
                 </div>
 

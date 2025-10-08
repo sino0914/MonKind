@@ -4,7 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
-const dataDir = path.join(__dirname, '../../data');
+const dataDir = path.join(__dirname, '../data');
 const productsFile = path.join(dataDir, 'products.json');
 
 // 讀取產品數據

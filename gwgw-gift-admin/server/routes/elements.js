@@ -3,7 +3,7 @@ const fs = require('fs-extra');
 const path = require('path');
 
 const router = express.Router();
-const dataDir = path.join(__dirname, '../../data');
+const dataDir = path.join(__dirname, '../data');
 const elementsFile = path.join(dataDir, 'elements.json');
 
 // 確保數據目錄和文件存在
@@ -171,7 +171,7 @@ router.delete('/:id', async (req, res) => {
 
     // 如果元素有對應的檔案，也刪除檔案
     if (deletedElement.url && deletedElement.url.startsWith('/uploads/')) {
-      const filePath = path.join(__dirname, '../../data', deletedElement.url.replace('/uploads/', 'uploads/'));
+      const filePath = path.join(__dirname, '../data', deletedElement.url.replace('/uploads/', 'uploads/'));
       if (await fs.pathExists(filePath)) {
         await fs.remove(filePath);
       }

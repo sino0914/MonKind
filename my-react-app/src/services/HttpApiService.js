@@ -349,6 +349,18 @@ export const HttpAPI = {
       // 後端返回 { success: true, data: { url, filename, ... } }
       return response.success ? response.data : null;
     },
+    printFile: async (blob, productId) => {
+      const formData = new FormData();
+      formData.append('printFile', blob, `${productId}_print.png`);
+      formData.append('productId', productId);
+
+      const response = await httpApiService.request('/upload/print-file', {
+        method: 'POST',
+        body: formData,
+      });
+      // 後端返回 { success: true, data: { url, filename, ... } }
+      return response.success ? response.data : null;
+    },
     getFiles: (type) => httpApiService.getUploadedFiles(type),
     deleteFile: (type, filename) => httpApiService.deleteFile(type, filename),
     getStorageInfo: () => httpApiService.getStorageInfo(),

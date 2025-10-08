@@ -13,7 +13,8 @@ const ProductThumbnail = ({
   height = 80,
   className = '',
   showElementCount = false,
-  snapshot3D = null // 新增：3D 快照
+  snapshot3D = null, // 3D 快照
+  snapshot2D = null  // 2D 快照
 }) => {
   if (!product) {
     return (
@@ -26,17 +27,20 @@ const ProductThumbnail = ({
     );
   }
 
-  // 如果是 3D 商品且有快照，優先顯示快照
-  if (product.type === '3D' && snapshot3D) {
-    // 判斷 snapshot3D 是相對路徑、完整 URL 還是 base64
-    let snapshotSrc = snapshot3D;
-    if (typeof snapshot3D === 'string') {
-      if (snapshot3D.startsWith('/')) {
+  // 根據商品類型選擇快照
+  const snapshot = product.type === '3D' ? snapshot3D : snapshot2D;
+
+  // 如果有快照，優先顯示快照
+  if (snapshot) {
+    // 判斷 snapshot 是相對路徑、完整 URL 還是 base64
+    let snapshotSrc = snapshot;
+    if (typeof snapshot === 'string') {
+      if (snapshot.startsWith('/')) {
         // 相對路徑，需要加上 base URL
-        snapshotSrc = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}${snapshot3D}`;
-      } else if (!snapshot3D.startsWith('http') && !snapshot3D.startsWith('data:')) {
+        snapshotSrc = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}${snapshot}`;
+      } else if (!snapshot.startsWith('http') && !snapshot.startsWith('data:')) {
         // 可能是檔名，加上完整路徑
-        snapshotSrc = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}/uploads/snapshots/${snapshot3D}`;
+        snapshotSrc = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}/uploads/snapshots/${snapshot}`;
       }
       // 如果已經是完整 URL (http...) 或 base64 (data:...)，直接使用
     }

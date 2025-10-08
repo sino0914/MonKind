@@ -83,6 +83,7 @@ const Cart = () => {
                           height={80}
                           className=""
                           snapshot3D={item.snapshot3D || null}
+                          snapshot2D={item.snapshot2D || null}
                         />
                       ) : (
                         <ProductThumbnail

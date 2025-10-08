@@ -22,7 +22,7 @@ const app = express();
 const PORT = process.env.PORT || 3002;
 
 // 確保數據目錄存在
-const dataDir = path.join(__dirname, '../data');
+const dataDir = path.join(__dirname, 'data');
 const uploadsDir = path.join(dataDir, 'uploads');
 const glbDir = path.join(uploadsDir, 'glb');
 const imagesDir = path.join(uploadsDir, 'images');

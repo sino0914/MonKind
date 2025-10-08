@@ -67,6 +67,33 @@ const OrderDetail = () => {
     });
   };
 
+  // 獲取快照圖片來源
+  const getSnapshotSrc = (snapshot) => {
+    if (!snapshot) return null;
+
+    // 如果是伺服器路徑 (/data/orders/...)
+    if (snapshot.startsWith('/data/')) {
+      return `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}${snapshot}`;
+    }
+
+    // 如果是 uploads 路徑
+    if (snapshot.startsWith('/uploads/')) {
+      return `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}${snapshot}`;
+    }
+
+    // 如果是 base64
+    if (snapshot.startsWith('data:image/')) {
+      return snapshot;
+    }
+
+    // 如果已經是完整 URL，直接使用
+    if (snapshot.startsWith('http://') || snapshot.startsWith('https://')) {
+      return snapshot;
+    }
+
+    return null;
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -132,11 +159,16 @@ const OrderDetail = () => {
                     className="flex gap-4 pb-4 border-b last:border-b-0"
                   >
                     <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0">
-                      {item.snapshot ? (
+                      {item.snapshot && getSnapshotSrc(item.snapshot) ? (
                         <img
-                          src={item.snapshot}
+                          src={getSnapshotSrc(item.snapshot)}
                           alt={item.productName}
-                          className="w-full h-full object-cover rounded-lg"
+                          className="w-full h-full object-contain rounded-lg"
+                          onError={(e) => {
+                            console.error('快照載入失敗:', item.snapshot);
+                            e.target.style.display = 'none';
+                            e.target.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400">📦</div>';
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -154,6 +186,15 @@ const OrderDetail = () => {
                       <p className="text-sm font-medium text-gray-900 mt-1">
                         NT$ {item.price?.toLocaleString()}
                       </p>
+                      {item.printFile && (
+                        <a
+                          href={`${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}/api/orders/${order.orderId}/items/${item.itemId}/print-file`}
+                          download
+                          className="inline-flex items-center mt-2 text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          📥 下載列印檔案
+                        </a>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-gray-900">

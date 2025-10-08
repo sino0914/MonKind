@@ -8,7 +8,7 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 載入訂單列表
+  // 載入訂單列表（包含完整訂單詳情）
   useEffect(() => {
     const loadOrders = async () => {
       try {
@@ -18,7 +18,7 @@ const Orders = () => {
         const currentUser = HttpAPI.users.getCurrentUser();
         const userId = currentUser?.id || 'guest';
 
-        // 載入訂單列表
+        // 載入訂單列表（後端已包含完整商品資訊）
         const orderList = await API.orders.getUserOrders(userId);
         console.log('📦 載入訂單列表:', orderList);
 
@@ -65,6 +65,49 @@ const Orders = () => {
     });
   };
 
+  // 獲取快照圖片來源
+  const getSnapshotSrc = (item) => {
+    console.log('🖼️ 處理商品快照:', item);
+
+    // 優先使用 snapshotUrl（後端提供的 API 路徑）
+    if (item.snapshotUrl) {
+      const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002';
+      const fullUrl = `${baseUrl}${item.snapshotUrl}`;
+      console.log('✅ 使用 snapshotUrl:', fullUrl);
+      return fullUrl;
+    }
+
+    // 如果有 snapshot，嘗試處理各種格式
+    const snapshot = item.snapshot;
+    if (!snapshot) {
+      console.log('❌ 沒有 snapshot 資料');
+      return null;
+    }
+
+    // 如果是伺服器路徑 (/data/orders/...)
+    if (snapshot.startsWith('/data/')) {
+      const fullUrl = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}${snapshot}`;
+      console.log('✅ 使用 /data/ 路徑:', fullUrl);
+      return fullUrl;
+    }
+
+    // 如果是 uploads 路徑
+    if (snapshot.startsWith('/uploads/')) {
+      const fullUrl = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}${snapshot}`;
+      console.log('✅ 使用 /uploads/ 路徑:', fullUrl);
+      return fullUrl;
+    }
+
+    // 如果是 base64
+    if (snapshot.startsWith('data:image/')) {
+      console.log('✅ 使用 base64');
+      return snapshot;
+    }
+
+    console.log('❌ 無法識別的 snapshot 格式:', snapshot);
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -109,6 +152,7 @@ const Orders = () => {
                 onClick={() => navigate(`/orders/${order.orderId}`)}
               >
                 <div className="p-6">
+                  {/* 訂單標題 */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-4">
                       <div>
@@ -119,6 +163,45 @@ const Orders = () => {
                     {getStatusBadge(order.status)}
                   </div>
 
+                  {/* 商品縮圖預覽 */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="mb-4 pb-4 border-b">
+                      <div className="flex items-center space-x-3 overflow-x-auto">
+                        {order.items.slice(0, 4).map((item, index) => {
+                          const snapshotSrc = getSnapshotSrc(item);
+                          return (
+                            <div key={index} className="flex-shrink-0">
+                              <div className="w-16 h-16 rounded overflow-hidden border border-gray-200 bg-gray-50">
+                                {snapshotSrc ? (
+                                  <img
+                                    src={snapshotSrc}
+                                    alt={item.productTitle}
+                                    className="w-full h-full object-contain"
+                                    onError={(e) => {
+                                      console.error('快照載入失敗:', snapshotSrc, item);
+                                      e.target.style.display = 'none';
+                                      e.target.parentElement.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400 text-xs">無圖</div>';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                    無圖
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {order.items.length > 4 && (
+                          <div className="flex-shrink-0 w-16 h-16 rounded border border-gray-200 bg-gray-50 flex items-center justify-center">
+                            <span className="text-xs text-gray-500">+{order.items.length - 4}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 訂單資訊 */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span className="text-gray-500">訂單日期：</span>
@@ -126,7 +209,7 @@ const Orders = () => {
                     </div>
                     <div>
                       <span className="text-gray-500">商品數量：</span>
-                      <span className="font-medium">{order.itemCount} 件</span>
+                      <span className="font-medium">{order.items?.length || order.itemCount || 0} 件</span>
                     </div>
                     <div>
                       <span className="text-gray-500">訂單金額：</span>
@@ -134,6 +217,7 @@ const Orders = () => {
                     </div>
                   </div>
 
+                  {/* 操作按鈕 */}
                   <div className="mt-4 pt-4 border-t flex justify-end">
                     <button
                       onClick={(e) => {

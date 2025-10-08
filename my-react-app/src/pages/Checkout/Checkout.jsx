@@ -98,10 +98,52 @@ const Checkout = () => {
       const currentUser = HttpAPI.users.getCurrentUser();
       const userId = currentUser?.id || 'guest';
 
+      // 為每個客製化商品生成列印檔案
+      console.log('📄 開始生成列印檔案...');
+      const cartItemsWithPrintFiles = await Promise.all(
+        cart.map(async (item) => {
+          // 只為客製化商品生成列印檔案
+          if (!item.isCustom || !item.designData) {
+            return item;
+          }
+
+          try {
+            // 動態導入列印檔案生成函數
+            const { generatePrintFile } = await import('../../components/Editor/utils/canvasUtils');
+
+            // 生成列印檔案 Blob
+            const printFileBlob = await generatePrintFile(
+              item, // product
+              item.designData.elements || [],
+              item.designData.backgroundColor || '#ffffff',
+              8 // scaleFactor for high resolution
+            );
+
+            // 上傳列印檔案
+            const uploadResult = await API.upload.printFile(printFileBlob, item.originalProductId || item.id);
+
+            if (uploadResult && uploadResult.url) {
+              console.log(`✅ 列印檔案已生成並上傳: ${item.title}`);
+              return {
+                ...item,
+                printFileUrl: uploadResult.url
+              };
+            } else {
+              console.warn(`⚠️ 列印檔案上傳失敗: ${item.title}`);
+              return item;
+            }
+          } catch (err) {
+            console.error(`❌ 生成列印檔案失敗 (${item.title}):`, err);
+            // 失敗時仍繼續，不中斷訂單流程
+            return item;
+          }
+        })
+      );
+
       // 準備訂單資料
       const orderData = {
         userId,
-        cartItems: cart,
+        cartItems: cartItemsWithPrintFiles,
         shipping,
         payment
       };
@@ -325,6 +367,7 @@ const Checkout = () => {
                             width={64}
                             height={64}
                             snapshot3D={item.snapshot3D || null}
+                            snapshot2D={item.snapshot2D || null}
                           />
                         ) : (
                           <ProductThumbnail

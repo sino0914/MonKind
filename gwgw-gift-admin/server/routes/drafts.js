@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require('fs-extra');
 const path = require('path');
 
-const USERS_DATA_DIR = path.join(__dirname, '../../data/users');
+const USERS_DATA_DIR = path.join(__dirname, '../data/users');
 
 // 確保 users 資料夾存在
 fs.ensureDirSync(USERS_DATA_DIR);

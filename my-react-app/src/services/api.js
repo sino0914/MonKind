@@ -209,6 +209,8 @@ export const API = {
     editorImage: (file) => HttpAPI.upload.editorImage(file),
     // 3D 快照上傳
     snapshot: (base64Image, productId) => HttpAPI.upload.snapshot(base64Image, productId),
+    // 列印檔案上傳
+    printFile: (blob, productId) => HttpAPI.upload.printFile(blob, productId),
     // 獲取已上傳的文件列表
     getFiles: (type) => HttpAPI.upload.getFiles(type),
     // 刪除文件

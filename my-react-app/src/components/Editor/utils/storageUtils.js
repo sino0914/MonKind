@@ -144,10 +144,12 @@ export const saveDraft = async (productId, designData, draftId = null, product =
     }
   }
 
-  // 如果是 3D 商品，生成快照並上傳到伺服器
+  // 根據商品類型生成快照並上傳到伺服器
   const glbUrl = product?.glbUrl || product?.model3D?.glbUrl;
   console.log('🔍 檢查商品類型:', product?.type, '是否有 GLB:', !!glbUrl);
+
   if (product && product.type === '3D' && glbUrl) {
+    // 3D 商品：生成 3D 快照
     console.log('🎨 正在生成 3D 預覽快照...', {
       productId: product.id,
       productTitle: product.title,
@@ -174,23 +176,66 @@ export const saveDraft = async (productId, designData, draftId = null, product =
             const baseUrl = API_BASE_URL.replace('/api', '');
             const fullUrl = `${baseUrl}${uploadResult.url}`;
             draft.snapshot3D = fullUrl; // 儲存完整 URL
-            console.log('✅ 快照已上傳到伺服器:', fullUrl, '檔案大小:', uploadResult.sizeKB, 'KB');
+            console.log('✅ 3D 快照已上傳到伺服器:', fullUrl, '檔案大小:', uploadResult.sizeKB, 'KB');
           } else {
-            console.error('❌ 上傳快照失敗：回應無效');
+            console.error('❌ 上傳 3D 快照失敗：回應無效');
             // 不儲存 snapshot3D，保持為 undefined
           }
         } catch (uploadError) {
-          console.error('❌ 上傳快照失敗:', uploadError);
+          console.error('❌ 上傳 3D 快照失敗:', uploadError);
           // 不儲存 snapshot3D，保持為 undefined
         }
       } else {
-        console.warn('⚠️ 生成的快照為 null');
+        console.warn('⚠️ 生成的 3D 快照為 null');
       }
     } catch (error) {
       console.error('❌ 生成 3D 快照失敗，但草稿仍會儲存:', error);
     }
+  } else if (product && product.type !== '3D') {
+    // 2D 商品：生成 2D 快照
+    console.log('🎨 正在生成 2D 預覽快照...', {
+      productId: product.id,
+      productTitle: product.title,
+      elementsCount: elements.length
+    });
+    try {
+      const { generate2DSnapshot } = await import('./snapshot2D');
+      const snapshot = await generate2DSnapshot(
+        product,
+        elements,
+        backgroundColor,
+        400,
+        400
+      );
+      if (snapshot) {
+        console.log('✅ 2D 快照已生成，大小:', (snapshot.length / 1024).toFixed(2), 'KB');
+
+        // 上傳快照到伺服器
+        try {
+          const uploadResult = await API.upload.snapshot(snapshot, productId);
+          if (uploadResult && uploadResult.url) {
+            // 組合完整 URL（加上伺服器 base URL）
+            const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+            const baseUrl = API_BASE_URL.replace('/api', '');
+            const fullUrl = `${baseUrl}${uploadResult.url}`;
+            draft.snapshot2D = fullUrl; // 儲存完整 URL
+            console.log('✅ 2D 快照已上傳到伺服器:', fullUrl, '檔案大小:', uploadResult.sizeKB, 'KB');
+          } else {
+            console.error('❌ 上傳 2D 快照失敗：回應無效');
+            // 不儲存 snapshot2D，保持為 undefined
+          }
+        } catch (uploadError) {
+          console.error('❌ 上傳 2D 快照失敗:', uploadError);
+          // 不儲存 snapshot2D，保持為 undefined
+        }
+      } else {
+        console.warn('⚠️ 生成的 2D 快照為 null');
+      }
+    } catch (error) {
+      console.error('❌ 生成 2D 快照失敗，但草稿仍會儲存:', error);
+    }
   } else {
-    console.log('⏭️ 跳過 3D 快照生成（非 3D 商品或缺少 GLB）');
+    console.log('⏭️ 跳過快照生成（缺少商品資料或 GLB）');
   }
 
   try {

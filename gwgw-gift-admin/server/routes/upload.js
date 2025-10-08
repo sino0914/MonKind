@@ -5,7 +5,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
-const uploadsDir = path.join(__dirname, '../../data/uploads');
+const uploadsDir = path.join(__dirname, '../data/uploads');
 
 // 配置 multer 用於文件上傳
 const storage = multer.diskStorage({
@@ -283,6 +283,66 @@ router.post('/snapshot', async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || '快照上傳失敗'
+    });
+  }
+});
+
+// POST /api/upload/print-file - 上傳高解析度列印檔案
+router.post('/print-file', upload.single('printFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: '沒有接收到列印檔案'
+      });
+    }
+
+    const { productId } = req.body;
+
+    // 建立 print-files 資料夾
+    const printFilesDir = path.join(uploadsDir, 'print-files');
+    await fs.ensureDir(printFilesDir);
+
+    // 移動檔案到 print-files 資料夾（因為 multer 可能先存到 images）
+    const newFilePath = path.join(printFilesDir, req.file.filename);
+    if (req.file.path !== newFilePath) {
+      await fs.move(req.file.path, newFilePath, { overwrite: true });
+    }
+
+    const fileInfo = await getFileInfo(newFilePath);
+    const url = `/uploads/print-files/${req.file.filename}`;
+
+    console.log('✅ 列印檔案已儲存:', {
+      filename: req.file.filename,
+      size: (req.file.size / (1024 * 1024)).toFixed(2) + ' MB',
+      productId
+    });
+
+    // 上傳完成後，觸發清理舊的列印檔案
+    const { cleanupOldPrintFiles } = require('../utils/cleanupPrintFiles');
+    cleanupOldPrintFiles().catch(err => {
+      console.error('清理列印檔案失敗:', err);
+    });
+
+    res.json({
+      success: true,
+      message: '列印檔案上傳成功',
+      data: {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        sizeMB: (req.file.size / (1024 * 1024)).toFixed(2),
+        url,
+        uploadedAt: new Date().toISOString(),
+        productId,
+        fileInfo
+      }
+    });
+  } catch (error) {
+    console.error('列印檔案上傳失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '列印檔案上傳失敗'
     });
   }
 });

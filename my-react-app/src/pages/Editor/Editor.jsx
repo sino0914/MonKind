@@ -109,32 +109,62 @@ const Editor = () => {
     if (product) {
       // 只有當 cartItemId 存在時，才是真正從購物車編輯
       if (isEditingExisting && editingData && editingData.cartItemId) {
-        // 生成 3D 快照並上傳到伺服器（如果是 3D 商品）
-        let snapshot3D = editingData.snapshot3D; // 保留原有快照
-        const glbUrl = product?.glbUrl || product?.model3D?.glbUrl;
-        if (product.type === '3D' && glbUrl) {
+        // 生成快照並上傳到伺服器
+        let snapshot3D = editingData.snapshot3D; // 保留原有 3D 快照
+        let snapshot2D = editingData.snapshot2D; // 保留原有 2D 快照
+
+        if (product.type === '3D') {
+          // 3D 商品生成 3D 快照
+          const glbUrl = product?.glbUrl || product?.model3D?.glbUrl;
+          if (glbUrl) {
+            try {
+              const { generate3DSnapshot } = await import('../../components/Editor/utils/snapshot3D');
+              const snapshotBase64 = await generate3DSnapshot(
+                product,
+                designData.elements,
+                designData.backgroundColor,
+                400,
+                400
+              );
+              console.log('✅ 更新購物車時已重新生成 3D 快照');
+
+              // 上傳快照到伺服器
+              try {
+                const uploadResult = await API.upload.snapshot(snapshotBase64, product.id);
+                snapshot3D = uploadResult.url; // 儲存 URL 而非 base64
+                console.log('✅ 購物車更新 3D 快照已上傳到伺服器:', uploadResult.url);
+              } catch (uploadError) {
+                console.error('❌ 上傳 3D 快照失敗，使用 base64 儲存:', uploadError);
+                snapshot3D = snapshotBase64; // 失敗時回退到 base64
+              }
+            } catch (error) {
+              console.error('❌ 生成 3D 快照失敗:', error);
+            }
+          }
+        } else {
+          // 2D 商品生成 2D 快照
           try {
-            const { generate3DSnapshot } = await import('../../components/Editor/utils/snapshot3D');
-            const snapshotBase64 = await generate3DSnapshot(
+            const { generate2DSnapshot } = await import('../../components/Editor/utils/snapshot2D');
+            const snapshotBase64 = await generate2DSnapshot(
               product,
               designData.elements,
               designData.backgroundColor,
               400,
               400
             );
-            console.log('✅ 更新購物車時已重新生成 3D 快照');
+            console.log('✅ 更新購物車時已重新生成 2D 快照');
 
             // 上傳快照到伺服器
             try {
               const uploadResult = await API.upload.snapshot(snapshotBase64, product.id);
-              snapshot3D = uploadResult.url; // 儲存 URL 而非 base64
-              console.log('✅ 購物車更新快照已上傳到伺服器:', uploadResult.url);
+              snapshot2D = uploadResult.url; // 儲存 URL 而非 base64
+              console.log('✅ 購物車更新 2D 快照已上傳到伺服器:', uploadResult.url);
             } catch (uploadError) {
-              console.error('❌ 上傳快照失敗，使用 base64 儲存:', uploadError);
-              snapshot3D = snapshotBase64; // 失敗時回退到 base64
+              console.error('❌ 上傳 2D 快照失敗，使用 base64 儲存:', uploadError);
+              snapshot2D = snapshotBase64; // 失敗時回退到 base64
             }
           } catch (error) {
-            console.error('❌ 生成 3D 快照失敗:', error);
+            console.error('❌ 生成 2D 快照失敗:', error);
           }
         }
 
@@ -151,7 +181,8 @@ const Editor = () => {
           isCustom: true,
           type: product.type, // 保留類型
           designData, // 更新設計資料
-          snapshot3D // 更新快照
+          snapshot3D, // 更新 3D 快照
+          snapshot2D  // 更新 2D 快照
         };
 
         // 先移除舊的項目，然後加入更新的項目
@@ -187,7 +218,8 @@ const Editor = () => {
           price: product.price + 50, // 客製化加價
           isCustom: true,
           designData, // 包含設計資料
-          snapshot3D: editingData?.snapshot3D // 包含 3D 快照（如果有）
+          snapshot3D: editingData?.snapshot3D, // 包含 3D 快照（如果有）
+          snapshot2D: editingData?.snapshot2D  // 包含 2D 快照（如果有）
         };
 
         // 排除 model3D 以避免儲存大型 GLB 資料

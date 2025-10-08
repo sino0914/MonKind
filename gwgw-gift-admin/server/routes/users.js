@@ -3,7 +3,7 @@ const fs = require('fs-extra');
 const path = require('path');
 
 const router = express.Router();
-const dataDir = path.join(__dirname, '../../data');
+const dataDir = path.join(__dirname, '../data');
 const usersFile = path.join(dataDir, 'users.json');
 
 // 讀取用戶數據
