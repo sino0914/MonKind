@@ -12,10 +12,17 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
+  const isVendor = user?.userType === 'vendor';
+
   const navigation = [
-    { name: '訂單管理', path: '/dashboard', icon: '📦' },
-    { name: '廠商管理', path: '/vendors', icon: '🏪' },
+    { name: '訂單管理', path: '/dashboard', icon: '📦', roles: ['admin', 'vendor'] },
+    { name: '廠商管理', path: '/vendors', icon: '🏪', roles: ['admin'] },
   ];
+
+  // 根據角色過濾導航項目
+  const filteredNavigation = navigation.filter((item) =>
+    item.roles.includes(user?.userType || 'admin')
+  );
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -27,9 +34,11 @@ const Layout = ({ children }) => {
             <div className="flex items-center">
               <Link to="/dashboard" className="flex items-center">
                 <span className="text-2xl font-bold text-blue-600">
-                  MonKind
+                  小怪禮
                 </span>
-                <span className="ml-2 text-sm text-gray-500">後台管理</span>
+                <span className="ml-2 text-sm text-gray-500">
+                  {isVendor ? '廠商後台' : '後台管理'}
+                </span>
               </Link>
             </div>
 
@@ -59,7 +68,7 @@ const Layout = ({ children }) => {
           {/* Sidebar Navigation */}
           <aside className="w-64 flex-shrink-0">
             <nav className="bg-white rounded-lg shadow-sm p-4 space-y-1">
-              {navigation.map((item) => {
+              {filteredNavigation.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
                   <Link

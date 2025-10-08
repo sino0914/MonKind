@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { API } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,13 +14,16 @@ const Dashboard = () => {
   // 載入訂單列表
   useEffect(() => {
     loadOrders();
-  }, []);
+  }, [user]);
 
   const loadOrders = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await API.orders.getAll();
+
+      // 如果是廠商，只顯示該廠商的訂單
+      const vendorId = user?.userType === 'vendor' ? user.id : null;
+      const response = await API.orders.getAll(vendorId);
 
       if (response.success) {
         // 按創建時間排序（最新的在前）

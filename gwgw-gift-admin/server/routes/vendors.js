@@ -206,4 +206,62 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/vendors/login - 廠商登入
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: '請提供帳號和密碼'
+      });
+    }
+
+    const vendors = await readVendors();
+    const vendor = vendors.find(v => v.username === username);
+
+    if (!vendor) {
+      return res.status(401).json({
+        success: false,
+        message: '帳號或密碼錯誤'
+      });
+    }
+
+    // 檢查密碼（實際應用應該使用加密比對）
+    if (vendor.password !== password) {
+      return res.status(401).json({
+        success: false,
+        message: '帳號或密碼錯誤'
+      });
+    }
+
+    // 檢查廠商是否啟用
+    if (!vendor.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: '此帳號已被停用'
+      });
+    }
+
+    // 不返回密碼
+    const { password: _, ...safeVendor } = vendor;
+
+    res.json({
+      success: true,
+      message: '登入成功',
+      data: {
+        ...safeVendor,
+        role: 'vendor' // 標記為廠商角色
+      }
+    });
+  } catch (error) {
+    console.error('廠商登入失敗:', error);
+    res.status(500).json({
+      success: false,
+      message: '登入失敗'
+    });
+  }
+});
+
 module.exports = router;

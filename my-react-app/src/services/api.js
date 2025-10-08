@@ -199,6 +199,16 @@ export const API = {
     updateStatus: (orderId, status) => HttpAPI.orders.updateStatus(orderId, status),
   },
 
+  // 廠商相關 API
+  vendors: {
+    // 獲取所有廠商
+    getAll: () => HttpAPI.vendors.getAll(),
+    // 獲取啟用的廠商
+    getActive: () => HttpAPI.vendors.getActive(),
+    // 獲取單個廠商
+    getById: (id) => HttpAPI.vendors.getById(id),
+  },
+
   // 文件上傳相關 API
   upload: {
     // GLB 文件上傳

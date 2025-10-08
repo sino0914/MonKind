@@ -481,6 +481,26 @@ export const HttpAPI = {
     },
   },
 
+  // 廠商相關 API
+  vendors: {
+    // 獲取所有廠商
+    getAll: async () => {
+      const response = await httpApiService.get('/vendors');
+      return response.data || [];
+    },
+    // 獲取啟用的廠商
+    getActive: async () => {
+      const response = await httpApiService.get('/vendors');
+      const vendors = response.data || [];
+      return vendors.filter(v => v.isActive);
+    },
+    // 獲取單個廠商
+    getById: async (id) => {
+      const response = await httpApiService.get(`/vendors/${id}`);
+      return response.data;
+    },
+  },
+
   // 系統相關 API
   system: {
     health: () => httpApiService.checkHealth(),

@@ -12,7 +12,7 @@ import Vendors from './pages/Vendors';
 import OrderDetail from './pages/OrderDetail';
 
 // Protected Route Component
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -28,6 +28,11 @@ const ProtectedRoute = ({ children }) => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // 檢查是否需要管理員權限
+  if (adminOnly && user.userType !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -80,7 +85,7 @@ function AppRoutes() {
       <Route
         path="/vendors"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly={true}>
             <Vendors />
           </ProtectedRoute>
         }

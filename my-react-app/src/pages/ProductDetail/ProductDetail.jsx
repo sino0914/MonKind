@@ -12,6 +12,13 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // 新增：廠商選擇
+  const [vendors, setVendors] = useState([]);
+  const [selectedVendor, setSelectedVendor] = useState(null);
+
+  // 新增：數量選擇
+  const [quantity, setQuantity] = useState(1);
+
   // 載入商品資料
   const loadProduct = async () => {
     try {
@@ -48,9 +55,25 @@ const ProductDetail = () => {
     }
   };
 
+  // 載入廠商資料
+  const loadVendors = async () => {
+    try {
+      const activeVendors = await API.vendors.getActive();
+      setVendors(activeVendors);
+
+      // 預設選擇第一個廠商
+      if (activeVendors.length > 0) {
+        setSelectedVendor(activeVendors[0].id);
+      }
+    } catch (error) {
+      console.error('載入廠商列表失敗:', error);
+    }
+  };
+
   useEffect(() => {
     if (id) {
       loadProduct();
+      loadVendors();
     }
   }, [id]);
 
@@ -60,8 +83,29 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     if (product) {
-      addToCart(product);
-      alert('商品已加入購物車！');
+      // 驗證廠商選擇
+      if (!selectedVendor) {
+        alert('請選擇廠商');
+        return;
+      }
+
+      // 加入購物車時帶上廠商和數量資訊
+      const productWithDetails = {
+        ...product,
+        vendorId: selectedVendor,
+        quantity: quantity
+      };
+
+      addToCart(productWithDetails);
+      alert(`已將 ${quantity} 件商品加入購物車！`);
+    }
+  };
+
+  // 數量增減控制
+  const handleQuantityChange = (delta) => {
+    const newQuantity = quantity + delta;
+    if (newQuantity >= 1 && newQuantity <= 999) {
+      setQuantity(newQuantity);
     }
   };
 
@@ -313,6 +357,64 @@ const ProductDetail = () => {
                 </ul>
               </div>
 
+              {/* 廠商選擇 */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3 text-gray-900">選擇廠商</h3>
+                {vendors.length > 0 ? (
+                  <select
+                    value={selectedVendor || ''}
+                    onChange={(e) => setSelectedVendor(parseInt(e.target.value))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {vendors.map((vendor) => (
+                      <option key={vendor.id} value={vendor.id}>
+                        {vendor.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-gray-500 text-sm">載入廠商資料中...</div>
+                )}
+              </div>
+
+              {/* 數量選擇 */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3 text-gray-900">選擇數量</h3>
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => handleQuantityChange(-1)}
+                    disabled={quantity <= 1}
+                    className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                    </svg>
+                  </button>
+
+                  <input
+                    type="number"
+                    min="1"
+                    max="999"
+                    value={quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      setQuantity(Math.min(999, Math.max(1, val)));
+                    }}
+                    className="w-20 text-center text-xl font-semibold border-2 border-gray-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+
+                  <button
+                    onClick={() => handleQuantityChange(1)}
+                    disabled={quantity >= 999}
+                    className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <button
                   onClick={handleStartDesigning}
@@ -322,16 +424,6 @@ const ProductDetail = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                   開始製作
-                </button>
-
-                <button
-                  onClick={handleAddToCart}
-                  className="w-full border-2 border-gray-300 text-gray-700 py-4 px-6 rounded-lg text-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center justify-center"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L9 21h10a2 2 0 002-2v-1M7 13v6a2 2 0 002 2h2M9 9h6v2H9z" />
-                  </svg>
-                  加入購物車 (標準版)
                 </button>
               </div>
 

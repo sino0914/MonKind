@@ -181,11 +181,13 @@ async function saveOrderIndexToUser(userId, orderIndex) {
 
 /**
  * 獲取所有訂單（管理後台用）
- * GET /api/orders
+ * GET /api/orders?vendorId=xxx (廠商篩選)
  */
 router.get('/', async (req, res) => {
   try {
     await ensureDir(ORDERS_DIR);
+
+    const { vendorId } = req.query;
 
     // 讀取所有訂單目錄
     const orderDirs = await fs.readdir(ORDERS_DIR);
@@ -197,20 +199,31 @@ router.get('/', async (req, res) => {
         const data = await fs.readFile(orderPath, 'utf-8');
         const order = JSON.parse(data);
 
+        // 如果有指定 vendorId，只返回該廠商的訂單項目
+        let filteredItems = order.items || [];
+        if (vendorId) {
+          filteredItems = filteredItems.filter(item => item.vendorId === parseInt(vendorId));
+
+          // 如果過濾後沒有項目，跳過此訂單
+          if (filteredItems.length === 0) {
+            continue;
+          }
+        }
+
         // 轉換訂單格式以符合前端需求
         orders.push({
           orderId: order.orderId,
           createdAt: order.createdAt,
           status: order.status,
           totalAmount: order.totalAmount,
-          itemCount: order.items?.length || 0,
+          itemCount: filteredItems.length, // 使用過濾後的項目數量
           customerInfo: {
             name: order.shipping?.name || '',
             email: order.userId || '',
             phone: order.shipping?.phone || '',
             address: order.shipping?.address || ''
           },
-          items: order.items || []
+          items: filteredItems // 使用過濾後的項目
         });
       } catch (error) {
         console.warn(`無法讀取訂單 ${orderId}:`, error.message);
@@ -289,6 +302,28 @@ router.post('/', async (req, res) => {
         console.log(`  🖨️  列印檔案處理結果: ${printFilePath}`);
       }
 
+      // 處理廠商資訊
+      let vendorId = cartItem.vendorId;
+      let vendorName = null;
+
+      if (vendorId) {
+        // 從廠商資料檔讀取廠商名稱
+        try {
+          const vendorsFile = path.join(__dirname, '../data/vendors.json');
+          const vendors = await fs.readFile(vendorsFile, 'utf-8');
+          const vendorsList = JSON.parse(vendors);
+          const vendor = vendorsList.find(v => v.id === vendorId);
+          if (vendor) {
+            vendorName = vendor.name;
+            console.log(`  🏭 廠商: ${vendorName} (ID: ${vendorId})`);
+          }
+        } catch (error) {
+          console.error('  ⚠️  讀取廠商資料失敗:', error.message);
+        }
+      } else {
+        console.log(`  ⚠️  此商品沒有指定廠商`);
+      }
+
       items.push({
         itemId,
         originalProductId: cartItem.originalProductId || cartItem.id,
@@ -303,7 +338,9 @@ router.post('/', async (req, res) => {
         printFile: printFilePath,
         printFileGeneratedAt: printFilePath ? new Date().toISOString() : null,
         image: cartItem.image,
-        printArea: cartItem.printArea || null
+        printArea: cartItem.printArea || null,
+        vendorId: vendorId,
+        vendorName: vendorName
       });
     }
 

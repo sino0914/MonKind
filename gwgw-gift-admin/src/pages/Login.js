@@ -9,7 +9,7 @@ const Login = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    userType: 'admin', // 預設為管理員登入
+    userType: 'vendor', // 預設為廠商登入
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,7 +50,7 @@ const Login = () => {
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            MonKind 後台管理系統
+            小怪禮管理系統
           </h1>
           <p className="text-gray-600">請登入以繼續</p>
         </div>
@@ -71,20 +71,6 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() =>
-                  setFormData({ ...formData, userType: 'admin' })
-                }
-                className={`py-3 px-4 rounded-lg border-2 transition-all ${
-                  formData.userType === 'admin'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-2xl mb-1">👨‍💼</div>
-                <div className="text-sm font-medium">管理員</div>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
                   setFormData({ ...formData, userType: 'vendor' })
                 }
                 className={`py-3 px-4 rounded-lg border-2 transition-all ${
@@ -95,6 +81,20 @@ const Login = () => {
               >
                 <div className="text-2xl mb-1">🏪</div>
                 <div className="text-sm font-medium">廠商</div>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, userType: 'admin' })
+                }
+                className={`py-3 px-4 rounded-lg border-2 transition-all ${
+                  formData.userType === 'admin'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-2xl mb-1">👨‍💼</div>
+                <div className="text-sm font-medium">管理員</div>
               </button>
             </div>
           </div>
@@ -140,11 +140,6 @@ const Login = () => {
             {loading ? '登入中...' : '登入'}
           </button>
         </form>
-
-        {/* 提示訊息 */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>預設管理員帳號：admin / admin123</p>
-        </div>
       </div>
     </div>
   );

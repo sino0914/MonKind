@@ -110,6 +110,7 @@ const MyWorks = () => {
         price: draft.product.price + 50,
         isCustom: true,
         type: draft.product.type, // 保留類型（用於判斷是否為 3D）
+        quantity: 1, // 從我的作品加入購物車，數量預設為 1
         designData: {
           elements: draft.elements, // 保留完整的設計元素（包括圖片）
           backgroundColor: draft.backgroundColor || '#ffffff'

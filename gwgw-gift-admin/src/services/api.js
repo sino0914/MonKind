@@ -66,7 +66,10 @@ class APIService {
 
   // Order APIs
   orders = {
-    getAll: () => this.request('/orders'),
+    getAll: (vendorId) => {
+      const endpoint = vendorId ? `/orders?vendorId=${vendorId}` : '/orders';
+      return this.request(endpoint);
+    },
 
     getById: (id) => this.request(`/orders/${id}`),
 

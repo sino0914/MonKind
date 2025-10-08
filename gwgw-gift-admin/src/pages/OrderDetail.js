@@ -2,27 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { API } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const OrderDetail = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     loadOrderDetail();
-  }, [orderId]);
+  }, [orderId, user]);
 
   const loadOrderDetail = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await API.orders.getAll();
+
+      // 如果是廠商，只能看自己的訂單
+      const vendorId = user?.userType === 'vendor' ? user.id : null;
+      const response = await API.orders.getAll(vendorId);
 
       if (response.success) {
         const foundOrder = response.data.find((o) => o.orderId === orderId);
         if (foundOrder) {
+          // 如果是廠商，再次確認訂單項目中有該廠商的商品
+          if (user?.userType === 'vendor') {
+            const hasVendorItems = foundOrder.items?.some(
+              (item) => item.vendorId === user.id
+            );
+            if (!hasVendorItems) {
+              setError('您無權查看此訂單');
+              return;
+            }
+          }
           setOrder(foundOrder);
         } else {
           setError('找不到該訂單');
@@ -183,6 +198,11 @@ const OrderDetail = () => {
                       <p className="text-sm text-gray-500 mt-1">
                         數量: {item.quantity}
                       </p>
+                      {item.vendorName && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          廠商: {item.vendorName}
+                        </p>
+                      )}
                       <p className="text-sm font-medium text-gray-900 mt-1">
                         NT$ {item.price?.toLocaleString()}
                       </p>
