@@ -18,6 +18,7 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
     updateElement,
     startDrag,
     endDrag,
+    startResize,
     selectElement,
     clearSelection,
     copyElement,
@@ -36,6 +37,8 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
 
     if (handle) {
       setResizeHandle(handle);
+      // 開始旋轉或縮放操作，暫停歷史記錄
+      startResize();
     } else {
       const rect = e.currentTarget.getBoundingClientRect();
       startDrag(element.id, {
@@ -43,7 +46,7 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
         y: e.clientY - rect.top - rect.height / 2,
       });
     }
-  }, [selectElement, setResizeHandle, startDrag]);
+  }, [selectElement, setResizeHandle, startDrag, startResize]);
 
   // 處理滑鼠移動
   const handleMouseMove = useCallback((e) => {

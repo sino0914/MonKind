@@ -11,6 +11,7 @@ const OrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [downloadingItems, setDownloadingItems] = useState({}); // 追蹤每個項目的下載狀態
 
   useEffect(() => {
     loadOrderDetail();
@@ -80,6 +81,50 @@ const OrderDetail = () => {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  // 處理下載列印檔案
+  const handleDownloadPrintFile = async (itemId) => {
+    try {
+      // 設置下載中狀態
+      setDownloadingItems(prev => ({ ...prev, [itemId]: true }));
+
+      const url = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}/api/orders/${orderId}/items/${itemId}/print-file`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        // 處理不同的錯誤情況
+        if (response.status === 501) {
+          alert('列印檔案不存在且無法自動重建。\n請聯繫管理員或請客戶重新下單。');
+        } else if (response.status === 404) {
+          alert('找不到列印檔案');
+        } else {
+          alert(`下載失敗：${errorData.message || '未知錯誤'}`);
+        }
+        return;
+      }
+
+      // 下載檔案
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `${orderId}_${itemId}_print.png`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+
+    } catch (error) {
+      console.error('下載列印檔案失敗:', error);
+      alert('下載失敗，請稍後再試');
+    } finally {
+      // 清除下載中狀態
+      setDownloadingItems(prev => ({ ...prev, [itemId]: false }));
+    }
   };
 
   // 獲取快照圖片來源
@@ -207,13 +252,17 @@ const OrderDetail = () => {
                         NT$ {item.price?.toLocaleString()}
                       </p>
                       {item.printFile && (
-                        <a
-                          href={`${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}/api/orders/${order.orderId}/items/${item.itemId}/print-file`}
-                          download
-                          className="inline-flex items-center mt-2 text-sm text-blue-600 hover:text-blue-800"
+                        <button
+                          onClick={() => handleDownloadPrintFile(item.itemId)}
+                          disabled={downloadingItems[item.itemId]}
+                          className={`inline-flex items-center mt-2 text-sm rounded transition-colors ${
+                            downloadingItems[item.itemId]
+                              ? 'text-gray-400 cursor-not-allowed'
+                              : 'text-blue-600 hover:text-blue-800'
+                          }`}
                         >
-                          📥 下載列印檔案
-                        </a>
+                          {downloadingItems[item.itemId] ? '⏳ 下載中...' : '📥 下載列印檔案'}
+                        </button>
                       )}
                     </div>
                     <div className="text-right">

@@ -37,6 +37,7 @@ import {
 import { processImageColor } from "./utils/imageUtils";
 import { saveDraft, getStorageInfo } from "./utils/storageUtils";
 import { createTools } from "./constants/toolsConfig";
+import { removeImageBackground } from "./utils/backgroundRemoval";
 
 const UniversalEditor = ({
   // 模式配置
@@ -94,6 +95,9 @@ const UniversalEditor = ({
 
   // Preview 的 ref，用於截取快照
   const previewRef = useRef(null);
+
+  // 去背處理狀態
+  const [isRemovingBackground, setIsRemovingBackground] = useState(false);
 
   // 使用外部傳入的product或內部載入的product
   const currentProduct = product || internalProduct;
@@ -312,8 +316,13 @@ const UniversalEditor = ({
     };
   }, [
     editorState.selectedElement,
+    editorState.undo,
+    editorState.redo,
     canvasInteraction.copiedElement,
+    canvasInteraction.handleCopyElement,
+    canvasInteraction.handlePasteElement,
     imageReplace.isReplacingImage,
+    imageReplace.cancelReplaceMode,
   ]);
 
   // 保存草稿
@@ -362,6 +371,25 @@ const UniversalEditor = ({
         backgroundColor: editorState.backgroundColor,
       });
     } else if (currentProduct) {
+      // 確保產品有廠商資訊
+      let vendorId = currentProduct.vendorId;
+      if (!vendorId) {
+        try {
+          console.log('⚠️ 產品沒有廠商資訊，載入並分配第一個廠商');
+          const activeVendors = await API.vendors.getActive();
+          if (activeVendors.length > 0) {
+            vendorId = activeVendors[0].id;
+            console.log('✅ 自動分配廠商:', activeVendors[0]);
+          } else {
+            alert('目前沒有可用的廠商，無法加入購物車');
+            return;
+          }
+        } catch (error) {
+          console.error('❌ 載入廠商失敗:', error);
+          alert('載入廠商資訊失敗，請稍後再試');
+          return;
+        }
+      }
       // 如果是 3D 商品，生成快照並上傳到伺服器
       let snapshot3D = null;
       const glbUrl = currentProduct?.glbUrl || currentProduct?.model3D?.glbUrl;
@@ -402,6 +430,7 @@ const UniversalEditor = ({
         price: currentProduct.price + 50,
         isCustom: true,
         type: currentProduct.type, // 保留類型
+        vendorId, // 包含廠商資訊
         designData: {
           elements: editorState.designElements,
           backgroundColor: editorState.backgroundColor,
@@ -467,6 +496,40 @@ const UniversalEditor = ({
     imageReplace,
     editorState,
   ]);
+
+  // 處理去背
+  const handleRemoveBackground = useCallback(async (element) => {
+    if (!element || element.type !== 'image') {
+      alert('請選擇一個圖片元素');
+      return;
+    }
+
+    if (isRemovingBackground) {
+      console.log('⚠️ 已經在處理去背中，請稍候');
+      return;
+    }
+
+    try {
+      setIsRemovingBackground(true);
+      console.log('🎨 開始去背處理...', element.id);
+
+      // 調用去背函數
+      const removedBgImageBase64 = await removeImageBackground(element.url);
+
+      // 更新圖片元素的 URL
+      editorState.updateElement(element.id, {
+        url: removedBgImageBase64,
+      });
+
+      console.log('✅ 去背完成！');
+      alert('背景移除成功！');
+    } catch (error) {
+      console.error('❌ 去背失敗:', error);
+      alert(`去背失敗：${error.message}\n\n可能原因：\n1. 圖片格式不支援\n2. 網路連線問題\n3. 圖片太大（建議小於 5MB）`);
+    } finally {
+      setIsRemovingBackground(false);
+    }
+  }, [isRemovingBackground, editorState]);
 
   // 載入狀態
   if (currentLoading) {
@@ -621,6 +684,8 @@ const UniversalEditor = ({
           replacingImageId={imageReplace.replacingImageId}
           getDisplayUrl={imageReplace.getDisplayUrl}
           onReplaceClick={handleReplaceClick}
+          onRemoveBackground={handleRemoveBackground}
+          isRemovingBackground={isRemovingBackground}
           isHoveringImage={canvasInteraction.isHoveringImage}
           handleMouseMove={canvasInteraction.handleMouseMove}
           handleMouseUp={canvasInteraction.handleMouseUp}

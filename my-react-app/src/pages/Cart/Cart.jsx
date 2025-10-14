@@ -1,11 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { API } from '../../services/api';
 import ProductThumbnail from '../../components/Preview/ProductThumbnail';
 
 const Cart = () => {
-  const { cart, updateQuantity, removeFromCart, getCartTotal } = useCart();
+  const { cart, updateQuantity, removeFromCart, getCartTotal, updateCartItem } = useCart();
   const navigate = useNavigate();
+  const [vendors, setVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 載入廠商列表
+  useEffect(() => {
+    const loadVendors = async () => {
+      try {
+        setLoading(true);
+        const activeVendors = await API.vendors.getActive();
+        console.log('📦 載入啟用的廠商:', activeVendors);
+        setVendors(activeVendors);
+
+        // 檢查購物車中是否有商品沒有廠商，自動分配第一個廠商
+        if (activeVendors.length > 0) {
+          cart.forEach((item) => {
+            if (!item.vendorId) {
+              console.log(`⚠️ 商品 ${item.id} 沒有廠商，自動分配第一個廠商:`, activeVendors[0]);
+              updateCartItem(item.id, { vendorId: activeVendors[0].id });
+            }
+          });
+        }
+      } catch (error) {
+        console.error('❌ 載入廠商失敗:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (cart.length > 0) {
+      loadVendors();
+    } else {
+      setLoading(false);
+    }
+  }, [cart.length]); // 只在購物車數量改變時重新載入
+
+  // 處理廠商變更
+  const handleVendorChange = (itemId, newVendorId) => {
+    console.log(`🔄 更新商品 ${itemId} 的廠商為:`, newVendorId);
+    updateCartItem(itemId, { vendorId: parseInt(newVendorId) });
+  };
 
   const handleEditProduct = (item) => {
     console.log('🛒 開始編輯商品:', item);
@@ -98,6 +139,27 @@ const Cart = () => {
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900">{item.title}</h3>
                       <p className="text-gray-600">NT$ {item.price}</p>
+
+                      {/* 廠商選擇器 */}
+                      <div className="mt-2 flex items-center space-x-2">
+                        <label className="text-sm text-gray-600">廠商:</label>
+                        <select
+                          value={item.vendorId || ''}
+                          onChange={(e) => handleVendorChange(item.id, e.target.value)}
+                          className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={loading || vendors.length === 0}
+                        >
+                          {vendors.length === 0 ? (
+                            <option value="">無可用廠商</option>
+                          ) : (
+                            vendors.map((vendor) => (
+                              <option key={vendor.id} value={vendor.id}>
+                                {vendor.name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
                     </div>
                     <div className="flex items-center space-x-2">
                       <button

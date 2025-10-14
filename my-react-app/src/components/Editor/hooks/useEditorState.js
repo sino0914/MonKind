@@ -43,6 +43,7 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
   const [historyIndex, setHistoryIndex] = useState(-1);
   const isApplyingHistory = useRef(false); // 防止應用歷史時再次記錄
   const isDragging = useRef(false); // 追蹤是否正在拖曳中
+  const isResizing = useRef(false); // 追蹤是否正在旋轉/縮放中
   const hasUserAction = useRef(false); // 追蹤是否有用戶操作
 
   // 初始化標記（用於避免初次觸發變更回調）
@@ -90,6 +91,7 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
     // 只有真正的用戶操作才記錄
     if (!hasUserAction.current) return;
     if (isDragging.current) return; // 拖曳中不記錄（等拖曳結束時才記錄）
+    if (isResizing.current) return; // 旋轉/縮放中不記錄（等操作結束時才記錄）
 
     recordHistory(designElements, backgroundColor);
   }, [designElements, backgroundColor]);
@@ -249,6 +251,20 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
       // 手動記錄一次歷史
       recordHistory(designElements, backgroundColor);
     }
+
+    // 旋轉/縮放結束後，記錄最終狀態
+    if (isResizing.current) {
+      isResizing.current = false;
+      console.log('🎯 結束旋轉/縮放，記錄最終狀態');
+      // 手動記錄一次歷史
+      recordHistory(designElements, backgroundColor);
+    }
+  };
+
+  // 開始旋轉/縮放操作
+  const startResize = () => {
+    isResizing.current = true;
+    console.log('🎯 開始旋轉/縮放，暫停歷史記錄');
   };
 
   // 背景顏色變更包裝函數（標記為骯髒）
@@ -394,6 +410,7 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
     pasteElement,
     startDrag,
     endDrag,
+    startResize,
   };
 };
 

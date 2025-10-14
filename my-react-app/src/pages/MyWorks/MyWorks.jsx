@@ -97,8 +97,28 @@ const MyWorks = () => {
   };
 
   // 加入購物車
-  const handleAddToCart = (draft) => {
+  const handleAddToCart = async (draft) => {
     if (draft.elements && draft.elements.length > 0) {
+      // 確保產品有廠商資訊
+      let vendorId = draft.product.vendorId;
+      if (!vendorId) {
+        try {
+          console.log('⚠️ 產品沒有廠商資訊，載入並分配第一個廠商');
+          const activeVendors = await API.vendors.getActive();
+          if (activeVendors.length > 0) {
+            vendorId = activeVendors[0].id;
+            console.log('✅ 自動分配廠商:', activeVendors[0]);
+          } else {
+            alert('目前沒有可用的廠商，無法加入購物車');
+            return;
+          }
+        } catch (error) {
+          console.error('❌ 載入廠商失敗:', error);
+          alert('載入廠商資訊失敗，請稍後再試');
+          return;
+        }
+      }
+
       // 只複製必要的商品欄位，排除 GLB 等大型資料
       const { model3D, ...productWithoutModel } = draft.product;
 
@@ -110,6 +130,7 @@ const MyWorks = () => {
         price: draft.product.price + 50,
         isCustom: true,
         type: draft.product.type, // 保留類型（用於判斷是否為 3D）
+        vendorId, // 包含廠商資訊
         quantity: 1, // 從我的作品加入購物車，數量預設為 1
         designData: {
           elements: draft.elements, // 保留完整的設計元素（包括圖片）

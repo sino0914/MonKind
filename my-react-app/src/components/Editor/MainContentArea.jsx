@@ -31,6 +31,10 @@ const MainContentArea = ({
   handleDragOver,
   handleDrop,
 
+  // 圖片去背相關
+  onRemoveBackground,
+  isRemovingBackground,
+
   // 事件處理函數
   handleMouseMove,
   handleMouseUp,
@@ -191,6 +195,20 @@ const MainContentArea = ({
                             title="複製並貼上"
                           >
                             📋複製
+                          </button>
+
+                          {/* 去背按鈕 */}
+                          <button
+                            onClick={() => onRemoveBackground(element)}
+                            disabled={isRemovingBackground}
+                            className={`px-2 py-1 text-xs rounded transition-all ${
+                              isRemovingBackground
+                                ? 'bg-gray-500 cursor-not-allowed'
+                                : 'bg-purple-600 hover:bg-purple-700'
+                            }`}
+                            title={isRemovingBackground ? '處理中...' : '移除背景'}
+                          >
+                            {isRemovingBackground ? '⏳處理中...' : '✂️去背'}
                           </button>
                         </div>
                       </div>
