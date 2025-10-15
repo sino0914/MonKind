@@ -155,8 +155,8 @@ export const generate3DSnapshot = async (
     scene.background = new THREE.Color(0xf5f5f5);
 
     // 3. 創建相機
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-    camera.position.set(1, 1, 1);
+    const camera = new THREE.PerspectiveCamera(70, width / height, 0.1, 1000);
+    camera.position.set(0.5, 0.5, 1);
     camera.lookAt(0, 0.3, 0);
 
     // 4. 創建離屏渲染器

@@ -68,9 +68,9 @@ const MainContentArea = ({
   return (
     <div className="flex-1 flex">
       {/* Canvas Area */}
-      <div className="flex-1 bg-gray-50 p-8">
+      <div className="flex-1 bg-gray-50 p-4">
         <div className="h-full flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl p-8">
+          <div className="bg-white rounded-lg shadow-xl p-8 w-full h-full ">
             {/* 顯示全圖按鈕 - 放在 Canvas 上方 */}
             {viewport && (
               <div className="flex items-center justify-between mb-4">
@@ -276,23 +276,23 @@ const MainContentArea = ({
       <div className="flex-1 bg-white border-l border-gray-200">
         <div className="h-full flex flex-col">
           {/* Live Preview */}
-          <div className="flex-1 p-8">
+          <div className="flex-1 p-4">
             <div className="h-full flex items-center justify-center">
               <div
                 ref={previewRef}
-                className="bg-white rounded-lg shadow-xl p-8"
-                style={{ marginTop: "-48px" }}
+                className="bg-white rounded-lg shadow-xl p-2 w-full max-w-[calc(100%-2rem)] h-full max-h-[calc(100vh-200px)]"
               >
-                <h3 className="font-semibold text-gray-900 mb-4 text-center">
+                <h3 className="font-semibold text-gray-900 mb-2 text-center">
                   即時預覽
                 </h3>
-                <ProductPreview
-                  productId={currentProduct.id}
-                  designElements={designElements}
-                  backgroundColor={backgroundColor}
-                  width={440}
-                  height={440}
-                />
+                <div className="w-full h-full flex items-center justify-center">
+                  <ProductPreview
+                    productId={currentProduct.id}
+                    designElements={designElements}
+                    backgroundColor={backgroundColor}
+                    className="w-full h-full"
+                  />
+                </div>
               </div>
             </div>
           </div>

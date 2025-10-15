@@ -112,8 +112,13 @@ const CanvasArea = ({
       style={{
         overflow: "hidden",
         cursor: viewport?.isPanning ? 'grabbing' : (isHoveringImage ? 'none' : 'auto'),
-        width: '400px',
-        height: '400px',
+        minWidth: '400px',
+        minHeight: '400px',
+        maxWidth: 'min(90vh, calc(100vw - 600px))',
+        maxHeight: 'min(90vh, calc(100vh - 200px))',
+        aspectRatio: '1 / 1',
+        width: '100%',
+        height: 'auto',
       }}
       onMouseDown={combinedMouseDown}
       onMouseMove={combinedMouseMove}
@@ -132,8 +137,8 @@ const CanvasArea = ({
             ? `scale(${viewport.zoom}) translate(${viewport.pan.x}px, ${viewport.pan.y}px)`
             : 'none',
           transition: viewport?.isPanning ? 'none' : 'transform 0.1s ease-out',
-          width: '400px',
-          height: '400px',
+          width: '100%',
+          height: '100%',
           left: '0',
           top: '0',
         }}

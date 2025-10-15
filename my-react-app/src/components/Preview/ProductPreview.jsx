@@ -15,11 +15,15 @@ const ProductPreview = ({
   className = "",
   showControls = true,
   showInfo = true,
-  width = 320,
-  height = 320,
+  width = null, // 改為可選，預設 null 表示響應式
+  height = null, // 改為可選，預設 null 表示響應式
   scaleFactor = null, // 新增縮放因子參數
   ...props
 }) => {
+  // 計算實際尺寸：如果未指定則使用響應式
+  const containerWidth = width || '100%';
+  const containerHeight = height || '100%';
+  const isResponsive = !width || !height;
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -234,7 +238,15 @@ const ProductPreview = ({
       <div className={`bg-gray-50 rounded-lg p-4 ${className}`} {...props}>
         <div
           className="bg-white rounded border-2 border-gray-200 relative overflow-hidden flex items-center justify-center"
-          style={{ width, height }}
+          style={{
+            width: containerWidth,
+            height: containerHeight,
+            minWidth: isResponsive ? '440px' : undefined,
+            minHeight: isResponsive ? '440px' : undefined,
+            maxWidth: isResponsive ? 'min(90vh, calc(100vw - 600px))' : undefined,
+            maxHeight: isResponsive ? 'min(90vh, calc(100vh - 200px))' : undefined,
+            aspectRatio: isResponsive ? '1 / 1' : undefined,
+          }}
         >
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -251,7 +263,15 @@ const ProductPreview = ({
       <div className={`bg-gray-50 rounded-lg p-4 ${className}`} {...props}>
         <div
           className="bg-white rounded border-2 border-gray-200 relative overflow-hidden flex items-center justify-center"
-          style={{ width, height }}
+          style={{
+            width: containerWidth,
+            height: containerHeight,
+            minWidth: isResponsive ? '440px' : undefined,
+            minHeight: isResponsive ? '440px' : undefined,
+            maxWidth: isResponsive ? 'min(90vh, calc(100vw - 600px))' : undefined,
+            maxHeight: isResponsive ? 'min(90vh, calc(100vh - 200px))' : undefined,
+            aspectRatio: isResponsive ? '1 / 1' : undefined,
+          }}
         >
           <div className="text-center">
             <div className="text-4xl mb-2">❌</div>
@@ -274,7 +294,15 @@ const ProductPreview = ({
         /* 3D GLB 模型預覽 */
         <div
           className="bg-white rounded border-2 border-gray-200 relative overflow-hidden"
-          style={{ width, height }}
+          style={{
+            width: containerWidth,
+            height: containerHeight,
+            minWidth: isResponsive ? '440px' : undefined,
+            minHeight: isResponsive ? '440px' : undefined,
+            maxWidth: isResponsive ? 'min(90vh, calc(100vw - 600px))' : undefined,
+            maxHeight: isResponsive ? 'min(90vh, calc(100vh - 200px))' : undefined,
+            aspectRatio: isResponsive ? '1 / 1' : undefined,
+          }}
         >
           <GLBViewer
             glbUrl={product.model3D.glbUrl}
@@ -288,7 +316,15 @@ const ProductPreview = ({
         /* 傳統 3D 馬克杯預覽 (向後兼容) */
         <div
           className="bg-white rounded border-2 border-gray-200 relative overflow-hidden"
-          style={{ width, height }}
+          style={{
+            width: containerWidth,
+            height: containerHeight,
+            minWidth: isResponsive ? '440px' : undefined,
+            minHeight: isResponsive ? '440px' : undefined,
+            maxWidth: isResponsive ? 'min(90vh, calc(100vw - 600px))' : undefined,
+            maxHeight: isResponsive ? 'min(90vh, calc(100vh - 200px))' : undefined,
+            aspectRatio: isResponsive ? '1 / 1' : undefined,
+          }}
         >
           <Mug3D designElements={designElements} product={product} />
         </div>
@@ -296,7 +332,15 @@ const ProductPreview = ({
         /* 2D 預覽 (T恤等其他產品) */
         <div
           className="bg-white rounded border-2 border-gray-200 relative overflow-hidden"
-          style={{ width, height }}
+          style={{
+            width: containerWidth,
+            height: containerHeight,
+            minWidth: isResponsive ? '440px' : undefined,
+            minHeight: isResponsive ? '440px' : undefined,
+            maxWidth: isResponsive ? 'min(90vh, calc(100vw - 600px))' : undefined,
+            maxHeight: isResponsive ? 'min(90vh, calc(100vh - 200px))' : undefined,
+            aspectRatio: isResponsive ? '1 / 1' : undefined,
+          }}
         >
           {/* Product Mockup as Background */}
           <img
@@ -368,7 +412,7 @@ const ProductPreview = ({
                       top: `${(relativeY / areaHeight) * 100}%`,
                       transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
                       fontSize: `${
-                        element.fontSize * (scaleFactor || width / 400)
+                        element.fontSize * (scaleFactor || (width ? width / 400 : 1.1))
                       }px`,
                       color: element.color,
                       fontFamily: element.fontFamily,
@@ -445,7 +489,7 @@ const ProductPreview = ({
                         top: `${(element.y / 400) * 100}%`,
                         transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
                         fontSize: `${
-                          element.fontSize * (scaleFactor || width / 400)
+                          element.fontSize * (scaleFactor || (width ? width / 400 : 1.1))
                         }px`,
                         color: element.color,
                         fontFamily: element.fontFamily,
