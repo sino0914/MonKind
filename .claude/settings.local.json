@@ -26,7 +26,14 @@
       "Bash(powershell:*)",
       "Bash(npx tailwindcss init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git tag:*)",
+      "Bash(pnpm --version)",
+      "Bash(if [ -f \"my-react-app/src/utils/ProductDataManager.js\" ])",
+      "Bash(then cp my-react-app/src/utils/ProductDataManager.js packages/shared/utils/ProductDataManager.js)",
+      "Bash(fi)",
+      "Bash(rsync:*)",
+      "Bash(pnpm install)"
     ],
     "deny": [],
     "ask": []

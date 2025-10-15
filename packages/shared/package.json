@@ -1,0 +1,26 @@
+{
+  "name": "@monkind/shared",
+  "version": "1.0.0",
+  "description": "MonKind 共用組件、服務和工具",
+  "main": "index.js",
+  "exports": {
+    "./components/GLBViewer": "./components/GLBViewer/index.js",
+    "./components/UVMapper": "./components/UVMapper/index.js",
+    "./components/Editor": "./components/Editor/index.js",
+    "./components/Preview": "./components/Preview/index.js",
+    "./components/Preview/ProductThumbnail": "./components/Preview/ProductThumbnail.jsx",
+    "./services/api": "./services/index.js",
+    "./utils": "./utils/index.js"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "keywords": [
+    "monkind",
+    "shared",
+    "components"
+  ],
+  "author": "MonKind Team",
+  "license": "UNLICENSED"
+}

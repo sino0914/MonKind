@@ -1,0 +1,341 @@
+import { useState, useCallback, useEffect } from 'react';
+import { HttpAPI } from '../../../services/HttpApiService';
+import { API } from '../../../services/api';
+
+/**
+ * 圖片管理 Hook
+ * 處理圖片上傳、管理已上傳圖片、從元素庫添加圖片
+ */
+const useImageManager = (editorState, imageReplace = null) => {
+  const { addElement } = editorState;
+
+  // 已上傳圖片列表
+  const [uploadedImages, setUploadedImages] = useState([]);
+  // 上傳中狀態
+  const [isUploading, setIsUploading] = useState(false);
+  // 管理的元素列表（從元素庫載入）
+  const [managedElements, setManagedElements] = useState([]);
+  // 載入元素中狀態
+  const [loadingElements, setLoadingElements] = useState(false);
+  // 拖曳中的圖片 URL
+  const [draggingImageUrl, setDraggingImageUrl] = useState(null);
+
+  // 初始化：從伺服器載入已上傳的圖片列表
+  useEffect(() => {
+    const loadServerImages = async () => {
+      try {
+        const files = await HttpAPI.upload.getFiles('editor-image');
+        console.log('✅ 從伺服器載入圖片:', files);
+
+        // 構建完整 URL
+        const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+
+        // 轉換為統一格式
+        const images = files.map((file, index) => {
+          const imageUrl = file.url.startsWith('http')
+            ? file.url
+            : `${API_BASE_URL.replace('/api', '')}${file.url}`;
+
+          return {
+            id: file.filename || Date.now() + index,
+            url: imageUrl,
+            name: file.filename,
+            uploadedAt: file.uploadedAt || new Date().toISOString(),
+          };
+        });
+        setUploadedImages(images);
+
+        // 清除舊的 localStorage 數據
+        localStorage.removeItem('editor_uploaded_images');
+      } catch (error) {
+        console.error('❌ 載入伺服器圖片失敗:', error);
+        setUploadedImages([]);
+      }
+    };
+
+    loadServerImages();
+  }, []);
+
+  /**
+   * 處理圖片上傳
+   * @param {Event} e - 文件輸入事件
+   */
+  const handleImageUpload = useCallback(async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 檢查文件類型
+    if (!file.type.startsWith('image/')) {
+      alert('請選擇圖片檔案');
+      return;
+    }
+
+    // 檢查文件大小（最大 10MB）
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('圖片檔案過大，請選擇小於 10MB 的圖片');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // 上傳到伺服器
+      const uploadResult = await HttpAPI.upload.editorImage(file);
+
+      // 構建完整的圖片 URL
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+      const imageUrl = uploadResult.url.startsWith('http')
+        ? uploadResult.url
+        : `${API_BASE_URL.replace('/api', '')}${uploadResult.url}`;
+
+      // 添加到已上傳圖片列表
+      const newImage = {
+        id: uploadResult.filename || Date.now(),
+        url: imageUrl, // 完整的圖片 URL
+        name: file.name,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      const updatedImages = [...uploadedImages, newImage];
+      setUploadedImages(updatedImages);
+
+      console.log('✅ 圖片已上傳到伺服器:', uploadResult);
+
+      // 重置輸入框
+      e.target.value = '';
+    } catch (error) {
+      console.error('圖片上傳失敗:', error);
+      alert(`圖片上傳失敗：${error.message || '請稍後重試'}`);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [uploadedImages]);
+
+  /**
+   * 將已上傳的圖片添加到畫布
+   * @param {Object} image - 圖片對象
+   */
+  const handleAddImageToCanvas = useCallback(async (image) => {
+    if (!image || !image.url) return;
+
+    // 如果處於替換模式，執行替換
+    if (imageReplace?.isReplacingImage) {
+      imageReplace.executeReplace(image.url);
+      return;
+    }
+
+    // 載入圖片獲取原始尺寸
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = image.url;
+
+    await new Promise((resolve) => {
+      img.onload = () => {
+        // 計算保持寬高比的尺寸（最大邊設為 100）
+        const maxSize = 100;
+        let width = img.naturalWidth;
+        let height = img.naturalHeight;
+
+        if (width > height) {
+          // 寬圖：寬度固定為 maxSize
+          height = (height / width) * maxSize;
+          width = maxSize;
+        } else {
+          // 高圖或正方形：高度固定為 maxSize
+          width = (width / height) * maxSize;
+          height = maxSize;
+        }
+
+        console.log('📐 圖片尺寸計算:', {
+          original: { width: img.naturalWidth, height: img.naturalHeight },
+          scaled: { width, height }
+        });
+
+        // 否則新增圖片（保持寬高比）
+        addElement({
+          id: `image-${Date.now()}`,
+          type: 'image',
+          url: image.url,
+          width,
+          height,
+          x: 150,
+          y: 150,
+          rotation: 0,
+          opacity: 1,
+        });
+        resolve();
+      };
+      img.onerror = () => {
+        console.error('圖片載入失敗:', image.url);
+        alert('圖片載入失敗，請重試');
+        resolve();
+      };
+    });
+  }, [addElement, imageReplace]);
+
+  /**
+   * 刪除已上傳的圖片
+   * @param {number} imageId - 圖片 ID
+   */
+  const handleDeleteUploadedImage = useCallback(async (imageId) => {
+    const imageToDelete = uploadedImages.find(img => img.id === imageId);
+    if (!imageToDelete) return;
+
+    // 確認對話框
+    const confirmMessage = `確定要刪除圖片「${imageToDelete.name}」嗎？\n\n⚠️ 注意：如果設計區中有使用此圖片，該圖片元素也會失效。`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      // 從伺服器刪除
+      if (imageToDelete.url.startsWith('http')) {
+        // 提取檔名
+        const filename = imageToDelete.url.split('/').pop();
+        await HttpAPI.upload.deleteFile('editor-image', filename);
+        console.log('✅ 已從伺服器刪除圖片:', filename);
+      }
+
+      // 從列表中移除
+      const updatedImages = uploadedImages.filter(img => img.id !== imageId);
+      setUploadedImages(updatedImages);
+    } catch (error) {
+      console.error('刪除圖片失敗:', error);
+      alert(`刪除圖片失敗：${error.message || '請稍後重試'}`);
+    }
+  }, [uploadedImages]);
+
+  /**
+   * 從元素庫添加圖片到設計
+   * @param {Object} element - 元素對象
+   */
+  const addManagedElementToDesign = useCallback(async (element) => {
+    if (!element || !element.url) return;
+
+    // 如果處於替換模式，執行替換
+    if (imageReplace?.isReplacingImage) {
+      imageReplace.executeReplace(element.url);
+      return;
+    }
+
+    // 載入圖片獲取原始尺寸
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = element.url;
+
+    await new Promise((resolve) => {
+      img.onload = () => {
+        // 計算保持寬高比的尺寸（最大邊設為 100）
+        const maxSize = 100;
+        let width = img.naturalWidth;
+        let height = img.naturalHeight;
+
+        if (width > height) {
+          // 寬圖：寬度固定為 maxSize
+          height = (height / width) * maxSize;
+          width = maxSize;
+        } else {
+          // 高圖或正方形：高度固定為 maxSize
+          width = (width / height) * maxSize;
+          height = maxSize;
+        }
+
+        console.log('📐 元素庫圖片尺寸計算:', {
+          original: { width: img.naturalWidth, height: img.naturalHeight },
+          scaled: { width, height }
+        });
+
+        // 否則新增圖片（保持寬高比）
+        addElement({
+          id: `image-${Date.now()}`,
+          type: 'image',
+          url: element.url,
+          width,
+          height,
+          x: 150,
+          y: 150,
+          rotation: 0,
+          opacity: 1,
+        });
+        resolve();
+      };
+      img.onerror = () => {
+        console.error('元素圖片載入失敗:', element.url);
+        alert('圖片載入失敗，請重試');
+        resolve();
+      };
+    });
+  }, [addElement, imageReplace]);
+
+  /**
+   * 載入管理的元素（從元素庫）
+   */
+  const loadManagedElements = useCallback(async () => {
+    setLoadingElements(true);
+    try {
+      const elements = await API.elements.getAll();
+
+      // 🔧 轉換相對路徑為完整 URL
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+      const baseUrl = API_BASE_URL.replace('/api', '');
+
+      const elementsWithFullUrl = elements.map(element => {
+        if (element.url && !element.url.startsWith('http') && !element.url.startsWith('data:')) {
+          return {
+            ...element,
+            url: `${baseUrl}${element.url}`
+          };
+        }
+        return element;
+      });
+
+      setManagedElements(elementsWithFullUrl);
+    } catch (error) {
+      console.error('載入元素失敗:', error);
+      alert('載入元素失敗，請重試');
+    } finally {
+      setLoadingElements(false);
+    }
+  }, []);
+
+  // 初始化時自動載入元素
+  useEffect(() => {
+    loadManagedElements();
+  }, [loadManagedElements]);
+
+  /**
+   * 拖曳開始
+   * @param {string} imageUrl - 圖片 URL
+   */
+  const handleDragStart = useCallback((imageUrl) => {
+    setDraggingImageUrl(imageUrl);
+  }, []);
+
+  /**
+   * 拖曳結束
+   */
+  const handleDragEnd = useCallback(() => {
+    setDraggingImageUrl(null);
+    if (imageReplace) {
+      imageReplace.clearPreview();
+    }
+  }, [imageReplace]);
+
+  return {
+    uploadedImages,
+    isUploading,
+    managedElements,
+    loadingElements,
+    draggingImageUrl,
+    handleImageUpload,
+    handleAddImageToCanvas,
+    handleDeleteUploadedImage,
+    addManagedElementToDesign,
+    loadManagedElements,
+    handleDragStart,
+    handleDragEnd,
+  };
+};
+
+export default useImageManager;

@@ -1,0 +1,61 @@
+{
+  "orderId": "order_20251008_chv9dpdlw",
+  "userId": "guest",
+  "createdAt": "2025-10-08T01:13:41.845Z",
+  "status": "pending",
+  "items": [
+    {
+      "itemId": "item_1",
+      "originalProductId": 1,
+      "productTitle": "客製化 經典白色馬克杯",
+      "productType": "3D",
+      "quantity": 1,
+      "price": 349,
+      "subtotal": 349,
+      "isCustom": true,
+      "designData": {
+        "elements": [
+          {
+            "id": "text-1759809082333",
+            "type": "text",
+            "content": "新增文字",
+            "x": 90,
+            "y": 212.15625,
+            "fontSize": 24,
+            "color": "#000000",
+            "fontFamily": "Arial",
+            "fontWeight": "normal",
+            "fontStyle": "normal",
+            "rotation": 0
+          }
+        ],
+        "backgroundColor": "#ffffff"
+      },
+      "snapshot": "http://localhost:3002/uploads/snapshots/eb6f7004-2db9-4b2e-9b5b-955a80411e84.jpg",
+      "image": "https://via.placeholder.com/300x300/ffffff/cccccc?text=White+Mug",
+      "printArea": {
+        "x": 0,
+        "y": 143.1578947368421,
+        "width": 400,
+        "height": 114
+      },
+      "vendorId": 1,
+      "vendorName": "測試廠商"
+    }
+  ],
+  "shipping": {
+    "name": "9",
+    "phone": "0912345678",
+    "address": "9",
+    "method": "宅配",
+    "fee": 100
+  },
+  "payment": {
+    "method": "credit_card",
+    "status": "pending"
+  },
+  "subtotal": 349,
+  "shippingFee": 100,
+  "totalAmount": 449,
+  "notes": ""
+}

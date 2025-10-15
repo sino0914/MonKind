@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>草稿遷移工具 - MonKind</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 800px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .info-box {
+      background: #f0f7ff;
+      border-left: 4px solid #3b82f6;
+      padding: 15px;
+      margin-bottom: 25px;
+      border-radius: 4px;
+    }
+
+    .info-box p {
+      color: #1e40af;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .info-box p:last-child {
+      margin-bottom: 0;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: #f9fafb;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .stat-label {
+      color: #6b7280;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      color: #111827;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    button {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-secondary {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #dc2626;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+
+    .log-container {
+      background: #1f2937;
+      border-radius: 8px;
+      padding: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .log-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .log-container::-webkit-scrollbar-track {
+      background: #374151;
+      border-radius: 4px;
+    }
+
+    .log-container::-webkit-scrollbar-thumb {
+      background: #6b7280;
+      border-radius: 4px;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+    }
+
+    .log-info {
+      color: #60a5fa;
+    }
+
+    .log-success {
+      color: #34d399;
+    }
+
+    .log-warning {
+      color: #fbbf24;
+    }
+
+    .log-error {
+      color: #f87171;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      color: #6b7280;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📦 草稿遷移工具</h1>
+    <p class="subtitle">將 localStorage 中的草稿遷移到伺服器</p>
+
+    <div class="info-box">
+      <p><strong>📌 重要說明：</strong></p>
+      <p>• 此工具會將瀏覽器 localStorage 中的所有草稿遷移到伺服器儲存</p>
+      <p>• 遷移後，舊的 localStorage 草稿仍會保留，您可以選擇手動清除</p>
+      <p>• 建議先「檢測草稿」確認數量，再執行「開始遷移」</p>
+      <p>• 目前使用訪客帳號 (guest)，未來可整合登入系統</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">找到的草稿</div>
+        <div class="stat-value" id="draftCount">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">已遷移</div>
+        <div class="stat-value" id="migratedCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">失敗</div>
+        <div class="stat-value" id="failedCount">0</div>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button class="btn-primary" id="detectBtn" onclick="detectDrafts()">
+        🔍 檢測草稿
+      </button>
+      <button class="btn-secondary" id="migrateBtn" onclick="migrateDrafts()" disabled>
+        🚀 開始遷移
+      </button>
+      <button class="btn-danger" id="clearBtn" onclick="clearLocalDrafts()" disabled>
+        🗑️ 清除舊草稿
+      </button>
+    </div>
+
+    <div class="log-container" id="logContainer">
+      <div class="log-entry log-info">📋 等待操作...</div>
+    </div>
+
+    <div class="footer">
+      <p>MonKind © 2025 | 草稿遷移工具 v1.0</p>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3002/api';
+    const USER_ID = 'guest'; // 暫時使用 guest，未來可整合登入
+    let detectedDrafts = [];
+
+    function log(message, type = 'info') {
+      const container = document.getElementById('logContainer');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function updateStats(draftCount, migratedCount, failedCount) {
+      if (draftCount !== undefined) {
+        document.getElementById('draftCount').textContent = draftCount;
+      }
+      if (migratedCount !== undefined) {
+        document.getElementById('migratedCount').textContent = migratedCount;
+      }
+      if (failedCount !== undefined) {
+        document.getElementById('failedCount').textContent = failedCount;
+      }
+    }
+
+    function setButtonLoading(buttonId, loading) {
+      const btn = document.getElementById(buttonId);
+      if (loading) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> ${btn.textContent.trim().split(' ').slice(1).join(' ')}`;
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = btn.textContent.replace('⏳', '').trim();
+      }
+    }
+
+    async function detectDrafts() {
+      log('🔍 開始檢測 localStorage 中的草稿...', 'info');
+      setButtonLoading('detectBtn', true);
+
+      try {
+        detectedDrafts = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('draft_')) {
+            try {
+              const draftData = JSON.parse(localStorage.getItem(key));
+
+              // 修正舊的 URL
+              if (draftData.elements) {
+                draftData.elements = draftData.elements.map(element => {
+                  if (element.url && element.url.includes('localhost:3001')) {
+                    element.url = element.url.replace('http://localhost:3001', 'http://localhost:3002');
+                  }
+                  return element;
+                });
+              }
+
+              if (draftData.snapshot3D && draftData.snapshot3D.includes('localhost:3001')) {
+                draftData.snapshot3D = draftData.snapshot3D.replace('http://localhost:3001', 'http://localhost:3002');
+              }
+
+              detectedDrafts.push({
+                id: key,
+                ...draftData
+              });
+              log(`✓ 找到草稿: ${key}`, 'success');
+            } catch (error) {
+              log(`✗ 解析草稿失敗: ${key} - ${error.message}`, 'error');
+            }
+          }
+        }
+
+        updateStats(detectedDrafts.length, 0, 0);
+        log(`✅ 檢測完成！共找到 ${detectedDrafts.length} 個草稿`, 'success');
+
+        if (detectedDrafts.length > 0) {
+          document.getElementById('migrateBtn').disabled = false;
+        } else {
+          log('ℹ️ 沒有找到需要遷移的草稿', 'info');
+        }
+      } catch (error) {
+        log(`❌ 檢測失敗: ${error.message}`, 'error');
+      } finally {
+        setButtonLoading('detectBtn', false);
+      }
+    }
+
+    async function migrateDrafts() {
+      if (detectedDrafts.length === 0) {
+        log('⚠️ 請先執行「檢測草稿」', 'warning');
+        return;
+      }
+
+      if (!confirm(`確定要遷移 ${detectedDrafts.length} 個草稿到伺服器嗎？`)) {
+        return;
+      }
+
+      log('🚀 開始遷移草稿到伺服器...', 'info');
+      setButtonLoading('migrateBtn', true);
+
+      try {
+        const response = await fetch(`${API_URL}/drafts/${USER_ID}/migrate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ drafts: detectedDrafts })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          updateStats(undefined, result.migratedCount, 0);
+          log(`✅ 遷移成功！共遷移 ${result.migratedCount} 個草稿`, 'success');
+          log(`📊 伺服器總草稿數: ${result.totalCount}`, 'info');
+          document.getElementById('clearBtn').disabled = false;
+        } else {
+          throw new Error(result.error || '遷移失敗');
+        }
+      } catch (error) {
+        log(`❌ 遷移失敗: ${error.message}`, 'error');
+        updateStats(undefined, undefined, detectedDrafts.length);
+      } finally {
+        setButtonLoading('migrateBtn', false);
+      }
+    }
+
+    async function clearLocalDrafts() {
+      if (!confirm('確定要清除 localStorage 中的舊草稿嗎？\n\n⚠️ 此操作無法復原！請確保已成功遷移到伺服器。')) {
+        return;
+      }
+
+      log('🗑️ 開始清除 localStorage 中的草稿...', 'info');
+      setButtonLoading('clearBtn', true);
+
+      try {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('draft_')) {
+            keysToRemove.push(key);
+          }
+        }
+
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+          log(`✓ 已刪除: ${key}`, 'success');
+        });
+
+        log(`✅ 清除完成！共刪除 ${keysToRemove.length} 個舊草稿`, 'success');
+        updateStats(0, undefined, undefined);
+
+        // 重置按鈕
+        document.getElementById('migrateBtn').disabled = true;
+        document.getElementById('clearBtn').disabled = true;
+        detectedDrafts = [];
+      } catch (error) {
+        log(`❌ 清除失敗: ${error.message}`, 'error');
+      } finally {
+        setButtonLoading('clearBtn', false);
+      }
+    }
+
+    // 初始化
+    log('👋 歡迎使用草稿遷移工具', 'info');
+    log('💡 請先點擊「檢測草稿」按鈕開始', 'info');
+  </script>
+</body>
+</html>
