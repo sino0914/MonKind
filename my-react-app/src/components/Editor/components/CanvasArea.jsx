@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import DesignElementsLayer from './DesignElementsLayer';
 
 /**
@@ -15,6 +15,7 @@ const CanvasArea = ({
   designElements,
   backgroundColor,
   hiddenLayers,
+  lockedLayers,
 
   // 選擇和編輯狀態
   selectedElement,
@@ -48,6 +49,31 @@ const CanvasArea = ({
   // 視窗控制
   viewport = null,
 }) => {
+  // 畫布容器的 ref
+  const canvasContainerRef = useRef(null);
+
+  // 使用原生事件監聽器來阻止滾輪事件冒泡
+  useEffect(() => {
+    const canvasElement = canvasContainerRef.current;
+    if (!canvasElement || !viewport) return;
+
+    const handleWheel = (e) => {
+      // 阻止預設行為和事件冒泡
+      e.preventDefault();
+      e.stopPropagation();
+
+      // 調用 viewport 的處理函數
+      viewport.handleWheel(e);
+    };
+
+    // 使用 passive: false 來允許 preventDefault
+    canvasElement.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      canvasElement.removeEventListener('wheel', handleWheel);
+    };
+  }, [viewport]);
+
   // 合併滑鼠移動事件
   const combinedMouseMove = (e) => {
     if (viewport?.isPanning) {
@@ -81,6 +107,7 @@ const CanvasArea = ({
   };
   return (
     <div
+      ref={canvasContainerRef}
       className="border-2 border-gray-200 rounded-lg relative bg-white canvas-container"
       style={{
         overflow: "hidden",
@@ -88,7 +115,6 @@ const CanvasArea = ({
         width: '400px',
         height: '400px',
       }}
-      onWheel={viewport ? viewport.handleWheel : undefined}
       onMouseDown={combinedMouseDown}
       onMouseMove={combinedMouseMove}
       onMouseUp={combinedMouseUp}
@@ -262,6 +288,7 @@ const CanvasArea = ({
             currentProduct={currentProduct}
             designElements={designElements}
             hiddenLayers={hiddenLayers}
+            lockedLayers={lockedLayers}
             selectedElement={selectedElement}
             editingText={editingText}
             editingContent={editingContent}

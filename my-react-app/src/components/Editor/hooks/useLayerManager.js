@@ -9,7 +9,10 @@ const useLayerManager = (editorState) => {
     designElements,
     setDesignElements,
     hiddenLayers,
-    setHiddenLayers
+    setHiddenLayers,
+    lockedLayers,
+    setLockedLayers,
+    updateElement
   } = editorState;
 
   /**
@@ -100,12 +103,41 @@ const useLayerManager = (editorState) => {
     setDesignElements(newElements);
   }, [designElements, setDesignElements]);
 
+  /**
+   * 重新命名圖層
+   * @param {string} elementId - 元素 ID
+   * @param {string} newName - 新名稱
+   */
+  const renameLayer = useCallback((elementId, newName) => {
+    updateElement(elementId, { layerName: newName });
+  }, [updateElement]);
+
+  /**
+   * 切換圖層鎖定狀態
+   * @param {string} elementId - 元素 ID
+   */
+  const toggleLayerLock = useCallback((elementId) => {
+    setLockedLayers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(elementId)) {
+        // 如果已鎖定，則解鎖
+        newSet.delete(elementId);
+      } else {
+        // 如果未鎖定，則鎖定
+        newSet.add(elementId);
+      }
+      return newSet;
+    });
+  }, [setLockedLayers]);
+
   return {
     toggleLayerVisibility,
     moveLayerUp,
     moveLayerDown,
     moveLayerToTop,
     moveLayerToBottom,
+    renameLayer,
+    toggleLayerLock,
   };
 };
 

@@ -11,6 +11,7 @@ const MainContentArea = ({
   designElements,
   backgroundColor,
   hiddenLayers,
+  lockedLayers,
 
   // 選擇和編輯狀態
   selectedElement,
@@ -69,7 +70,7 @@ const MainContentArea = ({
       {/* Canvas Area */}
       <div className="flex-1 bg-gray-50 p-8">
         <div className="h-full flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl p-8 overflow-visible">
+          <div className="bg-white rounded-lg shadow-xl p-8">
             {/* 顯示全圖按鈕 - 放在 Canvas 上方 */}
             {viewport && (
               <div className="flex items-center justify-between mb-4">
@@ -92,6 +93,7 @@ const MainContentArea = ({
                 designElements={designElements}
                 backgroundColor={backgroundColor}
                 hiddenLayers={hiddenLayers}
+                lockedLayers={lockedLayers}
                 selectedElement={selectedElement}
                 editingText={editingText}
                 editingContent={editingContent}

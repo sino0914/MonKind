@@ -15,6 +15,7 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
 
   // 圖層管理
   const [hiddenLayers, setHiddenLayers] = useState(new Set());
+  const [lockedLayers, setLockedLayers] = useState(new Set());
 
   // 工具列狀態
   const [hoveredTool, setHoveredTool] = useState(null);
@@ -354,6 +355,8 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
     // 圖層
     hiddenLayers,
     setHiddenLayers,
+    lockedLayers,
+    setLockedLayers,
 
     // 工具列
     hoveredTool,

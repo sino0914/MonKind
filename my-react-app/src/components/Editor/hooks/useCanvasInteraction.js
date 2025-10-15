@@ -14,6 +14,7 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
     selectedElement,
     copiedElement,
     designElements,
+    lockedLayers,
     setResizeHandle,
     updateElement,
     startDrag,
@@ -81,6 +82,15 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
       return;
     }
 
+    // 檢查圖層是否被鎖定
+    if (lockedLayers.has(element.id)) {
+      e.preventDefault();
+      e.stopPropagation();
+      // 鎖定的圖層只能選中，不能拖曳或調整
+      selectElement(element);
+      return;
+    }
+
     e.preventDefault();
     e.stopPropagation();
 
@@ -113,7 +123,7 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
         y: canvasY - element.y,
       });
     }
-  }, [selectElement, setResizeHandle, startDrag, startResize, screenToCanvasCoords]);
+  }, [selectElement, setResizeHandle, startDrag, startResize, screenToCanvasCoords, lockedLayers]);
 
   // 處理滑鼠移動
   const handleMouseMove = useCallback((e) => {

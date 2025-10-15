@@ -13,6 +13,7 @@ const DesignElementsLayer = ({
   // 設計元素
   designElements,
   hiddenLayers,
+  lockedLayers,
 
   // 選擇和編輯狀態
   selectedElement,
@@ -195,6 +196,7 @@ const DesignElementsLayer = ({
           .map((element) => {
             const isSelected =
               selectedElement && selectedElement.id === element.id;
+            const isLocked = lockedLayers?.has(element.id);
 
             // 計算文字元素的寬高
             let elementWidth = element.width || 100;
@@ -217,7 +219,9 @@ const DesignElementsLayer = ({
               <div
                 key={`interaction-${element.id}`}
                 className={`absolute pointer-events-auto ${
-                  draggedElement === element.id
+                  isLocked
+                    ? "cursor-not-allowed"
+                    : draggedElement === element.id
                     ? "cursor-grabbing z-50"
                     : "cursor-grab"
                 }`}
@@ -246,10 +250,21 @@ const DesignElementsLayer = ({
                 {/* 選取框 */}
                 {isSelected && (
                   <>
-                    <div className="absolute inset-0 border-2 border-blue-500 bg-blue-50 bg-opacity-10 pointer-events-none" />
+                    <div className={`absolute inset-0 border-2 ${
+                      isLocked
+                        ? "border-orange-500 bg-orange-50"
+                        : "border-blue-500 bg-blue-50"
+                    } bg-opacity-10 pointer-events-none`} />
 
-                    {/* 縮放控制點 - 只有圖片才顯示 */}
-                    {element.type === "image" && (
+                    {/* 鎖定圖層顯示鎖定圖示 */}
+                    {isLocked && (
+                      <div className="absolute top-0 right-0 bg-orange-500 text-white text-xs px-1 py-0.5 rounded-bl pointer-events-none">
+                        🔒
+                      </div>
+                    )}
+
+                    {/* 縮放控制點 - 只有圖片才顯示，且未鎖定 */}
+                    {element.type === "image" && !isLocked && (
                       <>
                         <div
                           className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-nw-resize pointer-events-auto"
@@ -286,43 +301,39 @@ const DesignElementsLayer = ({
                       </>
                     )}
 
-                    {/* 旋轉控制點 - 圖片和文字都顯示 */}
-                    <div
-                      className="absolute w-3 h-3 bg-green-500 border border-white rounded-full pointer-events-auto"
-                      style={{
-                        top: "-20px",
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        cursor:
-                          'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>\') 12 12, auto',
-                      }}
-                      onMouseDown={(e) => handleMouseDown(e, element, "rotate")}
-                      title="拖曳旋轉"
-                    />
+                    {/* 旋轉控制點 - 圖片和文字都顯示，且未鎖定 */}
+                    {!isLocked && (
+                      <div
+                        className="absolute w-3 h-3 bg-green-500 border border-white rounded-full pointer-events-auto"
+                        style={{
+                          top: "-20px",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          cursor:
+                            'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>\') 12 12, auto',
+                        }}
+                        onMouseDown={(e) => handleMouseDown(e, element, "rotate")}
+                        title="拖曳旋轉"
+                      />
+                    )}
 
-                    {/* 刪除按鈕 */}
-                    <button
-                      className="absolute w-6 h-6 bg-red-500 hover:bg-red-600 text-white border border-white rounded-full pointer-events-auto flex items-center justify-center text-xs font-bold transition-colors"
-                      style={{
-                        top: "-12px",
-                        right: "-12px",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (
-                          window.confirm(
-                            `確定要刪除這個${
-                              element.type === "text" ? "文字" : "圖片"
-                            }嗎？`
-                          )
-                        ) {
+                    {/* 刪除按鈕 - 未鎖定才顯示 */}
+                    {!isLocked && (
+                      <button
+                        className="absolute w-6 h-6 bg-red-500 hover:bg-red-600 text-white border border-white rounded-full pointer-events-auto flex items-center justify-center text-xs font-bold transition-colors"
+                        style={{
+                          top: "-12px",
+                          right: "-12px",
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleDeleteElement(element.id);
-                        }
-                      }}
-                      title="刪除元素"
-                    >
-                      ✕
-                    </button>
+                        }}
+                        title="刪除元素"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </>
                 )}
               </div>

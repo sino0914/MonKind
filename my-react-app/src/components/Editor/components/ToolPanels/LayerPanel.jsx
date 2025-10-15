@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 
 /**
@@ -9,13 +9,61 @@ const LayerPanel = ({
   designElements,
   selectedElement,
   hiddenLayers,
+  lockedLayers,
   handleSelectElement,
   toggleLayerVisibility,
+  toggleLayerLock,
+  renameLayer,
   moveLayerUp,
   moveLayerDown,
   handleDeleteElement,
   backgroundColor,
 }) => {
+  // 正在編輯名稱的圖層 ID
+  const [editingLayerId, setEditingLayerId] = useState(null);
+  // 編輯中的名稱
+  const [editingName, setEditingName] = useState("");
+
+  /**
+   * 開始編輯圖層名稱
+   */
+  const startEditingLayerName = (element, e) => {
+    e.stopPropagation();
+    setEditingLayerId(element.id);
+    setEditingName(element.layerName || getDefaultLayerName(element));
+  };
+
+  /**
+   * 完成編輯圖層名稱
+   */
+  const finishEditingLayerName = (elementId) => {
+    if (editingName.trim()) {
+      renameLayer(elementId, editingName.trim());
+    }
+    setEditingLayerId(null);
+    setEditingName("");
+  };
+
+  /**
+   * 取消編輯圖層名稱
+   */
+  const cancelEditingLayerName = () => {
+    setEditingLayerId(null);
+    setEditingName("");
+  };
+
+  /**
+   * 獲取預設圖層名稱
+   */
+  const getDefaultLayerName = (element) => {
+    if (element.type === "text") {
+      return `文字: ${element.content?.substring(0, 10) || "新增文字"}${
+        element.content?.length > 10 ? "..." : ""
+      }`;
+    } else {
+      return `圖片: ${element.url ? "自訂圖片" : "圖片"}`;
+    }
+  };
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -30,12 +78,9 @@ const LayerPanel = ({
         {[...designElements].reverse().map((element, index) => {
           const isSelected = selectedElement?.id === element.id;
           const isHidden = hiddenLayers.has(element.id);
-          const layerName =
-            element.type === "text"
-              ? `文字: ${
-                  element.content?.substring(0, 10) || "新增文字"
-                }${element.content?.length > 10 ? "..." : ""}`
-              : `圖片: ${element.url ? "自訂圖片" : "圖片"}`;
+          const isLocked = lockedLayers.has(element.id);
+          const isEditing = editingLayerId === element.id;
+          const displayName = element.layerName || getDefaultLayerName(element);
 
           return (
             <div
@@ -44,24 +89,66 @@ const LayerPanel = ({
                 isSelected
                   ? "bg-blue-100 border border-blue-300"
                   : "bg-gray-50 hover:bg-gray-100 border border-gray-200"
-              } ${isHidden ? "opacity-50" : ""}`}
-              onClick={() => handleSelectElement(element)}
+              } ${isHidden ? "opacity-50" : ""} ${isLocked ? "border-l-4 border-l-orange-500" : ""}`}
+              onClick={() => !isEditing && handleSelectElement(element)}
             >
-              <div className="flex items-center space-x-2 flex-1">
-                <span className="text-lg">
+              <div className="flex items-center space-x-2 flex-1 min-w-0">
+                <span className="text-lg flex-shrink-0">
                   {element.type === "text" ? "📝" : "🖼️"}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">
-                    {layerName}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    圖層 {designElements.length - index}
-                  </div>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onBlur={() => finishEditingLayerName(element.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          finishEditingLayerName(element.id);
+                        } else if (e.key === "Escape") {
+                          cancelEditingLayerName();
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                  ) : (
+                    <>
+                      <div
+                        className="text-sm font-medium text-gray-900 truncate cursor-pointer hover:text-blue-600"
+                        onDoubleClick={(e) => startEditingLayerName(element, e)}
+                        title="雙擊編輯名稱"
+                      >
+                        {displayName}
+                        {isLocked && <span className="ml-1 text-orange-600">🔒</span>}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        圖層 {designElements.length - index}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1 flex-shrink-0">
+                {/* 鎖定切換 */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLayerLock(element.id);
+                  }}
+                  className={`text-xs px-2 py-1 rounded transition-colors ${
+                    isLocked
+                      ? "bg-orange-500 text-white hover:bg-orange-600"
+                      : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                  }`}
+                  title={isLocked ? "解鎖圖層" : "鎖定圖層"}
+                >
+                  {isLocked ? "🔒" : "🔓"}
+                </button>
+
                 {/* 可見性切換 */}
                 <button
                   onClick={(e) => {
@@ -153,6 +240,8 @@ const LayerPanel = ({
         <h5 className="text-sm font-medium text-blue-900 mb-1">💡 圖層操作</h5>
         <ul className="text-xs text-blue-800 space-y-1">
           <li>• 點擊圖層可選中對應元素</li>
+          <li>• 雙擊圖層名稱可編輯</li>
+          <li>• 🔒 鎖定/解鎖圖層（鎖定後不可互動）</li>
           <li>• 👁️ 控制圖層顯示/隱藏</li>
           <li>• ↑↓ 調整圖層順序</li>
           <li>• 🗑️ 刪除圖層</li>
@@ -166,8 +255,11 @@ LayerPanel.propTypes = {
   designElements: PropTypes.array.isRequired,
   selectedElement: PropTypes.object,
   hiddenLayers: PropTypes.instanceOf(Set).isRequired,
+  lockedLayers: PropTypes.instanceOf(Set).isRequired,
   handleSelectElement: PropTypes.func.isRequired,
   toggleLayerVisibility: PropTypes.func.isRequired,
+  toggleLayerLock: PropTypes.func.isRequired,
+  renameLayer: PropTypes.func.isRequired,
   moveLayerUp: PropTypes.func.isRequired,
   moveLayerDown: PropTypes.func.isRequired,
   handleDeleteElement: PropTypes.func.isRequired,
