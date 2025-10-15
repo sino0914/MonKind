@@ -6,7 +6,7 @@ import { MIN_ELEMENT_SIZE } from '../constants/editorConfig';
  * 畫布交互邏輯 Hook
  * 處理拖曳、縮放、旋轉、圖片替換拖曳預覽
  */
-const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, draggingImageUrl = null) => {
+const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, draggingImageUrl = null, viewport = null) => {
   const {
     draggedElement,
     dragOffset,
@@ -28,8 +28,59 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
   // 追蹤是否懸停在圖片元素上
   const [isHoveringImage, setIsHoveringImage] = useState(false);
 
+  /**
+   * 將螢幕座標轉換為畫布座標（考慮視圖的縮放和平移）
+   * @param {number} clientX - 螢幕 X 座標
+   * @param {number} clientY - 螢幕 Y 座標
+   * @param {DOMRect} canvasRect - 畫布元素的 getBoundingClientRect()
+   * @returns {object} - 畫布座標 { canvasX, canvasY }
+   */
+  const screenToCanvasCoords = useCallback((clientX, clientY, canvasRect) => {
+    const canvasWidth = canvasRect.width;
+    const canvasHeight = canvasRect.height;
+
+    // 計算相對於畫布容器的座標
+    let relativeX = clientX - canvasRect.left;
+    let relativeY = clientY - canvasRect.top;
+
+    // 如果有 viewport，需要反向應用縮放和平移
+    if (viewport) {
+      // 先計算相對於畫布中心的位置
+      const centerX = canvasWidth / 2;
+      const centerY = canvasHeight / 2;
+
+      // 減去中心點
+      relativeX -= centerX;
+      relativeY -= centerY;
+
+      // 反向應用平移
+      relativeX -= viewport.pan.x;
+      relativeY -= viewport.pan.y;
+
+      // 反向應用縮放
+      relativeX /= viewport.zoom;
+      relativeY /= viewport.zoom;
+
+      // 加回中心點
+      relativeX += centerX;
+      relativeY += centerY;
+    }
+
+    // 轉換為畫布座標系（400x400）
+    const canvasX = (relativeX / canvasWidth) * 400;
+    const canvasY = (relativeY / canvasHeight) * 400;
+
+    return { canvasX, canvasY };
+  }, [viewport]);
+
   // 處理滑鼠按下
   const handleMouseDown = useCallback((e, element, handle = null) => {
+    // 只允許滑鼠左鍵 (button === 0) 進行操作
+    // 觸控事件沒有 button 屬性，所以 e.button === undefined 時也允許
+    if (e.button !== undefined && e.button !== 0) {
+      return;
+    }
+
     e.preventDefault();
     e.stopPropagation();
 
@@ -37,16 +88,32 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
 
     if (handle) {
       setResizeHandle(handle);
-      // 開始旋轉或縮放操作，暫停歷史記錄
+      // 開始旋轉或縮放操作,暫停歷史記錄
       startResize();
     } else {
-      const rect = e.currentTarget.getBoundingClientRect();
+      // 尋找畫布容器 (canvas-container)
+      let canvasContainer = e.currentTarget;
+      while (canvasContainer && !canvasContainer.classList.contains('canvas-container')) {
+        canvasContainer = canvasContainer.parentElement;
+      }
+
+      if (!canvasContainer) {
+        console.error('找不到畫布容器');
+        return;
+      }
+
+      const canvasRect = canvasContainer.getBoundingClientRect();
+
+      // 使用轉換函數計算畫布座標
+      const { canvasX, canvasY } = screenToCanvasCoords(e.clientX, e.clientY, canvasRect);
+
+      // 計算拖曳偏移（元素中心到滑鼠位置的差值）
       startDrag(element.id, {
-        x: e.clientX - rect.left - rect.width / 2,
-        y: e.clientY - rect.top - rect.height / 2,
+        x: canvasX - element.x,
+        y: canvasY - element.y,
       });
     }
-  }, [selectElement, setResizeHandle, startDrag, startResize]);
+  }, [selectElement, setResizeHandle, startDrag, startResize, screenToCanvasCoords]);
 
   // 處理滑鼠移動
   const handleMouseMove = useCallback((e) => {
@@ -54,22 +121,19 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
 
     const printArea = validatePrintArea(currentProduct?.printArea);
     const canvasRect = e.currentTarget.getBoundingClientRect();
-    const canvasWidth = canvasRect.width;
-    const canvasHeight = canvasRect.height;
 
     if (draggedElement) {
-      // 拖曳元素
-      const relativeX = e.clientX - canvasRect.left - dragOffset.x;
-      const relativeY = e.clientY - canvasRect.top - dragOffset.y;
+      // 拖曳元素 - 使用轉換函數計算畫布座標
+      const { canvasX, canvasY } = screenToCanvasCoords(e.clientX, e.clientY, canvasRect);
 
-      const canvasX = (relativeX / canvasWidth) * 400;
-      const canvasY = (relativeY / canvasHeight) * 400;
-
-      updateElement(draggedElement, { x: canvasX, y: canvasY });
+      // 應用拖曳偏移
+      updateElement(draggedElement, {
+        x: canvasX - dragOffset.x,
+        y: canvasY - dragOffset.y
+      });
     } else if (resizeHandle && selectedElement) {
-      // 縮放或旋轉
-      const currentX = ((e.clientX - canvasRect.left) / canvasWidth) * 400;
-      const currentY = ((e.clientY - canvasRect.top) / canvasHeight) * 400;
+      // 縮放或旋轉 - 使用轉換函數計算畫布座標
+      const { canvasX: currentX, canvasY: currentY } = screenToCanvasCoords(e.clientX, e.clientY, canvasRect);
 
       if (resizeHandle === 'rotate') {
         // 旋轉
@@ -143,13 +207,9 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
 
   // 處理畫布點擊（取消選擇）
   const handleCanvasClick = useCallback((e) => {
-    if (
-      e.target.classList.contains('canvas-container') ||
-      e.target.classList.contains('w-96') ||
-      e.target.classList.contains('h-96')
-    ) {
-      clearSelection();
-    }
+    // 點擊畫布空白處就取消選取
+    // 元素會在自己的 onClick 中 stopPropagation，所以不會執行到這裡
+    clearSelection();
   }, [clearSelection]);
 
   // 複製元素
@@ -225,14 +285,9 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
     }
 
     const canvasRect = e.currentTarget.getBoundingClientRect();
-    const canvasWidth = canvasRect.width;
-    const canvasHeight = canvasRect.height;
 
-    const relativeX = e.clientX - canvasRect.left;
-    const relativeY = e.clientY - canvasRect.top;
-
-    const canvasX = (relativeX / canvasWidth) * 400;
-    const canvasY = (relativeY / canvasHeight) * 400;
+    // 使用轉換函數計算畫布座標
+    const { canvasX, canvasY } = screenToCanvasCoords(e.clientX, e.clientY, canvasRect);
 
     // 找到滑鼠懸停的圖片元素（從後往前找，優先選擇 z-index 較高的）
     let hoveredImageElement = null;
@@ -257,7 +312,7 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
       }
       setIsHoveringImage(false);
     }
-  }, [draggingImageUrl, imageReplace, designElements, isMouseOverElement]);
+  }, [draggingImageUrl, imageReplace, designElements, isMouseOverElement, screenToCanvasCoords]);
 
   /**
    * 拖曳放下（用於圖片替換或新增）
@@ -269,14 +324,9 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
     if (!draggingImageUrl) return;
 
     const canvasRect = e.currentTarget.getBoundingClientRect();
-    const canvasWidth = canvasRect.width;
-    const canvasHeight = canvasRect.height;
 
-    const relativeX = e.clientX - canvasRect.left;
-    const relativeY = e.clientY - canvasRect.top;
-
-    const canvasX = (relativeX / canvasWidth) * 400;
-    const canvasY = (relativeY / canvasHeight) * 400;
+    // 使用轉換函數計算畫布座標
+    const { canvasX, canvasY } = screenToCanvasCoords(e.clientX, e.clientY, canvasRect);
 
     // 找到放下位置的圖片元素
     let targetImageElement = null;
@@ -311,7 +361,7 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
       imageReplace.clearPreview();
     }
     setIsHoveringImage(false);
-  }, [draggingImageUrl, imageReplace, designElements, isMouseOverElement, updateElement, editorState]);
+  }, [draggingImageUrl, imageReplace, designElements, isMouseOverElement, updateElement, editorState, screenToCanvasCoords]);
 
   // 當拖曳結束時重置懸停狀態
   useEffect(() => {

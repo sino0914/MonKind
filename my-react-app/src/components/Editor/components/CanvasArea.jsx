@@ -67,7 +67,7 @@ const CanvasArea = ({
 
   // 合併滑鼠按下事件
   const combinedMouseDown = (e) => {
-    if (viewport && e.button === 2) {
+    if (viewport && e.button === 1) {
       viewport.handleMouseDown(e);
     }
   };

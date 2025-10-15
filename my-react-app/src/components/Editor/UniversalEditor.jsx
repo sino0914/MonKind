@@ -123,7 +123,8 @@ const UniversalEditor = ({
     editorState,
     currentProduct,
     imageReplace,
-    imageManager.draggingImageUrl
+    imageManager.draggingImageUrl,
+    viewport
   );
   const templateManager = useTemplateManager(
     currentProduct,

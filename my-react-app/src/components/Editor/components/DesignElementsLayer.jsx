@@ -238,7 +238,10 @@ const DesignElementsLayer = ({
                   transformOrigin: "center",
                 }}
                 onMouseDown={(e) => handleMouseDown(e, element)}
-                onClick={() => handleSelectElement(element)}
+                onClick={(e) => {
+                  e.stopPropagation(); // 阻止冒泡到畫布
+                  handleSelectElement(element);
+                }}
               >
                 {/* 選取框 */}
                 {isSelected && (

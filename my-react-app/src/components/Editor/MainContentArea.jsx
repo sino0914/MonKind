@@ -141,6 +141,7 @@ const MainContentArea = ({
                           onColorChange={handleColorChange}
                           onFontFamilyChange={handleFontFamilyChange}
                           onCopyAndPaste={handleCopyAndPaste}
+                          viewport={viewport}
                         />
                       </div>
                     );
@@ -162,16 +163,47 @@ const MainContentArea = ({
                     selectedElement &&
                     selectedElement.id === element.id
                   ) {
+                    // 計算考慮視圖變換後的位置
+                    let left = `${(element.x / 400) * 100}%`;
+                    let top = `${(element.y / 400) * 100}%`;
+                    const transform = "translate(-50%, calc(-100% - 80px))";
+
+                    // 如果有 viewport，需要應用縮放和平移
+                    if (viewport) {
+                      // 將畫布座標轉換為顯示座標（應用縮放和平移）
+                      const canvasWidth = 400; // 畫布容器的寬度（像素）
+                      const canvasHeight = 400; // 畫布容器的高度（像素）
+
+                      // 元素在畫布上的相對位置（像素）
+                      const elementX = (element.x / 400) * canvasWidth;
+                      const elementY = (element.y / 400) * canvasHeight;
+
+                      // 相對於畫布中心的位置
+                      const centerX = canvasWidth / 2;
+                      const centerY = canvasHeight / 2;
+
+                      // 應用縮放
+                      const scaledX = (elementX - centerX) * viewport.zoom + centerX;
+                      const scaledY = (elementY - centerY) * viewport.zoom + centerY;
+
+                      // 應用平移
+                      const finalX = scaledX + viewport.pan.x;
+                      const finalY = scaledY + viewport.pan.y;
+
+                      // 轉換為百分比
+                      left = `${(finalX / canvasWidth) * 100}%`;
+                      top = `${(finalY / canvasHeight) * 100}%`;
+                    }
+
                     return (
                       <div key={`image-toolbar-${element.id}`}>
                         {/* 圖片工具列 */}
                         <div
                           className="absolute bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 pointer-events-auto whitespace-nowrap"
                           style={{
-                            left: `${(element.x / 400) * 100}%`,
-                            top: `${(element.y / 400) * 100}%`,
-                            transform:
-                              "translate(-50%, calc(-100% - 80px))",
+                            left,
+                            top,
+                            transform,
                             zIndex: 1000,
                           }}
                         >

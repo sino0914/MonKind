@@ -48,11 +48,11 @@ const useCanvasViewport = () => {
   }, [zoom, pan]);
 
   /**
-   * 處理滑鼠按下（右鍵）
+   * 處理滑鼠按下（中鍵）
    */
   const handleMouseDown = useCallback((e) => {
-    // 檢查是否為滑鼠右鍵
-    if (e.button === 2) {
+    // 檢查是否為滑鼠中鍵
+    if (e.button === 1) {
       e.preventDefault();
       setIsPanning(true);
       panStartRef.current = { x: e.clientX, y: e.clientY };
@@ -80,7 +80,7 @@ const useCanvasViewport = () => {
    * 處理滑鼠放開
    */
   const handleMouseUp = useCallback((e) => {
-    if (e.button === 2 || isPanning) {
+    if (e.button === 1 || isPanning) {
       setIsPanning(false);
     }
   }, [isPanning]);
