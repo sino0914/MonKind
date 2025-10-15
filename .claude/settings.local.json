@@ -24,7 +24,9 @@
       "Bash(dir:*)",
       "Bash(mkdir:*)",
       "Bash(powershell:*)",
-      "Bash(npx tailwindcss init:*)"
+      "Bash(npx tailwindcss init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
