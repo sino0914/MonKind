@@ -131,8 +131,9 @@ export default function GLBViewer({
           {/* 環境光和方向光 */}
           <Environment preset="city" />
           <ambientLight intensity={1} />
-          <directionalLight position={[15, 5, 5]} intensity={4} castShadow />
-          <pointLight position={[-10, -10, -5]} intensity={1.2} />
+          <directionalLight position={[15, 5, 5]} intensity={5} castShadow />
+          <directionalLight position={[-15, 5, 15]} intensity={6} castShadow />
+          <pointLight position={[-10, -10, -5]} intensity={2.2} />
 
           {/* 網格地面 */}
           {false && (
