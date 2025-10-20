@@ -5,6 +5,7 @@ const path = require('path');
 const router = express.Router();
 const dataDir = path.join(__dirname, '../data');
 const usersFile = path.join(dataDir, 'users.json');
+const vendorsFile = path.join(dataDir, 'vendors.json');
 
 // 讀取用戶數據
 const readUsers = async () => {
@@ -15,6 +16,19 @@ const readUsers = async () => {
     return [];
   } catch (error) {
     console.error('讀取用戶數據失敗:', error);
+    return [];
+  }
+};
+
+// 讀取廠商數據
+const readVendors = async () => {
+  try {
+    if (await fs.pathExists(vendorsFile)) {
+      return await fs.readJson(vendorsFile);
+    }
+    return [];
+  } catch (error) {
+    console.error('讀取廠商數據失敗:', error);
     return [];
   }
 };
@@ -112,7 +126,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// POST /api/users/login - 用戶登入
+// POST /api/users/login - 用戶登入（支援管理員和廠商）
 router.post('/login', async (req, res) => {
   try {
     console.log('收到登入請求 - req.body:', req.body);
@@ -130,14 +144,31 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // 先從 users.json 查找管理員
     const users = await readUsers();
-    // 支援使用 username 或 email 登入
-    const user = users.find(u =>
+    let user = users.find(u =>
       (u.username === loginIdentifier || u.email === loginIdentifier) &&
       u.password === password
     );
 
+    // 如果在 users.json 找不到，再從 vendors.json 查找廠商
     if (!user) {
+      const vendors = await readVendors();
+      user = vendors.find(v =>
+        (v.username === loginIdentifier || v.email === loginIdentifier) &&
+        v.password === password &&
+        v.isActive === true // 只允許啟用的廠商登入
+      );
+
+      if (user) {
+        // 標記為廠商
+        user.isVendor = true;
+        user.isAdmin = false;
+      }
+    }
+
+    if (!user) {
+      console.log('找不到匹配的用戶或廠商');
       return res.status(401).json({
         success: false,
         message: '帳號或密碼錯誤'
@@ -146,6 +177,8 @@ router.post('/login', async (req, res) => {
 
     // 返回時移除密碼
     const { password: _, ...safeUser } = user;
+
+    console.log('登入成功:', safeUser.username, safeUser.isAdmin ? '(管理員)' : '(廠商)');
 
     res.json({
       success: true,
