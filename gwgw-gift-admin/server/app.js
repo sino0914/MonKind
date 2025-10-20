@@ -55,15 +55,17 @@ const initializeData = async () => {
     }
     await initDataFile('products.json', initialProducts);
 
-    // 初始化用戶數據
+    // 初始化用戶數據（管理員帳號）
     await initDataFile('users.json', [
       {
         id: 1,
-        email: 'admin',
+        username: 'admin',
+        email: 'admin@monkind.com',
         password: 'admin123',
         isAdmin: true,
         name: '系統管理員',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
     ]);
 

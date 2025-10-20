@@ -42,7 +42,8 @@
       "Bash(del \"C:\\WorkShop\\ClaudeCode\\MonKind\\packages\\admin-app\\src\\utils\\TemplatePreviewGenerator.js\")",
       "Bash(del \"C:\\WorkShop\\ClaudeCode\\MonKind\\packages\\customer-app\\src\\utils\\TemplatePreviewGenerator.js\")",
       "Bash(timeout /t 10 /nobreak)",
-      "Bash(pnpm dev:admin)"
+      "Bash(pnpm dev:admin)",
+      "Bash(timeout /t 5 /nobreak)"
     ],
     "deny": [],
     "ask": []
