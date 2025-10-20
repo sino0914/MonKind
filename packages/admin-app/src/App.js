@@ -10,6 +10,10 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Vendors from './pages/Vendors';
 import OrderDetail from './pages/OrderDetail';
+import ProductMaintenance from './pages/Products/ProductMaintenance';
+import TemplateManagement from './pages/Templates/TemplateManagement';
+import TemplateEditor from './pages/Templates/TemplateEditor';
+import ElementManagement from './pages/Elements/ElementManagement';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }) => {
@@ -31,7 +35,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   }
 
   // 檢查是否需要管理員權限
-  if (adminOnly && user.userType !== 'admin') {
+  if (adminOnly && !user.isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -95,6 +99,38 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <OrderDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/products"
+        element={
+          <ProtectedRoute adminOnly={true}>
+            <ProductMaintenance />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/templates"
+        element={
+          <ProtectedRoute adminOnly={true}>
+            <TemplateManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/templates/:templateId/edit"
+        element={
+          <ProtectedRoute adminOnly={true}>
+            <TemplateEditor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/elements"
+        element={
+          <ProtectedRoute adminOnly={true}>
+            <ElementManagement />
           </ProtectedRoute>
         }
       />

@@ -87,42 +87,57 @@ const MainContentArea = ({
               </div>
             )}
             <div className="relative">
-              <CanvasArea
-                currentProduct={currentProduct}
-                processedMockupImage={processedMockupImage}
-                designElements={designElements}
-                backgroundColor={backgroundColor}
-                hiddenLayers={hiddenLayers}
-                lockedLayers={lockedLayers}
-                selectedElement={selectedElement}
-                editingText={editingText}
-                editingContent={editingContent}
-                setEditingContent={setEditingContent}
-                draggedElement={draggedElement}
-                isReplacingImage={isReplacingImage}
-                replacingImageId={replacingImageId}
-                getDisplayUrl={getDisplayUrl}
-                onReplaceClick={onReplaceClick}
-                isHoveringImage={isHoveringImage}
-                handleMouseMove={handleMouseMove}
-                handleMouseUp={handleMouseUp}
-                handleCanvasClick={handleCanvasClick}
-                handleMouseDown={handleMouseDown}
-                handleSelectElement={handleSelectElement}
-                handleFinishTextEdit={handleFinishTextEdit}
-                handleDeleteElement={handleDeleteElement}
-                handleDragOver={handleDragOver}
-                handleDrop={handleDrop}
-                measureTextWidth={measureTextWidth}
-                editingInputWidth={editingInputWidth}
-                viewport={viewport}
-              />
+              {/* Canvas 區域 */}
+              <div className="canvas-wrapper" style={{ position: 'relative' }}>
+                <CanvasArea
+                  currentProduct={currentProduct}
+                  processedMockupImage={processedMockupImage}
+                  designElements={designElements}
+                  backgroundColor={backgroundColor}
+                  hiddenLayers={hiddenLayers}
+                  lockedLayers={lockedLayers}
+                  selectedElement={selectedElement}
+                  editingText={editingText}
+                  editingContent={editingContent}
+                  setEditingContent={setEditingContent}
+                  draggedElement={draggedElement}
+                  isReplacingImage={isReplacingImage}
+                  replacingImageId={replacingImageId}
+                  getDisplayUrl={getDisplayUrl}
+                  onReplaceClick={onReplaceClick}
+                  isHoveringImage={isHoveringImage}
+                  handleMouseMove={handleMouseMove}
+                  handleMouseUp={handleMouseUp}
+                  handleCanvasClick={handleCanvasClick}
+                  handleMouseDown={handleMouseDown}
+                  handleSelectElement={handleSelectElement}
+                  handleFinishTextEdit={handleFinishTextEdit}
+                  handleDeleteElement={handleDeleteElement}
+                  handleDragOver={handleDragOver}
+                  handleDrop={handleDrop}
+                  measureTextWidth={measureTextWidth}
+                  editingInputWidth={editingInputWidth}
+                  viewport={viewport}
+                />
 
-              {/* 文字工具列 - 放在最外層，不受設計區裁切影響 */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{ zIndex: 1000 }}
-              >
+                {/* 工具列容器 - 與 Canvas 內容使用相同的 transform */}
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    zIndex: 9999,
+                    pointerEvents: 'none',
+                    transformOrigin: 'center center',
+                    transform: viewport
+                      ? `scale(${viewport.zoom}) translate(${viewport.pan.x}px, ${viewport.pan.y}px)`
+                      : 'none',
+                    transition: viewport?.isPanning ? 'none' : 'transform 0.1s ease-out',
+                    width: '100%',
+                    height: '100%',
+                    left: '0',
+                    top: '0',
+                  }}
+                >
+              {/* 文字工具列 */}
               {designElements
                 .filter((element) => !hiddenLayers.has(element.id))
                 .map((element) => {
@@ -133,7 +148,7 @@ const MainContentArea = ({
                     selectedElement.id === element.id
                   ) {
                     return (
-                      <div key={`toolbar-${element.id}`}>
+                      <div key={`toolbar-${element.id}`} style={{ pointerEvents: 'auto' }}>
                         <TextToolbar
                           element={element}
                           onStartEdit={handleStartTextEdit}
@@ -150,13 +165,8 @@ const MainContentArea = ({
                   }
                   return null;
                 })}
-            </div>
 
-            {/* 圖片工具列 - 放在最外層，不受設計區裁切影響 */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ zIndex: 1000 }}
-            >
+              {/* 圖片工具列 */}
               {designElements
                 .filter((element) => !hiddenLayers.has(element.id))
                 .map((element) => {
@@ -165,48 +175,32 @@ const MainContentArea = ({
                     selectedElement &&
                     selectedElement.id === element.id
                   ) {
-                    // 計算考慮視圖變換後的位置
-                    let left = `${(element.x / 400) * 100}%`;
-                    let top = `${(element.y / 400) * 100}%`;
+                    // 使用元素的原始座標（transform 由外層容器處理）
+                    const left = `${(element.x / 400) * 100}%`;
+                    const top = `${(element.y / 400) * 100}%`;
                     const transform = "translate(-50%, calc(-100% - 80px))";
 
-                    // 如果有 viewport，需要應用縮放和平移
-                    if (viewport) {
-                      // 將畫布座標轉換為顯示座標（應用縮放和平移）
-                      const canvasWidth = 400; // 畫布容器的寬度（像素）
-                      const canvasHeight = 400; // 畫布容器的高度（像素）
-
-                      // 元素在畫布上的相對位置（像素）
-                      const elementX = (element.x / 400) * canvasWidth;
-                      const elementY = (element.y / 400) * canvasHeight;
-
-                      // 相對於畫布中心的位置
-                      const centerX = canvasWidth / 2;
-                      const centerY = canvasHeight / 2;
-
-                      // 應用縮放
-                      const scaledX = (elementX - centerX) * viewport.zoom + centerX;
-                      const scaledY = (elementY - centerY) * viewport.zoom + centerY;
-
-                      // 應用平移
-                      const finalX = scaledX + viewport.pan.x;
-                      const finalY = scaledY + viewport.pan.y;
-
-                      // 轉換為百分比
-                      left = `${(finalX / canvasWidth) * 100}%`;
-                      top = `${(finalY / canvasHeight) * 100}%`;
-                    }
-
                     return (
-                      <div key={`image-toolbar-${element.id}`}>
+                      <div
+                        key={`image-toolbar-${element.id}`}
+                        className="absolute pointer-events-auto"
+                        style={{
+                          left,
+                          top,
+                          // 外層只處理 translate，不受 scale 影響
+                          transform: "translate(-50%, calc(-100% - 80px))",
+                          transformOrigin: 'center bottom',
+                          zIndex: 10000,
+                        }}
+                      >
                         {/* 圖片工具列 */}
                         <div
-                          className="absolute bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 pointer-events-auto whitespace-nowrap"
+                          className="bg-gray-800 text-white rounded-md shadow-lg flex items-center space-x-1 p-1 whitespace-nowrap"
                           style={{
-                            left,
-                            top,
-                            transform,
-                            zIndex: 1000,
+                            // 內層只處理反向縮放
+                            transform: viewport ? `scale(${1 / viewport.zoom})` : 'none',
+                            transformOrigin: 'center bottom',
+                            pointerEvents: 'auto'
                           }}
                         >
                           {/* 替換按鈕 */}
@@ -250,6 +244,7 @@ const MainContentArea = ({
                   }
                   return null;
                 })}
+                </div>
               </div>
             </div>
 

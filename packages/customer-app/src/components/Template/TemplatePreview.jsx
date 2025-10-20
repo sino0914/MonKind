@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { generateTemplateThumbnail } from '../../utils/TemplatePreviewGenerator';
+import { generateTemplateThumbnail } from '@monkind/shared/utils';
 
 const TemplatePreview = ({
   template,

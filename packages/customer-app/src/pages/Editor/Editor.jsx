@@ -137,7 +137,7 @@ const Editor = () => {
           const glbUrl = product?.glbUrl || product?.model3D?.glbUrl;
           if (glbUrl) {
             try {
-              const { generate3DSnapshot } = await import('../../components/Editor/utils/snapshot3D');
+              const { generate3DSnapshot } = await import('@monkind/shared/components/Editor/utils');
               const snapshotBase64 = await generate3DSnapshot(
                 product,
                 designData.elements,
@@ -163,7 +163,7 @@ const Editor = () => {
         } else {
           // 2D 商品生成 2D 快照
           try {
-            const { generate2DSnapshot } = await import('../../components/Editor/utils/snapshot2D');
+            const { generate2DSnapshot } = await import('@monkind/shared/components/Editor/utils');
             const snapshotBase64 = await generate2DSnapshot(
               product,
               designData.elements,
@@ -239,7 +239,7 @@ const Editor = () => {
           const glbUrl = product?.glbUrl || product?.model3D?.glbUrl;
           if (glbUrl) {
             try {
-              const { generate3DSnapshot } = await import('../../components/Editor/utils/snapshot3D');
+              const { generate3DSnapshot } = await import('@monkind/shared/components/Editor/utils');
               const snapshotBase64 = await generate3DSnapshot(
                 product,
                 designData.elements,
@@ -265,7 +265,7 @@ const Editor = () => {
         } else {
           // 2D 商品生成 2D 快照
           try {
-            const { generate2DSnapshot } = await import('../../components/Editor/utils/snapshot2D');
+            const { generate2DSnapshot } = await import('@monkind/shared/components/Editor/utils');
             const snapshotBase64 = await generate2DSnapshot(
               product,
               designData.elements,

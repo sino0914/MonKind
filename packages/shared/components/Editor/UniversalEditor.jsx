@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCart } from "../../context/CartContext";
 import { API } from "../../services/api";
 import MainContentArea from "./MainContentArea";
 
@@ -82,7 +81,6 @@ const UniversalEditor = ({
   headerContent = null,
 }) => {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
 
   // 內部商品狀態
   const [internalProduct, setInternalProduct] = useState(product);
@@ -438,9 +436,11 @@ const UniversalEditor = ({
         },
         snapshot3D, // 添加快照（URL 或 base64）
       };
-      addToCart(customProduct);
-      editorState.resetDirty(); // 加入購物車成功後重置骯髒狀態
-      alert("客製化商品已加入購物車！");
+
+      // shared 組件不應直接操作購物車，應由父組件處理
+      console.warn('UniversalEditor: onAddToCart prop is required to add products to cart');
+      alert("請確保父組件提供了 onAddToCart 回調函數");
+      editorState.resetDirty(); // 重置骯髒狀態
     }
   };
 

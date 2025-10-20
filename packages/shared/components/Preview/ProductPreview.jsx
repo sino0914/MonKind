@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { API } from "../../services/api";
-import Mug3D from "../3D/Mug3D";
 import GLBViewer from "../GLBViewer";
 
 const ProductPreview = ({
@@ -312,22 +311,6 @@ const ProductPreview = ({
             testTexture={uvTestTexture} 
           />
         </div>
-      ) : product.category === "mug" ? (
-        /* 傳統 3D 馬克杯預覽 (向後兼容) */
-        <div
-          className="bg-white rounded border-2 border-gray-200 relative overflow-hidden"
-          style={{
-            width: containerWidth,
-            height: containerHeight,
-            minWidth: isResponsive ? '440px' : undefined,
-            minHeight: isResponsive ? '440px' : undefined,
-            maxWidth: isResponsive ? 'min(90vh, calc(100vw - 600px))' : undefined,
-            maxHeight: isResponsive ? 'min(90vh, calc(100vh - 200px))' : undefined,
-            aspectRatio: isResponsive ? '1 / 1' : undefined,
-          }}
-        >
-          <Mug3D designElements={designElements} product={product} />
-        </div>
       ) : (
         /* 2D 預覽 (T恤等其他產品) */
         <div
@@ -542,7 +525,7 @@ const ProductPreview = ({
 
       {showInfo && (
         <div className="mt-3 text-center">
-          {product.category === "mug" ? (
+          {product.type === "3D" ? (
             <div>
               <p className="text-xs text-gray-600">
                 🖱️ 拖拽旋轉 | 🔄 滾輪縮放 | ⌨️ 右鍵平移

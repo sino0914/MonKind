@@ -115,22 +115,32 @@ router.post('/register', async (req, res) => {
 // POST /api/users/login - 用戶登入
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    console.log('收到登入請求 - req.body:', req.body);
+    const { username, email, password } = req.body;
 
-    if (!email || !password) {
+    // 支援使用 username 或 email 登入
+    const loginIdentifier = username || email;
+    console.log('登入識別:', { username, email, password: password ? '***' : undefined, loginIdentifier });
+
+    if (!loginIdentifier || !password) {
+      console.log('驗證失敗 - 缺少必要欄位');
       return res.status(400).json({
         success: false,
-        message: '電子郵件和密碼不能為空'
+        message: '帳號和密碼不能為空'
       });
     }
 
     const users = await readUsers();
-    const user = users.find(u => u.email === email && u.password === password);
+    // 支援使用 username 或 email 登入
+    const user = users.find(u =>
+      (u.username === loginIdentifier || u.email === loginIdentifier) &&
+      u.password === password
+    );
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: '電子郵件或密碼錯誤'
+        message: '帳號或密碼錯誤'
       });
     }
 

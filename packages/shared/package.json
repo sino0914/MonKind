@@ -7,6 +7,7 @@
     "./components/GLBViewer": "./components/GLBViewer/index.js",
     "./components/UVMapper": "./components/UVMapper/index.js",
     "./components/Editor": "./components/Editor/index.js",
+    "./components/Editor/utils": "./components/Editor/utils/index.js",
     "./components/Preview": "./components/Preview/index.js",
     "./components/Preview/ProductThumbnail": "./components/Preview/ProductThumbnail.jsx",
     "./services/api": "./services/index.js",
@@ -22,5 +23,12 @@
     "components"
   ],
   "author": "MonKind Team",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
+    "prop-types": "^15.8.1",
+    "three": "^0.180.0"
+  }
 }

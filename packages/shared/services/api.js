@@ -53,7 +53,7 @@ export const API = {
   users: {
     // 認證功能 - 使用 HttpAPI
     register: (userData) => HttpAPI.users.register(userData),
-    login: (email, password) => HttpAPI.users.login(email, password),
+    login: (username, password) => HttpAPI.users.login(username, password),
     logout: () => HttpAPI.users.logout(),
 
     // 用戶狀態 - 使用 HttpAPI
@@ -189,6 +189,8 @@ export const API = {
 
   // 訂單相關 API
   orders: {
+    // 獲取所有訂單
+    getAll: (vendorId = null) => HttpAPI.orders.getAll(vendorId),
     // 建立訂單
     create: (orderData) => HttpAPI.orders.create(orderData),
     // 獲取訂單詳情
@@ -207,6 +209,12 @@ export const API = {
     getActive: () => HttpAPI.vendors.getActive(),
     // 獲取單個廠商
     getById: (id) => HttpAPI.vendors.getById(id),
+    // 建立廠商
+    create: (data) => HttpAPI.vendors.create(data),
+    // 更新廠商
+    update: (id, data) => HttpAPI.vendors.update(id, data),
+    // 刪除廠商
+    delete: (id) => HttpAPI.vendors.delete(id),
   },
 
   // 文件上傳相關 API

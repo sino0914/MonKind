@@ -211,8 +211,12 @@ class HttpUserService {
     return response.data;
   }
 
-  async login(email, password) {
-    const response = await this.api.post('/users/login', { email, password });
+  async login(username, password) {
+    console.log('HttpUserService.login - 準備發送:', { username, password: password ? '***' : undefined });
+    const payload = { username, password };
+    console.log('HttpUserService.login - Payload:', payload);
+
+    const response = await this.api.post('/users/login', payload);
 
     // 將用戶信息保存到 localStorage (僅用於會話管理)
     if (response.data) {
@@ -459,6 +463,12 @@ export const HttpAPI = {
 
   // 訂單相關 API
   orders: {
+    // 獲取所有訂單
+    getAll: async (vendorId = null) => {
+      const url = vendorId ? `/orders?vendorId=${vendorId}` : '/orders';
+      const response = await httpApiService.get(url);
+      return response;
+    },
     // 建立訂單
     create: async (orderData) => {
       const response = await httpApiService.post('/orders', orderData);
@@ -486,7 +496,7 @@ export const HttpAPI = {
     // 獲取所有廠商
     getAll: async () => {
       const response = await httpApiService.get('/vendors');
-      return response.data || [];
+      return response; // 返回完整 response，包含 success 和 data
     },
     // 獲取啟用的廠商
     getActive: async () => {
@@ -498,6 +508,21 @@ export const HttpAPI = {
     getById: async (id) => {
       const response = await httpApiService.get(`/vendors/${id}`);
       return response.data;
+    },
+    // 建立廠商
+    create: async (data) => {
+      const response = await httpApiService.post('/vendors', data);
+      return response;
+    },
+    // 更新廠商
+    update: async (id, data) => {
+      const response = await httpApiService.put(`/vendors/${id}`, data);
+      return response;
+    },
+    // 刪除廠商
+    delete: async (id) => {
+      const response = await httpApiService.delete(`/vendors/${id}`);
+      return response;
     },
   },
 

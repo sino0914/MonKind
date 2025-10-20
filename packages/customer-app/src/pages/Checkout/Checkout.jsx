@@ -109,7 +109,7 @@ const Checkout = () => {
 
           try {
             // 動態導入列印檔案生成函數
-            const { generatePrintFile } = await import('../../components/Editor/utils/canvasUtils');
+            const { generatePrintFile } = await import('@monkind/shared/components/Editor/utils');
 
             // 生成列印檔案 Blob
             const printFileBlob = await generatePrintFile(

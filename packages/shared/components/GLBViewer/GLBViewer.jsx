@@ -129,10 +129,10 @@ export default function GLBViewer({
       >
         <Suspense fallback={<LoadingSpinner />}>
           {/* 環境光和方向光 */}
-          <Environment preset="studio" />
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-          <pointLight position={[-10, -10, -5]} intensity={0.5} />
+          <Environment preset="city" />
+          <ambientLight intensity={1} />
+          <directionalLight position={[15, 5, 5]} intensity={4} castShadow />
+          <pointLight position={[-10, -10, -5]} intensity={1.2} />
 
           {/* 網格地面 */}
           {false && (

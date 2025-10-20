@@ -27,18 +27,26 @@ const Login = () => {
     setError('');
     setLoading(true);
 
+    console.log('Login.js - 提交登入:', {
+      username: formData.username,
+      password: formData.password ? '***' : undefined
+    });
+
     try {
-      const response = await API.auth.login(
+      const response = await API.users.login(
         formData.username,
-        formData.password,
-        formData.userType
+        formData.password
       );
 
-      if (response.success) {
-        login(response.data);
+      // API 直接返回用戶數據，不需要檢查 success
+      if (response && response.id) {
+        login(response);
         navigate('/dashboard');
+      } else {
+        setError('登入失敗，請檢查帳號密碼');
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.message || '登入失敗，請檢查帳號密碼');
     } finally {
       setLoading(false);

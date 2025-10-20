@@ -12,16 +12,19 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
-  const isVendor = user?.userType === 'vendor';
+  const isAdmin = user?.isAdmin === true;
 
   const navigation = [
-    { name: '訂單管理', path: '/dashboard', icon: '📦', roles: ['admin', 'vendor'] },
-    { name: '廠商管理', path: '/vendors', icon: '🏪', roles: ['admin'] },
+    { name: '訂單管理', path: '/dashboard', icon: '📦', adminOnly: false },
+    { name: '廠商管理', path: '/vendors', icon: '🏪', adminOnly: true },
+    { name: '商品維護', path: '/products', icon: '📦', adminOnly: true },
+    { name: '版型管理', path: '/templates', icon: '📐', adminOnly: true },
+    { name: '元素管理', path: '/elements', icon: '🎨', adminOnly: true },
   ];
 
   // 根據角色過濾導航項目
   const filteredNavigation = navigation.filter((item) =>
-    item.roles.includes(user?.userType || 'admin')
+    !item.adminOnly || isAdmin
   );
 
   return (
@@ -37,7 +40,7 @@ const Layout = ({ children }) => {
                   小怪禮
                 </span>
                 <span className="ml-2 text-sm text-gray-500">
-                  {isVendor ? '廠商後台' : '後台管理'}
+                  {isAdmin ? '後台管理' : '廠商後台'}
                 </span>
               </Link>
             </div>
@@ -49,7 +52,7 @@ const Layout = ({ children }) => {
                   {user?.name || user?.username}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {user?.userType === 'admin' ? '管理員' : '廠商'}
+                  {isAdmin ? '管理員' : '廠商'}
                 </div>
               </div>
               <button

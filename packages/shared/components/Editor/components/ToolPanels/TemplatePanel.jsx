@@ -26,7 +26,7 @@ const TemplatePanel = ({
               {availableTemplates.length} 個版型
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
+          <div className="grid grid-cols-3 gap-2 max-h-[60vh] overflow-y-auto">
             {availableTemplates.map((template) => (
               <button
                 key={template.id}
@@ -35,11 +35,11 @@ const TemplatePanel = ({
                 title={`點擊應用版型：${template.name}`}
               >
                 {/* 版型縮圖 */}
-                <div className="w-full aspect-square bg-gray-100 rounded-lg border border-gray-200 overflow-hidden mb-2">
+                <div className="w-full aspect-square bg-gray-100 rounded-lg border border-gray-200 overflow-hidden mb-1">
                   <TemplateThumbnail
                     template={template}
-                    width={120}
-                    height={120}
+                    width={90}
+                    height={90}
                     showName={false}
                     showElementCount={false}
                     className="w-full h-full group-hover:scale-105 transition-transform duration-200"

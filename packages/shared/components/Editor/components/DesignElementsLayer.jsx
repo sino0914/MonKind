@@ -39,10 +39,10 @@ const DesignElementsLayer = ({
 }) => {
   return (
     <div
-      className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: 10 }}
+      className="absolute inset-0"
+      style={{ zIndex: 10, pointerEvents: 'none' }}
     >
-      <div className="w-full h-full relative">
+      <div className="w-full h-full relative" style={{ pointerEvents: 'auto' }}>
         {/* 設計區域裁切容器 - 只裁切元素內容，不裁切選取框 */}
         <div
           className="absolute overflow-hidden"
@@ -252,9 +252,9 @@ const DesignElementsLayer = ({
                   <>
                     <div className={`absolute inset-0 border-2 ${
                       isLocked
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-blue-500 bg-blue-50"
-                    } bg-opacity-10 pointer-events-none`} />
+                        ? "border-orange-500"
+                        : "border-blue-500"
+                    } pointer-events-none`} style={{ backgroundColor: 'transparent' }} />
 
                     {/* 鎖定圖層顯示鎖定圖示 */}
                     {isLocked && (

@@ -33,7 +33,16 @@
       "Bash(then cp my-react-app/src/utils/ProductDataManager.js packages/shared/utils/ProductDataManager.js)",
       "Bash(fi)",
       "Bash(rsync:*)",
-      "Bash(pnpm install)"
+      "Bash(pnpm install)",
+      "Bash(pnpm dev:customer:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm dev:all:*)",
+      "Bash(del \"C:\\WorkShop\\ClaudeCode\\MonKind\\gwgw-gift-admin\\server\\data\\users.json\")",
+      "Bash(copy:*)",
+      "Bash(del \"C:\\WorkShop\\ClaudeCode\\MonKind\\packages\\admin-app\\src\\utils\\TemplatePreviewGenerator.js\")",
+      "Bash(del \"C:\\WorkShop\\ClaudeCode\\MonKind\\packages\\customer-app\\src\\utils\\TemplatePreviewGenerator.js\")",
+      "Bash(timeout /t 10 /nobreak)",
+      "Bash(pnpm dev:admin)"
     ],
     "deny": [],
     "ask": []

@@ -9,20 +9,11 @@ export const MAX_FONT_SIZE = 72;
 export const DEFAULT_FONT_SIZE = 24;
 export const DEFAULT_FONT_FAMILY = "Arial";
 
-// 顏色預設
+// 顏色預設 - 柔和色系
 export const COLOR_PRESETS = [
-  "#ffffff",
-  "#f3f4f6",
-  "#fef3c7",
-  "#dbeafe",
-  "#fce7f3",
-  "#f3e8ff",
-  "#fecaca",
-  "#fed7aa",
-  "#fde68a",
-  "#bbf7d0",
-  "#bfdbfe",
-  "#e0e7ff",
+  "#ffffff", "#f3f4f6", "#fef3c7", "#dbeafe", "#fce7f3", "#f3e8ff", "#fecaca", "#fed7aa",
+  "#fde68a", "#bbf7d0", "#bfdbfe", "#e0e7ff", "#fef2f2", "#fff7ed", "#fffbeb", "#f0fdf4",
+  "#fdf4ff", "#fef9c3", "#ddd6fe", "#fbcfe8", "#cffafe", "#ccfbf1", "#e0f2fe", "#fce7f3",
 ];
 
 // 字體列表

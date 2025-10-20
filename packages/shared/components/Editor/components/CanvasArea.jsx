@@ -93,9 +93,13 @@ const CanvasArea = ({
 
   // 合併滑鼠按下事件
   const combinedMouseDown = (e) => {
+    // 如果是中鍵，啟動畫布平移
     if (viewport && e.button === 1) {
+      e.preventDefault();
       viewport.handleMouseDown(e);
+      return;
     }
+    // 其他按鍵（如左鍵）讓事件繼續傳播，由元素處理
   };
 
   // 合併滑鼠離開事件

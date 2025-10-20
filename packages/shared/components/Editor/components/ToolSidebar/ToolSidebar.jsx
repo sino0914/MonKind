@@ -60,11 +60,11 @@ const ToolSidebar = ({
         {/* Expanded Tool Panel */}
         <div
           className={`bg-white transition-all duration-300 ease-in-out overflow-hidden ${
-            hoveredTool || selectedTool ? "w-80" : "w-0"
+            hoveredTool || selectedTool ? "w-96" : "w-0"
           }`}
         >
           {(hoveredTool || selectedTool) && (
-            <div className="p-4 w-80">
+            <div className="p-4 w-96">
               {currentTool && (
                 <ToolPanel tool={currentTool}>
                   {children}
