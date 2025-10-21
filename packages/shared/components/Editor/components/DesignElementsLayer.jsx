@@ -27,6 +27,10 @@ const DesignElementsLayer = ({
   replacingImageId,
   getDisplayUrl,
 
+  // 圖片載入錯誤管理
+  markImageAsError,
+  clearImageError,
+
   // 事件處理函數
   handleMouseDown,
   handleSelectElement,
@@ -144,7 +148,10 @@ const DesignElementsLayer = ({
                         }}
                         draggable={false}
                         onLoad={(e) => {
-                          // 圖片載入成功時，移除錯誤提示（如果有）
+                          // 圖片載入成功時，清除錯誤狀態並移除錯誤提示
+                          if (clearImageError) {
+                            clearImageError(element.id);
+                          }
                           e.target.style.display = '';
                           const parent = e.target.parentElement;
                           const placeholder = parent?.querySelector('.image-error-placeholder');
@@ -153,17 +160,21 @@ const DesignElementsLayer = ({
                           }
                         }}
                         onError={(e) => {
-                          // 圖片載入失敗時顯示錯誤提示
+                          // 圖片載入失敗時，標記錯誤狀態並顯示上傳提示
+                          if (markImageAsError) {
+                            markImageAsError(element.id);
+                          }
                           e.target.style.display = 'none';
                           const parent = e.target.parentElement;
                           if (!parent.querySelector('.image-error-placeholder')) {
                             const placeholder = document.createElement('div');
-                            placeholder.className = 'image-error-placeholder w-full h-full flex items-center justify-center bg-red-100 border-2 border-red-300 border-dashed rounded';
+                            placeholder.className = 'image-error-placeholder w-full h-full flex items-center justify-center bg-blue-50 border-2 border-blue-300 border-dashed rounded';
                             placeholder.innerHTML = `
                               <div class="text-center p-2">
-                                <div class="text-3xl mb-1">⚠️</div>
-                                <div class="text-xs text-red-600 font-medium whitespace-nowrap">圖片失效</div>
-                                <div class="text-xs text-red-500 mt-1 whitespace-nowrap">請重新上傳</div>
+                                <svg class="w-8 h-8 mx-auto mb-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                                <div class="text-xs text-blue-600 font-medium whitespace-nowrap">上傳圖片</div>
                               </div>
                             `;
                             placeholder.style.transform = `rotate(${element.rotation || 0}deg)`;

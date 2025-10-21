@@ -47,6 +47,10 @@ const CanvasArea = ({
   measureTextWidth,
   editingInputWidth,
 
+  // 圖片載入錯誤管理
+  markImageAsError,
+  clearImageError,
+
   // 視窗控制
   viewport = null,
 }) => {
@@ -307,6 +311,8 @@ const CanvasArea = ({
             isReplacingImage={isReplacingImage}
             replacingImageId={replacingImageId}
             getDisplayUrl={getDisplayUrl}
+            markImageAsError={markImageAsError}
+            clearImageError={clearImageError}
             handleMouseDown={handleMouseDown}
             handleSelectElement={handleSelectElement}
             handleFinishTextEdit={handleFinishTextEdit}

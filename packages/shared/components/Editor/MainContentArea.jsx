@@ -36,6 +36,14 @@ const MainContentArea = ({
   onRemoveBackground,
   isRemovingBackground,
 
+  // 圖片上傳相關
+  onUploadImage,
+
+  // 圖片載入錯誤狀態
+  imageLoadErrors,
+  markImageAsError,
+  clearImageError,
+
   // 事件處理函數
   handleMouseMove,
   handleMouseUp,
@@ -119,6 +127,8 @@ const MainContentArea = ({
                   measureTextWidth={measureTextWidth}
                   editingInputWidth={editingInputWidth}
                   viewport={viewport}
+                  markImageAsError={markImageAsError}
+                  clearImageError={clearImageError}
                 />
 
                 {/* 工具列容器 - 與 Canvas 內容使用相同的 transform */}
@@ -181,6 +191,9 @@ const MainContentArea = ({
                     const top = `${(element.y / 400) * 100}%`;
                     const transform = "translate(-50%, calc(-100% - 80px))";
 
+                    // 檢查圖片是否載入失敗
+                    const isImageBroken = imageLoadErrors && imageLoadErrors.has(element.id);
+
                     return (
                       <div
                         key={`image-toolbar-${element.id}`}
@@ -204,7 +217,18 @@ const MainContentArea = ({
                             pointerEvents: 'auto'
                           }}
                         >
-                          {/* 替換按鈕 */}
+                          {/* 上傳按鈕 - 僅在圖片失效時顯示 */}
+                          {isImageBroken && onUploadImage && (
+                            <button
+                              onClick={() => onUploadImage(element)}
+                              className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded"
+                              title="上傳圖片"
+                            >
+                              📤上傳
+                            </button>
+                          )}
+
+                          {/* 替換按鈕 - 始終顯示 */}
                           <button
                             onClick={onReplaceClick}
                             className={`px-2 py-1 text-xs rounded transition-all ${
@@ -217,28 +241,32 @@ const MainContentArea = ({
                             🔄替換
                           </button>
 
-                          {/* 複製並貼上按鈕 */}
-                          <button
-                            onClick={handleCopyAndPaste}
-                            className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
-                            title="複製並貼上"
-                          >
-                            📋複製
-                          </button>
+                          {/* 複製按鈕 - 僅在圖片正常時顯示 */}
+                          {!isImageBroken && (
+                            <button
+                              onClick={handleCopyAndPaste}
+                              className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
+                              title="複製並貼上"
+                            >
+                              📋複製
+                            </button>
+                          )}
 
-                          {/* 去背按鈕 */}
-                          <button
-                            onClick={() => onRemoveBackground(element)}
-                            disabled={isRemovingBackground}
-                            className={`px-2 py-1 text-xs rounded transition-all ${
-                              isRemovingBackground
-                                ? 'bg-gray-500 cursor-not-allowed'
-                                : 'bg-purple-600 hover:bg-purple-700'
-                            }`}
-                            title={isRemovingBackground ? '處理中...' : '移除背景'}
-                          >
-                            {isRemovingBackground ? '⏳處理中...' : '✂️去背'}
-                          </button>
+                          {/* 去背按鈕 - 僅在圖片正常時顯示 */}
+                          {!isImageBroken && (
+                            <button
+                              onClick={() => onRemoveBackground(element)}
+                              disabled={isRemovingBackground}
+                              className={`px-2 py-1 text-xs rounded transition-all ${
+                                isRemovingBackground
+                                  ? 'bg-gray-500 cursor-not-allowed'
+                                  : 'bg-purple-600 hover:bg-purple-700'
+                              }`}
+                              title={isRemovingBackground ? '處理中...' : '移除背景'}
+                            >
+                              {isRemovingBackground ? '⏳處理中...' : '✂️去背'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

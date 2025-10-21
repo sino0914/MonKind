@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { API } from "../../services/api";
+import { HttpAPI } from "../../services/HttpApiService";
 import MainContentArea from "./MainContentArea";
 
 // Hooks
@@ -234,6 +235,30 @@ const UniversalEditor = ({
       });
     }
   }, [editorState.designElements, editorState.backgroundColor, onDesignStateChange]);
+
+  // 鍵盤事件監聽 - Del 按鍵刪除選中元素
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 如果正在編輯文字，不處理 Del 鍵
+      if (editorState.editingText) return;
+
+      // 如果在輸入框中，不處理
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      // Delete 或 Backspace 鍵
+      if (e.key === 'Delete' || e.key === 'Del') {
+        if (editorState.selectedElement) {
+          e.preventDefault();
+          editorState.deleteElement(editorState.selectedElement.id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [editorState.selectedElement, editorState.editingText, editorState.deleteElement]);
 
   // 載入商品資料
   const loadProduct = async () => {
@@ -532,6 +557,75 @@ const UniversalEditor = ({
     }
   }, [isRemovingBackground, editorState]);
 
+  // 處理失效圖片的上傳
+  const handleUploadForBrokenImage = useCallback((element) => {
+    if (!element || element.type !== 'image') {
+      return;
+    }
+
+    // 創建隱藏的 input 元素
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = false; // 只接受單張圖片
+
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // 檢查文件類型
+      if (!file.type.startsWith('image/')) {
+        alert('請選擇圖片檔案');
+        return;
+      }
+
+      // 檢查文件大小（最大 10MB）
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert('圖片檔案過大，請選擇小於 10MB 的圖片');
+        return;
+      }
+
+      try {
+        // 使用 imageManager 的上傳邏輯
+        const userId = 'guest'; // TODO: 未來需要從登入狀態取得實際的 userId
+        const uploadResult = await HttpAPI.upload.editorImage(file, userId);
+
+        // 構建完整的圖片 URL
+        const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+        const imageUrl = uploadResult.url.startsWith('http')
+          ? uploadResult.url
+          : `${API_BASE_URL.replace('/api', '')}${uploadResult.url}`;
+
+        // 更新元素的 URL
+        editorState.updateElement(element.id, {
+          url: imageUrl,
+        });
+
+        // 添加到圖片庫（與 ImagePanel 同步）
+        const newImage = {
+          id: uploadResult.filename || Date.now(),
+          url: imageUrl,
+          name: file.name,
+          uploadedAt: new Date().toISOString(),
+        };
+
+        // 使用 imageManager 的方法添加到圖片列表
+        if (imageManager.addUploadedImage) {
+          imageManager.addUploadedImage(newImage);
+        }
+
+        console.log('✅ 圖片已上傳並替換，已添加到圖片庫:', uploadResult);
+      } catch (error) {
+        console.error('圖片上傳失敗:', error);
+        alert(`圖片上傳失敗：${error.message || '請稍後重試'}`);
+      }
+    };
+
+    // 觸發文件選擇
+    input.click();
+  }, [editorState, imageManager]);
+
   // 載入狀態
   if (currentLoading) {
     return <LoadingState />;
@@ -640,6 +734,8 @@ const UniversalEditor = ({
                     handleDragStart={imageManager.handleDragStart}
                     handleDragEnd={imageManager.handleDragEnd}
                     isReplacingImage={imageReplace.isReplacingImage}
+                    uploadErrors={imageManager.uploadErrors}
+                    clearUploadErrors={imageManager.clearUploadErrors}
                   />
                 );
               case "background":
@@ -691,6 +787,8 @@ const UniversalEditor = ({
           onReplaceClick={handleReplaceClick}
           onRemoveBackground={handleRemoveBackground}
           isRemovingBackground={isRemovingBackground}
+          onUploadImage={handleUploadForBrokenImage}
+          imageLoadErrors={editorState.imageLoadErrors}
           isHoveringImage={canvasInteraction.isHoveringImage}
           handleMouseMove={canvasInteraction.handleMouseMove}
           handleMouseUp={canvasInteraction.handleMouseUp}
@@ -713,6 +811,8 @@ const UniversalEditor = ({
           processedMockupImage={processedMockupImage}
           viewport={viewport}
           previewRef={previewRef}
+          markImageAsError={editorState.markImageAsError}
+          clearImageError={editorState.clearImageError}
         />
       </div>
     </div>

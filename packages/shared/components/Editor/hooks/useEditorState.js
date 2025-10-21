@@ -17,6 +17,9 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
   const [hiddenLayers, setHiddenLayers] = useState(new Set());
   const [lockedLayers, setLockedLayers] = useState(new Set());
 
+  // 圖片載入錯誤管理
+  const [imageLoadErrors, setImageLoadErrors] = useState(new Set());
+
   // 工具列狀態
   const [hoveredTool, setHoveredTool] = useState(null);
   const [selectedTool, setSelectedTool] = useState(null);
@@ -335,6 +338,19 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
     }
   };
 
+  // 圖片載入錯誤管理函數
+  const markImageAsError = (elementId) => {
+    setImageLoadErrors(prev => new Set([...prev, elementId]));
+  };
+
+  const clearImageError = (elementId) => {
+    setImageLoadErrors(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(elementId);
+      return newSet;
+    });
+  };
+
   // 檢查是否可以撤銷/重做
   const canUndo = historyIndex > 0; // 保留初始狀態不可撤銷
   const canRedo = historyIndex < history.length - 1;
@@ -357,6 +373,11 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
     setHiddenLayers,
     lockedLayers,
     setLockedLayers,
+
+    // 圖片載入錯誤
+    imageLoadErrors,
+    markImageAsError,
+    clearImageError,
 
     // 工具列
     hoveredTool,

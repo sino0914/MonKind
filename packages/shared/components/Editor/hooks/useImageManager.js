@@ -19,6 +19,8 @@ const useImageManager = (editorState, imageReplace = null) => {
   const [loadingElements, setLoadingElements] = useState(false);
   // 拖曳中的圖片 URL
   const [draggingImageUrl, setDraggingImageUrl] = useState(null);
+  // 上傳錯誤列表
+  const [uploadErrors, setUploadErrors] = useState([]);
 
   // 初始化：從伺服器載入已上傳的圖片列表
   useEffect(() => {
@@ -59,61 +61,75 @@ const useImageManager = (editorState, imageReplace = null) => {
   }, []);
 
   /**
-   * 處理圖片上傳
+   * 處理圖片上傳（支援多張）
    * @param {Event} e - 文件輸入事件
    */
   const handleImageUpload = useCallback(async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // 檢查文件類型
-    if (!file.type.startsWith('image/')) {
-      alert('請選擇圖片檔案');
-      return;
-    }
-
-    // 檢查文件大小（最大 10MB）
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      alert('圖片檔案過大，請選擇小於 10MB 的圖片');
-      return;
-    }
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
 
     setIsUploading(true);
+    setUploadErrors([]); // 清空之前的錯誤
 
-    try {
-      // 上傳到伺服器 (使用者上傳，預設為 guest)
-      // TODO: 未來需要從登入狀態取得實際的 userId
-      const userId = 'guest'; // 暫時使用 guest，之後改為實際使用者 ID
-      const uploadResult = await HttpAPI.upload.editorImage(file, userId);
+    const userId = 'guest'; // TODO: 未來需要從登入狀態取得實際的 userId
+    const successfulUploads = [];
+    const errors = [];
 
-      // 構建完整的圖片 URL
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
-      const imageUrl = uploadResult.url.startsWith('http')
-        ? uploadResult.url
-        : `${API_BASE_URL.replace('/api', '')}${uploadResult.url}`;
+    // 逐一上傳每張圖片
+    for (const file of files) {
+      // 檢查文件類型
+      if (!file.type.startsWith('image/')) {
+        errors.push({ name: file.name, reason: '不是圖片格式' });
+        continue;
+      }
 
-      // 添加到已上傳圖片列表
-      const newImage = {
-        id: uploadResult.filename || Date.now(),
-        url: imageUrl, // 完整的圖片 URL
-        name: file.name,
-        uploadedAt: new Date().toISOString(),
-      };
+      // 檢查文件大小（最大 10MB）
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        errors.push({ name: file.name, reason: '檔案過大（超過 10MB）' });
+        continue;
+      }
 
-      const updatedImages = [...uploadedImages, newImage];
-      setUploadedImages(updatedImages);
+      try {
+        // 上傳到伺服器
+        const uploadResult = await HttpAPI.upload.editorImage(file, userId);
 
-      console.log('✅ 圖片已上傳到伺服器:', uploadResult);
+        // 構建完整的圖片 URL
+        const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+        const imageUrl = uploadResult.url.startsWith('http')
+          ? uploadResult.url
+          : `${API_BASE_URL.replace('/api', '')}${uploadResult.url}`;
 
-      // 重置輸入框
-      e.target.value = '';
-    } catch (error) {
-      console.error('圖片上傳失敗:', error);
-      alert(`圖片上傳失敗：${error.message || '請稍後重試'}`);
-    } finally {
-      setIsUploading(false);
+        // 添加到成功列表
+        const newImage = {
+          id: uploadResult.filename || Date.now() + Math.random(),
+          url: imageUrl,
+          name: file.name,
+          uploadedAt: new Date().toISOString(),
+        };
+
+        successfulUploads.push(newImage);
+        console.log('✅ 圖片已上傳到伺服器:', uploadResult);
+      } catch (error) {
+        console.error(`圖片上傳失敗: ${file.name}`, error);
+        errors.push({ name: file.name, reason: error.message || '上傳失敗' });
+      }
     }
+
+    // 批量更新已上傳圖片列表
+    if (successfulUploads.length > 0) {
+      const updatedImages = [...uploadedImages, ...successfulUploads];
+      setUploadedImages(updatedImages);
+    }
+
+    // 設定錯誤訊息
+    if (errors.length > 0) {
+      setUploadErrors(errors);
+    }
+
+    // 重置輸入框
+    e.target.value = '';
+    setIsUploading(false);
   }, [uploadedImages]);
 
   /**
@@ -328,12 +344,28 @@ const useImageManager = (editorState, imageReplace = null) => {
     }
   }, [imageReplace]);
 
+  /**
+   * 清除上傳錯誤
+   */
+  const clearUploadErrors = useCallback(() => {
+    setUploadErrors([]);
+  }, []);
+
+  /**
+   * 手動添加已上傳的圖片到列表
+   * @param {Object} image - 圖片對象 { id, url, name, uploadedAt }
+   */
+  const addUploadedImage = useCallback((image) => {
+    setUploadedImages(prev => [...prev, image]);
+  }, []);
+
   return {
     uploadedImages,
     isUploading,
     managedElements,
     loadingElements,
     draggingImageUrl,
+    uploadErrors,
     handleImageUpload,
     handleAddImageToCanvas,
     handleDeleteUploadedImage,
@@ -341,6 +373,8 @@ const useImageManager = (editorState, imageReplace = null) => {
     loadManagedElements,
     handleDragStart,
     handleDragEnd,
+    clearUploadErrors,
+    addUploadedImage,
   };
 };
 

@@ -14,6 +14,8 @@ const ImagePanel = ({
   handleDragStart,
   handleDragEnd,
   isReplacingImage,
+  uploadErrors = [],
+  clearUploadErrors,
 }) => {
   return (
     <div className="space-y-4">
@@ -28,6 +30,38 @@ const ImagePanel = ({
                 點擊圖片以替換選取的元素
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 上傳錯誤訊息 */}
+      {uploadErrors.length > 0 && (
+        <div className="bg-red-50 border border-red-300 rounded-lg p-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 text-red-800 mb-2">
+                <span className="text-lg">⚠️</span>
+                <span className="text-sm font-medium">
+                  部分圖片上傳失敗 ({uploadErrors.length} 個)
+                </span>
+              </div>
+              <ul className="text-xs text-red-700 space-y-1 ml-7">
+                {uploadErrors.map((error, index) => (
+                  <li key={index}>
+                    <span className="font-medium">{error.name}</span>: {error.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {clearUploadErrors && (
+              <button
+                onClick={clearUploadErrors}
+                className="text-red-500 hover:text-red-700 text-lg leading-none ml-2"
+                title="關閉"
+              >
+                ×
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -154,6 +188,8 @@ ImagePanel.propTypes = {
   handleDragStart: PropTypes.func,
   handleDragEnd: PropTypes.func,
   isReplacingImage: PropTypes.bool,
+  uploadErrors: PropTypes.array,
+  clearUploadErrors: PropTypes.func,
 };
 
 export default ImagePanel;
