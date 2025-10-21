@@ -13,7 +13,33 @@ const ElementPanel = ({
   handleDragStart,
   handleDragEnd,
   isReplacingImage,
+  isAdmin = false,
+  addElement,
 }) => {
+  // 管理員測試功能：添加失效圖片
+  const handleAddBrokenImage = () => {
+    if (!addElement) return;
+
+    // 生成一個唯一的無效 URL（避免緩存）
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(7);
+    const invalidUrl = `https://invalid-test-image-${timestamp}-${randomId}.jpg`;
+
+    // 創建失效圖片元素
+    const brokenImageElement = {
+      id: `broken-image-${timestamp}`,
+      type: 'image',
+      url: invalidUrl,
+      width: 100,
+      height: 100,
+      x: 200,
+      y: 200,
+      rotation: 0,
+      opacity: 1,
+    };
+
+    addElement(brokenImageElement);
+  };
   return (
     <div className="space-y-4">
       {/* 替換模式提示 */}
@@ -28,6 +54,23 @@ const ElementPanel = ({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 管理員測試工具 */}
+      {isAdmin && (
+        <div className="bg-orange-50 border border-orange-300 rounded-lg p-3">
+          <h5 className="text-sm font-medium text-orange-900 mb-2 flex items-center gap-2">
+            <span>🔧</span>
+            <span>管理員工具</span>
+          </h5>
+          <button
+            onClick={handleAddBrokenImage}
+            className="w-full px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md text-sm font-medium transition-colors"
+            title="添加一個版型專用圖片"
+          >
+            ➕ 添加版型專用圖片
+          </button>
         </div>
       )}
 
@@ -113,6 +156,8 @@ ElementPanel.propTypes = {
   handleDragStart: PropTypes.func,
   handleDragEnd: PropTypes.func,
   isReplacingImage: PropTypes.bool,
+  isAdmin: PropTypes.bool,
+  addElement: PropTypes.func,
 };
 
 export default ElementPanel;

@@ -80,6 +80,9 @@ const UniversalEditor = ({
 
   // 其他配置
   headerContent = null,
+
+  // 權限相關
+  isAdmin = false, // 是否為管理員
 }) => {
   const navigate = useNavigate();
 
@@ -719,6 +722,8 @@ const UniversalEditor = ({
                     handleDragStart={imageManager.handleDragStart}
                     handleDragEnd={imageManager.handleDragEnd}
                     isReplacingImage={imageReplace.isReplacingImage}
+                    isAdmin={isAdmin}
+                    addElement={editorState.addElement}
                   />
                 );
               case "text":

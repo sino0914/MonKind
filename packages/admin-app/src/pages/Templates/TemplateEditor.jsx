@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { API } from "@monkind/shared/services/api";
 import { UniversalEditor } from "@monkind/shared/components/Editor";
+import { useAuth } from "../../context/AuthContext";
 
 const TemplateEditor = () => {
   const { templateId } = useParams(); // 版型ID，如果是new則為新建
@@ -9,6 +10,8 @@ const TemplateEditor = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const productId = searchParams.get('productId');
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin === true;
 
   const [product, setProduct] = useState(null);
   const [template, setTemplate] = useState(null);
@@ -314,6 +317,8 @@ const TemplateEditor = () => {
       // 傳入現有版型的設計資料 (使用 memoized 值避免無限循環)
       initialElements={memoizedInitialElements}
       initialBackgroundColor={memoizedInitialBackgroundColor}
+      // 管理員權限
+      isAdmin={isAdmin}
     />
   );
 };

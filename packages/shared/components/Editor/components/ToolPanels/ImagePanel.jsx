@@ -111,7 +111,15 @@ const ImagePanel = ({
 
         {uploadedImages.length > 0 ? (
           <div className="grid grid-cols-3 gap-2 max-h-[60vh] overflow-y-auto">
-            {uploadedImages.map((image) => (
+            {uploadedImages
+              .slice()
+              .sort((a, b) => {
+                // 依照上傳時間降冪排列（最新的在前面）
+                const timeA = new Date(a.uploadedAt || 0).getTime();
+                const timeB = new Date(b.uploadedAt || 0).getTime();
+                return timeB - timeA;
+              })
+              .map((image) => (
               <div key={image.id} className="relative group">
                 <button
                   onClick={() => handleAddImageToCanvas(image)}
