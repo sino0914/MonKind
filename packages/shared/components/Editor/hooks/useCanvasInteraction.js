@@ -153,7 +153,7 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
         const degrees = (angle * 180) / Math.PI + 90;
         updateElement(selectedElement.id, { rotation: degrees });
       } else {
-        // 縮放（僅圖片）
+        // 縮放（圖片和文字）
         if (selectedElement.type === 'image') {
           const aspectRatio = selectedElement.width / selectedElement.height;
           let newWidth = selectedElement.width;
@@ -204,6 +204,31 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
           updateElement(selectedElement.id, {
             width: newWidth,
             height: newHeight,
+          });
+        } else if (selectedElement.type === 'text') {
+          // 文字縮放 - 調整 fontSize
+          // 計算滑鼠到文字中心的距離
+          const deltaX = currentX - selectedElement.x;
+          const deltaY = currentY - selectedElement.y;
+          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+          // 儲存初始字體大小（第一次縮放時）
+          const baseFontSize = selectedElement.baseFontSize || selectedElement.fontSize;
+
+          // 基準距離設為 50，根據距離計算縮放倍率
+          const scaleFactor = distance / 50;
+
+          // 計算新的字體大小，限制在最小和最大範圍內
+          const MIN_FONT_SIZE = 12;
+          const MAX_FONT_SIZE = 200;
+          const newFontSize = Math.max(
+            MIN_FONT_SIZE,
+            Math.min(MAX_FONT_SIZE, baseFontSize * scaleFactor)
+          );
+
+          updateElement(selectedElement.id, {
+            fontSize: Math.round(newFontSize),
+            baseFontSize: baseFontSize
           });
         }
       }

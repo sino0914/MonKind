@@ -4,7 +4,8 @@ import { API } from "@monkind/shared/services/api";
 import { UniversalEditor } from "@monkind/shared/components/Editor";
 
 const TemplateEditor = () => {
-  const { id } = useParams(); // 版型ID，如果是new則為新建
+  const { templateId } = useParams(); // 版型ID，如果是new則為新建
+  const id = templateId; // 保持向下兼容
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const productId = searchParams.get('productId');
@@ -120,6 +121,59 @@ const TemplateEditor = () => {
       const finalTemplateName = designData.templateName || formTemplateName || templateName;
       const finalTemplateDescription = designData.templateDescription || formTemplateDescription || templateDescription;
 
+      // 根據商品類型生成快照
+      let previewImage = null;
+      console.log('🎨 開始生成版型快照，商品類型:', product.type);
+
+      try {
+        if (product.type === '3D') {
+          // 生成 3D 快照
+          const { generate3DSnapshot } = await import('@monkind/shared/components/Editor/utils');
+          const snapshotBase64 = await generate3DSnapshot(
+            product,
+            designData.elements,
+            designData.backgroundColor,
+            400,
+            400
+          );
+          console.log('✅ 3D 快照生成成功');
+
+          // 上傳到伺服器
+          try {
+            const uploadResult = await API.upload.snapshot(snapshotBase64, product.id);
+            previewImage = uploadResult.url;
+            console.log('✅ 快照已上傳到伺服器:', uploadResult.url);
+          } catch (uploadError) {
+            console.error('❌ 上傳快照失敗，使用 base64 儲存:', uploadError);
+            previewImage = snapshotBase64; // 失敗時回退到 base64
+          }
+        } else {
+          // 生成 2D 快照
+          const { generate2DSnapshot } = await import('@monkind/shared/components/Editor/utils');
+          const snapshotBase64 = await generate2DSnapshot(
+            product,
+            designData.elements,
+            designData.backgroundColor,
+            400,
+            400
+          );
+          console.log('✅ 2D 快照生成成功');
+
+          // 上傳到伺服器
+          try {
+            const uploadResult = await API.upload.snapshot(snapshotBase64, product.id);
+            previewImage = uploadResult.url;
+            console.log('✅ 快照已上傳到伺服器:', uploadResult.url);
+          } catch (uploadError) {
+            console.error('❌ 上傳快照失敗，使用 base64 儲存:', uploadError);
+            previewImage = snapshotBase64; // 失敗時回退到 base64
+          }
+        }
+      } catch (snapshotError) {
+        console.error('❌ 生成快照失敗:', snapshotError);
+        // 繼續儲存版型，但沒有預覽圖
+      }
+
       const templateData = {
         name: finalTemplateName,
         description: finalTemplateDescription,
@@ -127,6 +181,7 @@ const TemplateEditor = () => {
         productCategory: product.category,
         elements: designData.elements || [],
         backgroundColor: designData.backgroundColor || "#ffffff",
+        previewImage: previewImage, // 新增快照欄位
         isActive: true
       };
 
@@ -141,7 +196,7 @@ const TemplateEditor = () => {
       }
 
       // 返回版型管理頁面
-      window.location.href = "/admin/templates";
+      navigate("/templates");
     } catch (error) {
       console.error("儲存版型失敗:", error);
       alert("儲存失敗，請重新嘗試");
@@ -153,7 +208,7 @@ const TemplateEditor = () => {
   // 取消編輯
   const handleCancel = () => {
     if (window.confirm("確定要取消編輯嗎？未儲存的變更將會遺失。")) {
-      window.location.href = "/admin/templates";
+      navigate("/templates");
     }
   };
 

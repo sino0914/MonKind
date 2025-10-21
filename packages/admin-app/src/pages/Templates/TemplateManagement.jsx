@@ -74,12 +74,12 @@ const TemplateManagement = () => {
       return;
     }
 
-    navigate(`/admin/templates/editor/new?productId=${selectedProduct.id}`);
+    navigate(`/templates/new/edit?productId=${selectedProduct.id}`);
   };
 
   // 編輯版型
   const handleEditTemplate = (template) => {
-    navigate(`/admin/templates/editor/${template.id}`);
+    navigate(`/templates/${template.id}/edit`);
   };
 
   // 切換版型啟用狀態

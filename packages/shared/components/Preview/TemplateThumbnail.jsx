@@ -111,6 +111,8 @@ const TemplateThumbnail = ({
           height={height}
           showElementCount={showElementCount}
           className="border border-gray-200"
+          snapshot3D={product.type === '3D' ? template.previewImage : null}
+          snapshot2D={product.type === '2D' ? template.previewImage : null}
         />
 
         {/* 版型狀態標示 */}

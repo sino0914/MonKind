@@ -31,6 +31,7 @@ const DesignElementsLayer = ({
   handleMouseDown,
   handleSelectElement,
   handleFinishTextEdit,
+  handleStartTextEdit,
   handleDeleteElement,
 
   // 測量函數
@@ -246,6 +247,13 @@ const DesignElementsLayer = ({
                   e.stopPropagation(); // 阻止冒泡到畫布
                   handleSelectElement(element);
                 }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  // 雙擊文字元素進入編輯模式
+                  if (element.type === 'text' && !isLocked) {
+                    handleStartTextEdit(element);
+                  }
+                }}
               >
                 {/* 選取框 */}
                 {isSelected && (
@@ -263,8 +271,8 @@ const DesignElementsLayer = ({
                       </div>
                     )}
 
-                    {/* 縮放控制點 - 只有圖片才顯示，且未鎖定 */}
-                    {element.type === "image" && !isLocked && (
+                    {/* 縮放控制點 - 圖片和文字都顯示，且未鎖定、未編輯 */}
+                    {(element.type === "image" || (element.type === "text" && editingText !== element.id)) && !isLocked && (
                       <>
                         <div
                           className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-nw-resize pointer-events-auto"

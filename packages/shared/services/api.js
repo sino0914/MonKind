@@ -223,16 +223,16 @@ export const API = {
     glb: (file) => HttpAPI.upload.glb(file),
     // 圖片上傳
     image: (file) => HttpAPI.upload.image(file),
-    // 編輯器圖片上傳
-    editorImage: (file) => HttpAPI.upload.editorImage(file),
+    // 編輯器圖片上傳 (使用者上傳)
+    editorImage: (file, userId = 'guest') => HttpAPI.upload.editorImage(file, userId),
     // 3D 快照上傳
     snapshot: (base64Image, productId) => HttpAPI.upload.snapshot(base64Image, productId),
     // 列印檔案上傳
     printFile: (blob, productId) => HttpAPI.upload.printFile(blob, productId),
     // 獲取已上傳的文件列表
-    getFiles: (type) => HttpAPI.upload.getFiles(type),
+    getFiles: (type, userId = null) => HttpAPI.upload.getFiles(type, userId),
     // 刪除文件
-    deleteFile: (type, filename) => HttpAPI.upload.deleteFile(type, filename),
+    deleteFile: (type, filename, userId = null) => HttpAPI.upload.deleteFile(type, filename, userId),
     // 獲取存儲信息
     getStorageInfo: () => HttpAPI.upload.getStorageInfo(),
   }

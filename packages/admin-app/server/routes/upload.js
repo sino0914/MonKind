@@ -186,7 +186,7 @@ router.post('/element', upload.single('element'), async (req, res) => {
   }
 });
 
-// POST /api/upload/editor-image - 上傳編輯器圖片（與 /image 相同，但使用 editorImage 字段名）
+// POST /api/upload/editor-image - 上傳編輯器圖片（使用者專屬目錄）
 router.post('/editor-image', upload.single('editorImage'), async (req, res) => {
   try {
     if (!req.file) {
@@ -196,7 +196,25 @@ router.post('/editor-image', upload.single('editorImage'), async (req, res) => {
       });
     }
 
-    const fileInfo = await getFileInfo(req.file.path);
+    // 從 body 取得 userId（預設為 guest）
+    const userId = req.body.userId || 'guest';
+
+    // 建立使用者專屬資料夾 /data/users/{userId}/images/
+    const userImagesDir = path.join(__dirname, '../data/users', userId, 'images');
+    await fs.ensureDir(userImagesDir);
+
+    // 移動檔案到使用者資料夾
+    const newFilePath = path.join(userImagesDir, req.file.filename);
+    await fs.move(req.file.path, newFilePath, { overwrite: true });
+
+    const fileInfo = await getFileInfo(newFilePath);
+    const url = `/data/users/${userId}/images/${req.file.filename}`;
+
+    console.log('✅ 編輯器圖片已儲存:', {
+      filename: req.file.filename,
+      userId,
+      path: newFilePath
+    });
 
     res.json({
       success: true,
@@ -207,7 +225,8 @@ router.post('/editor-image', upload.single('editorImage'), async (req, res) => {
         size: req.file.size,
         sizeKB: (req.file.size / 1024).toFixed(2),
         mimetype: req.file.mimetype,
-        url: `/uploads/images/${req.file.filename}`,
+        url,
+        userId,
         uploadedAt: new Date().toISOString(),
         fileInfo
       }
@@ -394,10 +413,41 @@ router.post('/multiple', upload.array('files', 5), async (req, res) => {
 // GET /api/upload/files - 獲取上傳的文件列表
 router.get('/files', async (req, res) => {
   try {
-    const { type } = req.query; // glb, images, editor-image, element, all
+    const { type, userId } = req.query; // glb, images, editor-image, element, all
 
-    // 如果請求的是 editor-image 或 element，都返回 images 目錄的文件
-    if (type === 'editor-image' || type === 'element') {
+    // 如果請求的是 editor-image，返回使用者專屬資料夾的文件
+    if (type === 'editor-image') {
+      const actualUserId = userId || 'guest';
+      const userImagesDir = path.join(__dirname, '../data/users', actualUserId, 'images');
+      const filesList = [];
+
+      if (await fs.pathExists(userImagesDir)) {
+        const userFiles = await fs.readdir(userImagesDir);
+        for (const filename of userFiles) {
+          const filePath = path.join(userImagesDir, filename);
+          const stats = await fs.stat(filePath);
+
+          // 只返回圖片檔案
+          if (stats.isFile() && /\.(jpg|jpeg|png|webp|svg)$/i.test(filename)) {
+            const fileInfo = await getFileInfo(filePath);
+            if (fileInfo) {
+              filesList.push({
+                filename,
+                url: `/data/users/${actualUserId}/images/${filename}`,
+                userId: actualUserId,
+                ...fileInfo
+              });
+            }
+          }
+        }
+      }
+
+      console.log(`📂 載入使用者圖片 (userId: ${actualUserId}):`, filesList.length, '張圖片');
+      return res.json(filesList);
+    }
+
+    // 如果請求的是 element，都返回 images 目錄的文件
+    if (type === 'element') {
       const imagesDir = path.join(uploadsDir, 'images');
       const filesList = [];
 
@@ -480,21 +530,30 @@ router.get('/files', async (req, res) => {
 router.delete('/file/:type/:filename', async (req, res) => {
   try {
     const { type, filename } = req.params;
+    const { userId } = req.query;
 
-    // 將 editor-image 和 element 映射到 images 目錄
-    let actualType = type;
-    if (type === 'editor-image' || type === 'element') {
-      actualType = 'images';
+    let filePath;
+
+    // 如果是 editor-image 且有 userId，從使用者資料夾刪除
+    if (type === 'editor-image' && userId) {
+      const userImagesDir = path.join(__dirname, '../data/users', userId, 'images');
+      filePath = path.join(userImagesDir, filename);
+    } else {
+      // 將 editor-image 和 element 映射到 images 目錄
+      let actualType = type;
+      if (type === 'editor-image' || type === 'element') {
+        actualType = 'images';
+      }
+
+      if (!['glb', 'images'].includes(actualType)) {
+        return res.status(400).json({
+          success: false,
+          message: '無效的文件類型'
+        });
+      }
+
+      filePath = path.join(uploadsDir, actualType, filename);
     }
-
-    if (!['glb', 'images'].includes(actualType)) {
-      return res.status(400).json({
-        success: false,
-        message: '無效的文件類型'
-      });
-    }
-
-    const filePath = path.join(uploadsDir, actualType, filename);
 
     if (await fs.pathExists(filePath)) {
       await fs.remove(filePath);

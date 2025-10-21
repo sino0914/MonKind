@@ -112,6 +112,7 @@ const MainContentArea = ({
                   handleMouseDown={handleMouseDown}
                   handleSelectElement={handleSelectElement}
                   handleFinishTextEdit={handleFinishTextEdit}
+                  handleStartTextEdit={handleStartTextEdit}
                   handleDeleteElement={handleDeleteElement}
                   handleDragOver={handleDragOver}
                   handleDrop={handleDrop}

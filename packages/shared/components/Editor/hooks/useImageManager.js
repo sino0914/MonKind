@@ -24,8 +24,10 @@ const useImageManager = (editorState, imageReplace = null) => {
   useEffect(() => {
     const loadServerImages = async () => {
       try {
-        const files = await HttpAPI.upload.getFiles('editor-image');
-        console.log('✅ 從伺服器載入圖片:', files);
+        // TODO: 未來需要從登入狀態取得實際的 userId
+        const userId = 'guest'; // 暫時使用 guest，之後改為實際使用者 ID
+        const files = await HttpAPI.upload.getFiles('editor-image', userId);
+        console.log('✅ 從伺服器載入圖片 (userId:', userId, '):', files);
 
         // 構建完整 URL
         const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
@@ -80,8 +82,10 @@ const useImageManager = (editorState, imageReplace = null) => {
     setIsUploading(true);
 
     try {
-      // 上傳到伺服器
-      const uploadResult = await HttpAPI.upload.editorImage(file);
+      // 上傳到伺服器 (使用者上傳，預設為 guest)
+      // TODO: 未來需要從登入狀態取得實際的 userId
+      const userId = 'guest'; // 暫時使用 guest，之後改為實際使用者 ID
+      const uploadResult = await HttpAPI.upload.editorImage(file, userId);
 
       // 構建完整的圖片 URL
       const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
@@ -193,8 +197,10 @@ const useImageManager = (editorState, imageReplace = null) => {
       if (imageToDelete.url.startsWith('http')) {
         // 提取檔名
         const filename = imageToDelete.url.split('/').pop();
-        await HttpAPI.upload.deleteFile('editor-image', filename);
-        console.log('✅ 已從伺服器刪除圖片:', filename);
+        // TODO: 未來需要從登入狀態取得實際的 userId
+        const userId = 'guest'; // 暫時使用 guest，之後改為實際使用者 ID
+        await HttpAPI.upload.deleteFile('editor-image', filename, userId);
+        console.log('✅ 已從伺服器刪除圖片:', filename, '(userId:', userId, ')');
       }
 
       // 從列表中移除

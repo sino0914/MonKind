@@ -77,9 +77,14 @@ class HttpApiService {
   }
 
   // 文件上傳
-  async uploadFile(endpoint, file, fieldName = 'file') {
+  async uploadFile(endpoint, file, fieldName = 'file', additionalData = {}) {
     const formData = new FormData();
     formData.append(fieldName, file);
+
+    // 添加額外的資料（例如 userId）
+    Object.keys(additionalData).forEach(key => {
+      formData.append(key, additionalData[key]);
+    });
 
     return this.request(endpoint, {
       method: 'POST',
@@ -112,13 +117,21 @@ class HttpApiService {
   }
 
   // 獲取上傳的文件列表
-  async getUploadedFiles(type = 'all') {
-    return this.get('/upload/files', { type });
+  async getUploadedFiles(type = 'all', userId = null) {
+    const params = { type };
+    if (userId) {
+      params.userId = userId;
+    }
+    return this.get('/upload/files', params);
   }
 
   // 刪除文件
-  async deleteFile(type, filename) {
-    return this.delete(`/upload/file/${type}/${filename}`);
+  async deleteFile(type, filename, userId = null) {
+    let url = `/upload/file/${type}/${filename}`;
+    if (userId) {
+      url += `?userId=${userId}`;
+    }
+    return this.delete(url);
   }
 }
 
@@ -341,8 +354,13 @@ export const HttpAPI = {
       // 後端返回 { success: true, data: { url, filename, ... } }
       return response.success ? response.data : null;
     },
-    editorImage: async (file) => {
-      const response = await httpApiService.uploadFile('/upload/editor-image', file, 'editorImage');
+    editorImage: async (file, userId = 'guest') => {
+      const response = await httpApiService.uploadFile(
+        '/upload/editor-image',
+        file,
+        'editorImage',
+        { userId } // 傳遞使用者 ID 給後端
+      );
       return response.data; // 返回 { url: '伺服器圖片 URL', filename: '檔名' }
     },
     snapshot: async (base64Image, productId) => {
@@ -365,8 +383,8 @@ export const HttpAPI = {
       // 後端返回 { success: true, data: { url, filename, ... } }
       return response.success ? response.data : null;
     },
-    getFiles: (type) => httpApiService.getUploadedFiles(type),
-    deleteFile: (type, filename) => httpApiService.deleteFile(type, filename),
+    getFiles: (type, userId = null) => httpApiService.getUploadedFiles(type, userId),
+    deleteFile: (type, filename, userId = null) => httpApiService.deleteFile(type, filename, userId),
     getStorageInfo: () => httpApiService.getStorageInfo(),
   },
 

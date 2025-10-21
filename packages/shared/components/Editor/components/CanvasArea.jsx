@@ -38,6 +38,7 @@ const CanvasArea = ({
   handleMouseDown,
   handleSelectElement,
   handleFinishTextEdit,
+  handleStartTextEdit,
   handleDeleteElement,
   handleDragOver,
   handleDrop,
@@ -309,6 +310,7 @@ const CanvasArea = ({
             handleMouseDown={handleMouseDown}
             handleSelectElement={handleSelectElement}
             handleFinishTextEdit={handleFinishTextEdit}
+            handleStartTextEdit={handleStartTextEdit}
             handleDeleteElement={handleDeleteElement}
             measureTextWidth={measureTextWidth}
             editingInputWidth={editingInputWidth}
