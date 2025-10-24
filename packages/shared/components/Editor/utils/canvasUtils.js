@@ -38,26 +38,9 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
   const ctx = canvas.getContext("2d");
   const { width: printWidth, height: printHeight } = printArea;
 
-  // 判斷是否為3D商品，需要輸出正方形圖片
-  const is3D = productType === "3D";
-  let canvasWidth = printWidth;
-  let canvasHeight = printHeight;
-  let offsetX = 0;
-  let offsetY = 0;
-
-  if (is3D) {
-    const maxSize = Math.max(printWidth, printHeight);
-    canvasWidth = maxSize;
-    canvasHeight = maxSize;
-    offsetX = 0;
-    offsetY = 0;
-
-    console.log("3D商品正方形輸出:", {
-      原始設計區域: `${printWidth}×${printHeight}`,
-      正方形畫布: `${canvasWidth}×${canvasHeight}`,
-      設計區域偏移: `${offsetX}, ${offsetY}`,
-    });
-  }
+  // 2D 和 3D 商品都輸出設計區域大小（不再輸出正方形）
+  const canvasWidth = printWidth;
+  const canvasHeight = printHeight;
 
   // 設定高解析度
   canvas.width = canvasWidth * SCALE_FACTOR;
@@ -65,20 +48,11 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
   ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
 
   // 設定背景
-  if (is3D) {
-    ctx.fillStyle = "#ffffff";
+  if (backgroundColor && backgroundColor !== "#ffffff") {
+    ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-    if (backgroundColor && backgroundColor !== "#ffffff") {
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(offsetX, offsetY, printWidth, printHeight);
-    }
   } else {
-    if (backgroundColor && backgroundColor !== "#ffffff") {
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-    } else {
-      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    }
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   }
 
   console.log("開始輸出設計區域:", {
@@ -100,8 +74,8 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
 
     const elementX = element.x - printArea.x;
     const elementY = element.y - printArea.y;
-    const finalX = elementX + offsetX;
-    const finalY = elementY + offsetY;
+    const finalX = elementX;
+    const finalY = elementY;
 
     if (element.type === "text") {
       ctx.save();
@@ -198,20 +172,9 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
   const ctx = canvas.getContext("2d");
   const { width: printWidth, height: printHeight } = printArea;
 
-  // 判斷是否為3D商品，需要輸出正方形圖片
-  const is3D = productType === "3D";
-  let canvasWidth = printWidth;
-  let canvasHeight = printHeight;
-  let offsetX = 0;
-  let offsetY = 0;
-
-  if (is3D) {
-    const maxSize = Math.max(printWidth, printHeight);
-    canvasWidth = maxSize;
-    canvasHeight = maxSize;
-    offsetX = 0;
-    offsetY = 0;
-  }
+  // 2D 和 3D 商品都輸出設計區域大小（不再輸出正方形）
+  const canvasWidth = printWidth;
+  const canvasHeight = printHeight;
 
   // 設定高解析度（列印用）
   canvas.width = canvasWidth * scaleFactor;
@@ -219,20 +182,11 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
   ctx.scale(scaleFactor, scaleFactor);
 
   // 設定背景
-  if (is3D) {
-    ctx.fillStyle = "#ffffff";
+  if (backgroundColor && backgroundColor !== "#ffffff") {
+    ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-    if (backgroundColor && backgroundColor !== "#ffffff") {
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(offsetX, offsetY, printWidth, printHeight);
-    }
   } else {
-    if (backgroundColor && backgroundColor !== "#ffffff") {
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-    } else {
-      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    }
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   }
 
   console.log("開始生成列印檔案:", {
@@ -255,8 +209,8 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
 
     const elementX = element.x - printArea.x;
     const elementY = element.y - printArea.y;
-    const finalX = elementX + offsetX;
-    const finalY = elementY + offsetY;
+    const finalX = elementX;
+    const finalY = elementY;
 
     if (element.type === "text") {
       ctx.save();
