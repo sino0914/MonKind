@@ -166,15 +166,15 @@ const DesignElementsLayer = ({
                             overflow: 'hidden', // 關鍵：隱藏超出蒙版的部分
                           }}
                         >
-                          {/* 使用 clip-path 裁切圖片 */}
+                          {/* 使用 clip-path 裁切圖片 - 但剪裁模式中不套用 */}
                           <img
                             src={displayUrl}
                             alt="設計圖片"
                             className="w-full h-full pointer-events-none"
                             style={{
                               objectFit: 'contain',
-                              // 使用 clip-path 裁切蒙版區域
-                              clipPath: `inset(
+                              // 只有在非剪裁模式時才套用 clip-path
+                              clipPath: (croppingElement && croppingElement.id === element.id) ? 'none' : `inset(
                                 ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
                                 ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
                                 ${(1 - (element.mask.y + element.mask.height / 2) / element.height) * 100}%
