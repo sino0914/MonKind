@@ -6,7 +6,7 @@ import { MIN_ELEMENT_SIZE } from '../constants/editorConfig';
  * 畫布交互邏輯 Hook
  * 處理拖曳、縮放、旋轉、圖片替換拖曳預覽
  */
-const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, draggingImageUrl = null, viewport = null) => {
+const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, draggingImageUrl = null, viewport = null, isFreeTransform = false) => {
   const {
     draggedElement,
     dragOffset,
@@ -159,45 +159,67 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
           let newWidth = selectedElement.width;
           let newHeight = selectedElement.height;
 
-          if (resizeHandle === 'se') {
+          // 判斷是否為自由變形模式（非等比例縮放）
+          if (isFreeTransform) {
+            // 非等比例縮放：獨立調整寬高
             const deltaX = currentX - selectedElement.x;
             const deltaY = currentY - selectedElement.y;
-            if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
+
+            if (resizeHandle === 'se') {
               newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
-              newHeight = newWidth / aspectRatio;
-            } else {
               newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
-              newWidth = newHeight * aspectRatio;
+            } else if (resizeHandle === 'nw') {
+              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(selectedElement.x - currentX) * 2);
+              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(selectedElement.y - currentY) * 2);
+            } else if (resizeHandle === 'ne') {
+              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
+              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(selectedElement.y - currentY) * 2);
+            } else if (resizeHandle === 'sw') {
+              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(selectedElement.x - currentX) * 2);
+              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
             }
-          } else if (resizeHandle === 'nw') {
-            const deltaX = selectedElement.x - currentX;
-            const deltaY = selectedElement.y - currentY;
-            if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
-              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
-              newHeight = newWidth / aspectRatio;
-            } else {
-              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
-              newWidth = newHeight * aspectRatio;
-            }
-          } else if (resizeHandle === 'ne') {
-            const deltaX = currentX - selectedElement.x;
-            const deltaY = selectedElement.y - currentY;
-            if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
-              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
-              newHeight = newWidth / aspectRatio;
-            } else {
-              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
-              newWidth = newHeight * aspectRatio;
-            }
-          } else if (resizeHandle === 'sw') {
-            const deltaX = selectedElement.x - currentX;
-            const deltaY = currentY - selectedElement.y;
-            if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
-              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
-              newHeight = newWidth / aspectRatio;
-            } else {
-              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
-              newWidth = newHeight * aspectRatio;
+          } else {
+            // 等比例縮放（原邏輯）
+            if (resizeHandle === 'se') {
+              const deltaX = currentX - selectedElement.x;
+              const deltaY = currentY - selectedElement.y;
+              if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
+                newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
+                newHeight = newWidth / aspectRatio;
+              } else {
+                newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
+                newWidth = newHeight * aspectRatio;
+              }
+            } else if (resizeHandle === 'nw') {
+              const deltaX = selectedElement.x - currentX;
+              const deltaY = selectedElement.y - currentY;
+              if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
+                newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
+                newHeight = newWidth / aspectRatio;
+              } else {
+                newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
+                newWidth = newHeight * aspectRatio;
+              }
+            } else if (resizeHandle === 'ne') {
+              const deltaX = currentX - selectedElement.x;
+              const deltaY = selectedElement.y - currentY;
+              if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
+                newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
+                newHeight = newWidth / aspectRatio;
+              } else {
+                newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
+                newWidth = newHeight * aspectRatio;
+              }
+            } else if (resizeHandle === 'sw') {
+              const deltaX = selectedElement.x - currentX;
+              const deltaY = currentY - selectedElement.y;
+              if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
+                newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
+                newHeight = newWidth / aspectRatio;
+              } else {
+                newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
+                newWidth = newHeight * aspectRatio;
+              }
             }
           }
 

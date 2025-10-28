@@ -201,9 +201,72 @@ const ProductPreview = ({
           if (el.rotation && el.rotation !== 0) {
             ctx.translate(finalX, finalY);
             ctx.rotate((el.rotation * Math.PI) / 180);
-            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+            // 檢查是否有蒙版數據
+            if (el.hasMask && el.mask) {
+              const mask = el.mask;
+              const maskLeft = mask.x - mask.width / 2;
+              const maskTop = mask.y - mask.height / 2;
+              const maskRight = mask.x + mask.width / 2;
+              const maskBottom = mask.y + mask.height / 2;
+
+              const topPercent = maskTop / el.height;
+              const rightPercent = 1 - maskRight / el.width;
+              const bottomPercent = 1 - maskBottom / el.height;
+              const leftPercent = maskLeft / el.width;
+
+              const clipTop = topPercent * h;
+              const clipRight = rightPercent * w;
+              const clipBottom = bottomPercent * h;
+              const clipLeft = leftPercent * w;
+
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(
+                -w / 2 + clipLeft,
+                -h / 2 + clipTop,
+                w - clipLeft - clipRight,
+                h - clipTop - clipBottom
+              );
+              ctx.clip();
+              ctx.drawImage(img, -w / 2, -h / 2, w, h);
+              ctx.restore();
+            } else {
+              ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            }
           } else {
-            ctx.drawImage(img, finalX - w / 2, finalY - h / 2, w, h);
+            // 檢查是否有蒙版數據
+            if (el.hasMask && el.mask) {
+              const mask = el.mask;
+              const maskLeft = mask.x - mask.width / 2;
+              const maskTop = mask.y - mask.height / 2;
+              const maskRight = mask.x + mask.width / 2;
+              const maskBottom = mask.y + mask.height / 2;
+
+              const topPercent = maskTop / el.height;
+              const rightPercent = 1 - maskRight / el.width;
+              const bottomPercent = 1 - maskBottom / el.height;
+              const leftPercent = maskLeft / el.width;
+
+              const clipTop = topPercent * h;
+              const clipRight = rightPercent * w;
+              const clipBottom = bottomPercent * h;
+              const clipLeft = leftPercent * w;
+
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(
+                finalX - w / 2 + clipLeft,
+                finalY - h / 2 + clipTop,
+                w - clipLeft - clipRight,
+                h - clipTop - clipBottom
+              );
+              ctx.clip();
+              ctx.drawImage(img, finalX - w / 2, finalY - h / 2, w, h);
+              ctx.restore();
+            } else {
+              ctx.drawImage(img, finalX - w / 2, finalY - h / 2, w, h);
+            }
           }
 
           // 恢復狀態
@@ -433,6 +496,7 @@ const ProductPreview = ({
                       height: `${(element.height / areaHeight) * 100}%`,
                       transform: "translate(-50%, -50%)",
                       opacity: element.opacity || 1,
+                      overflow: element.hasMask && element.mask ? 'hidden' : 'visible',
                     }}
                   >
                     <img
@@ -441,6 +505,12 @@ const ProductPreview = ({
                       className="w-full h-full object-contain"
                       style={{
                         transform: `rotate(${element.rotation || 0}deg)`,
+                        clipPath: element.hasMask && element.mask ? `inset(
+                          ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
+                          ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
+                          ${(1 - (element.mask.y + element.mask.height / 2) / element.height) * 100}%
+                          ${((element.mask.x - element.mask.width / 2) / element.width) * 100}%
+                        )` : undefined,
                       }}
                       onLoad={(e) => {
                         // 圖片載入成功時，恢復顯示
@@ -495,6 +565,7 @@ const ProductPreview = ({
                         height: `${(element.height / 400) * 100}%`,
                         transform: "translate(-50%, -50%)",
                         opacity: element.opacity || 1,
+                        overflow: element.hasMask && element.mask ? 'hidden' : 'visible',
                       }}
                     >
                       <img
@@ -503,6 +574,12 @@ const ProductPreview = ({
                         className="w-full h-full object-contain"
                         style={{
                           transform: `rotate(${element.rotation || 0}deg)`,
+                          clipPath: element.hasMask && element.mask ? `inset(
+                            ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
+                            ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
+                            ${(1 - (element.mask.y + element.mask.height / 2) / element.height) * 100}%
+                            ${((element.mask.x - element.mask.width / 2) / element.width) * 100}%
+                          )` : undefined,
                         }}
                         onLoad={(e) => {
                           // 圖片載入成功時，恢復顯示

@@ -39,6 +39,19 @@ const MainContentArea = ({
   // 圖片上傳相關
   onUploadImage,
 
+  // 自由變形相關
+  isFreeTransform,
+  onToggleFreeTransform,
+
+  // 剪裁相關
+  onStartCrop,
+  croppingElement,
+  maskRect,
+  onUpdateMaskRect,
+  onApplyCrop,
+  onCancelCrop,
+  onResetCrop,
+
   // 圖片載入錯誤狀態
   imageLoadErrors,
   markImageAsError,
@@ -129,6 +142,12 @@ const MainContentArea = ({
                   viewport={viewport}
                   markImageAsError={markImageAsError}
                   clearImageError={clearImageError}
+                  croppingElement={croppingElement}
+                  maskRect={maskRect}
+                  onUpdateMaskRect={onUpdateMaskRect}
+                  onApplyCrop={onApplyCrop}
+                  onCancelCrop={onCancelCrop}
+                  onResetCrop={onResetCrop}
                 />
 
                 {/* 工具列容器 - 與 Canvas 內容使用相同的 transform */}
@@ -265,6 +284,32 @@ const MainContentArea = ({
                               title={isRemovingBackground ? '處理中...' : '移除背景'}
                             >
                               {isRemovingBackground ? '⏳處理中...' : '✂️去背'}
+                            </button>
+                          )}
+
+                          {/* 自由變形按鈕 - 僅在圖片正常時顯示 */}
+                          {!isImageBroken && onToggleFreeTransform && (
+                            <button
+                              onClick={onToggleFreeTransform}
+                              className={`px-2 py-1 text-xs rounded transition-all ${
+                                isFreeTransform
+                                  ? 'bg-yellow-600 hover:bg-yellow-700'
+                                  : 'bg-gray-600 hover:bg-gray-700'
+                              }`}
+                              title={isFreeTransform ? '退出自由變形（非等比例縮放）' : '自由變形（非等比例縮放）'}
+                            >
+                              {isFreeTransform ? '🔲啟用中' : '🔲變形'}
+                            </button>
+                          )}
+
+                          {/* 剪裁按鈕 - 僅在圖片正常時顯示 */}
+                          {!isImageBroken && onStartCrop && (
+                            <button
+                              onClick={() => onStartCrop(element)}
+                              className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded"
+                              title="剪裁圖片"
+                            >
+                              ✂️剪裁
                             </button>
                           )}
                         </div>

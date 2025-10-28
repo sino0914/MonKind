@@ -152,6 +152,7 @@ const ProductThumbnail = ({
                   height: `${(element.height / areaHeight) * 100}%`,
                   transform: "translate(-50%, -50%)",
                   opacity: element.opacity || 1,
+                  overflow: element.hasMask && element.mask ? 'hidden' : 'visible',
                 }}
               >
                 <img
@@ -160,6 +161,12 @@ const ProductThumbnail = ({
                   className="w-full h-full object-contain"
                   style={{
                     transform: `rotate(${element.rotation || 0}deg)`,
+                    clipPath: element.hasMask && element.mask ? `inset(
+                      ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
+                      ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
+                      ${(1 - (element.mask.y + element.mask.height / 2) / element.height) * 100}%
+                      ${((element.mask.x - element.mask.width / 2) / element.width) * 100}%
+                    )` : undefined,
                   }}
                   onError={(e) => {
                     // 圖片載入失敗時完全隱藏

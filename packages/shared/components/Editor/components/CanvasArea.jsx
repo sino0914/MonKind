@@ -51,6 +51,14 @@ const CanvasArea = ({
   markImageAsError,
   clearImageError,
 
+  // 剪裁相關
+  croppingElement,
+  maskRect,
+  onUpdateMaskRect,
+  onApplyCrop,
+  onCancelCrop,
+  onResetCrop,
+
   // 視窗控制
   viewport = null,
 }) => {
@@ -313,6 +321,12 @@ const CanvasArea = ({
             getDisplayUrl={getDisplayUrl}
             markImageAsError={markImageAsError}
             clearImageError={clearImageError}
+            croppingElement={croppingElement}
+            maskRect={maskRect}
+            onUpdateMaskRect={onUpdateMaskRect}
+            onApplyCrop={onApplyCrop}
+            onCancelCrop={onCancelCrop}
+            onResetCrop={onResetCrop}
             handleMouseDown={handleMouseDown}
             handleSelectElement={handleSelectElement}
             handleFinishTextEdit={handleFinishTextEdit}

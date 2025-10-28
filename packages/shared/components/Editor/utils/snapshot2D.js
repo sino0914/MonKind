@@ -187,15 +187,98 @@ export const generate2DSnapshot = async (
             if (element.rotation && element.rotation !== 0) {
               ctx.translate(canvasX, canvasY);
               ctx.rotate((element.rotation * Math.PI) / 180);
-              ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+
+              // 檢查是否有蒙版數據
+              if (element.hasMask && element.mask) {
+                // 繪製蒙版後的圖片
+                const mask = element.mask;
+
+                // 計算蒙版在圖片中的位置（相對於圖片左上角）
+                const maskLeft = mask.x - mask.width / 2;
+                const maskTop = mask.y - mask.height / 2;
+                const maskRight = mask.x + mask.width / 2;
+                const maskBottom = mask.y + mask.height / 2;
+
+                // 轉換為百分比
+                const topPercent = maskTop / element.height;
+                const rightPercent = 1 - maskRight / element.width;
+                const bottomPercent = 1 - maskBottom / element.height;
+                const leftPercent = maskLeft / element.width;
+
+                // 計算實際剪裁區域（像素）
+                const clipTop = topPercent * imgHeight;
+                const clipRight = rightPercent * imgWidth;
+                const clipBottom = bottomPercent * imgHeight;
+                const clipLeft = leftPercent * imgWidth;
+
+                // 應用剪裁
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(
+                  -imgWidth / 2 + clipLeft,
+                  -imgHeight / 2 + clipTop,
+                  imgWidth - clipLeft - clipRight,
+                  imgHeight - clipTop - clipBottom
+                );
+                ctx.clip();
+                ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+                ctx.restore();
+              } else {
+                // 無蒙版，直接繪製
+                ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+              }
             } else {
-              ctx.drawImage(
-                img,
-                canvasX - imgWidth / 2,
-                canvasY - imgHeight / 2,
-                imgWidth,
-                imgHeight
-              );
+              // 檢查是否有蒙版數據
+              if (element.hasMask && element.mask) {
+                // 繪製蒙版後的圖片
+                const mask = element.mask;
+
+                // 計算蒙版在圖片中的位置（相對於圖片左上角）
+                const maskLeft = mask.x - mask.width / 2;
+                const maskTop = mask.y - mask.height / 2;
+                const maskRight = mask.x + mask.width / 2;
+                const maskBottom = mask.y + mask.height / 2;
+
+                // 轉換為百分比
+                const topPercent = maskTop / element.height;
+                const rightPercent = 1 - maskRight / element.width;
+                const bottomPercent = 1 - maskBottom / element.height;
+                const leftPercent = maskLeft / element.width;
+
+                // 計算實際剪裁區域（像素）
+                const clipTop = topPercent * imgHeight;
+                const clipRight = rightPercent * imgWidth;
+                const clipBottom = bottomPercent * imgHeight;
+                const clipLeft = leftPercent * imgWidth;
+
+                // 應用剪裁
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(
+                  canvasX - imgWidth / 2 + clipLeft,
+                  canvasY - imgHeight / 2 + clipTop,
+                  imgWidth - clipLeft - clipRight,
+                  imgHeight - clipTop - clipBottom
+                );
+                ctx.clip();
+                ctx.drawImage(
+                  img,
+                  canvasX - imgWidth / 2,
+                  canvasY - imgHeight / 2,
+                  imgWidth,
+                  imgHeight
+                );
+                ctx.restore();
+              } else {
+                // 無蒙版，直接繪製
+                ctx.drawImage(
+                  img,
+                  canvasX - imgWidth / 2,
+                  canvasY - imgHeight / 2,
+                  imgWidth,
+                  imgHeight
+                );
+              }
             }
 
             ctx.globalAlpha = 1; // 重置透明度

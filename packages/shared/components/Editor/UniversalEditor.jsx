@@ -13,6 +13,8 @@ import useLayerManager from "./hooks/useLayerManager";
 import useTextEditor from "./hooks/useTextEditor";
 import useImageReplace from "./hooks/useImageReplace";
 import useCanvasViewport from "./hooks/useCanvasViewport";
+import useFreeTransform from "./hooks/useFreeTransform";
+import useImageCrop from "./hooks/useImageCrop";
 
 // Components
 import { ToolSidebar, TopToolbar, LoadingState, ErrorState } from "./components";
@@ -119,6 +121,12 @@ const UniversalEditor = ({
   // 使用畫布視窗控制 Hook
   const viewport = useCanvasViewport();
 
+  // 使用自由變形 Hook
+  const freeTransform = useFreeTransform();
+
+  // 使用圖片剪裁 Hook
+  const imageCrop = useImageCrop(editorState);
+
   // 使用其他 Hooks
   const imageManager = useImageManager(editorState, imageReplace);
   const canvasInteraction = useCanvasInteraction(
@@ -126,7 +134,8 @@ const UniversalEditor = ({
     currentProduct,
     imageReplace,
     imageManager.draggingImageUrl,
-    viewport
+    viewport,
+    freeTransform.isFreeTransform
   );
   const templateManager = useTemplateManager(
     currentProduct,
@@ -793,6 +802,15 @@ const UniversalEditor = ({
           onRemoveBackground={handleRemoveBackground}
           isRemovingBackground={isRemovingBackground}
           onUploadImage={handleUploadForBrokenImage}
+          isFreeTransform={freeTransform.isFreeTransform}
+          onToggleFreeTransform={freeTransform.toggleFreeTransform}
+          onStartCrop={imageCrop.startCrop}
+          croppingElement={imageCrop.croppingElement}
+          maskRect={imageCrop.maskRect}
+          onUpdateMaskRect={imageCrop.updateMaskRect}
+          onApplyCrop={imageCrop.applyCrop}
+          onCancelCrop={imageCrop.cancelCrop}
+          onResetCrop={imageCrop.resetCrop}
           imageLoadErrors={editorState.imageLoadErrors}
           isHoveringImage={canvasInteraction.isHoveringImage}
           handleMouseMove={canvasInteraction.handleMouseMove}

@@ -1,5 +1,6 @@
 import React from 'react';
 import TextEditingInput from './TextEditingInput';
+import CropOverlay from './CropOverlay';
 import { CANVAS_SIZE, DISPLAY_SIZE } from '../constants/editorConfig';
 
 /**
@@ -30,6 +31,14 @@ const DesignElementsLayer = ({
   // 圖片載入錯誤管理
   markImageAsError,
   clearImageError,
+
+  // 剪裁相關（蒙版模式）
+  croppingElement,
+  maskRect,
+  onUpdateMaskRect,
+  onApplyCrop,
+  onCancelCrop,
+  onResetCrop,
 
   // 事件處理函數
   handleMouseDown,
@@ -136,18 +145,80 @@ const DesignElementsLayer = ({
                         transform: "translate(-50%, -50%)",
                         transformOrigin: "center",
                         opacity: element.opacity || 1,
+                        overflow: 'hidden', // 重要：隱藏超出部分
                       }}
                     >
-                      {/* 圖片內容 */}
-                      <img
-                        src={displayUrl}
-                        alt="設計圖片"
-                        className="w-full h-full object-contain pointer-events-none"
-                        style={{
-                          transform: `rotate(${element.rotation || 0}deg)`,
-                        }}
-                        draggable={false}
-                        onLoad={(e) => {
+                      {/* 圖片內容 - 使用蒙版時的特殊處理 */}
+                      {/* 測試：強制使用固定蒙版參數（50%, 50%, 寬高=元素寬高） */}
+                      {element.hasMask && element.mask ? (
+                        <div
+                          className="w-full h-full relative"
+                          style={{
+                            transform: `rotate(${element.rotation || 0}deg)`,
+                            overflow: 'hidden', // 關鍵：隱藏超出蒙版的部分
+                          }}
+                        >
+                          {/* 使用 clip-path 裁切圖片 */}
+                          <img
+                            src={displayUrl}
+                            alt="設計圖片"
+                            className="w-full h-full pointer-events-none"
+                            style={{
+                              objectFit: 'contain',
+                              // 使用 clip-path 裁切蒙版區域
+                              clipPath: `inset(
+                                ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
+                                ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
+                                ${(1 - (element.mask.y + element.mask.height / 2) / element.height) * 100}%
+                                ${((element.mask.x - element.mask.width / 2) / element.width) * 100}%
+                              )`
+                            }}
+                            draggable={false}
+                              onLoad={(e) => {
+                                // 圖片載入成功時，清除錯誤狀態並移除錯誤提示
+                                if (clearImageError) {
+                                  clearImageError(element.id);
+                                }
+                                e.target.style.display = '';
+                                const parent = e.target.parentElement?.parentElement?.parentElement;
+                                const placeholder = parent?.querySelector('.image-error-placeholder');
+                                if (placeholder) {
+                                  placeholder.remove();
+                                }
+                              }}
+                              onError={(e) => {
+                                // 圖片載入失敗時，標記錯誤狀態並顯示上傳提示
+                                if (markImageAsError) {
+                                  markImageAsError(element.id);
+                                }
+                                e.target.style.display = 'none';
+                                const parent = e.target.parentElement?.parentElement?.parentElement;
+                                if (parent && !parent.querySelector('.image-error-placeholder')) {
+                                  const placeholder = document.createElement('div');
+                                  placeholder.className = 'image-error-placeholder w-full h-full flex items-center justify-center bg-blue-50 border-2 border-blue-300 border-dashed rounded';
+                                  placeholder.innerHTML = `
+                                    <div class="text-center p-2">
+                                      <svg class="w-8 h-8 mx-auto mb-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                      </svg>
+                                      <div class="text-xs text-blue-600 font-medium whitespace-nowrap">上傳圖片</div>
+                                    </div>
+                                  `;
+                                  parent.appendChild(placeholder);
+                                }
+                              }}
+                            />
+                        </div>
+                      ) : (
+                        <img
+                          src={displayUrl}
+                          alt="設計圖片"
+                          className="w-full h-full object-contain pointer-events-none"
+                          style={{
+                            transform: `rotate(${element.rotation || 0}deg)`,
+                          }}
+                          draggable={false}
+                          onLoad={(e) => {
                           // 圖片載入成功時，清除錯誤狀態並移除錯誤提示
                           if (clearImageError) {
                             clearImageError(element.id);
@@ -182,6 +253,7 @@ const DesignElementsLayer = ({
                           }
                         }}
                       />
+                      )}
 
                       {/* 替換模式提示 */}
                       {isReplacingImage && replacingImageId === element.id && (
@@ -358,6 +430,19 @@ const DesignElementsLayer = ({
               </div>
             );
           })}
+
+        {/* 剪裁覆蓋層（蒙版模式） */}
+        {croppingElement && maskRect && (
+          <CropOverlay
+            element={croppingElement}
+            maskRect={maskRect}
+            onUpdateMaskRect={onUpdateMaskRect}
+            onApply={onApplyCrop}
+            onCancel={onCancelCrop}
+            onReset={onResetCrop}
+            currentProduct={currentProduct}
+          />
+        )}
       </div>
     </div>
   );

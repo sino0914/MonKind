@@ -110,11 +110,77 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
         if (element.rotation && element.rotation !== 0) {
           ctx.translate(finalX, finalY);
           ctx.rotate((element.rotation * Math.PI) / 180);
-          ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+
+          // 檢查是否有蒙版數據
+          if (element.hasMask && element.mask) {
+            const mask = element.mask;
+            const maskLeft = mask.x - mask.width / 2;
+            const maskTop = mask.y - mask.height / 2;
+            const maskRight = mask.x + mask.width / 2;
+            const maskBottom = mask.y + mask.height / 2;
+
+            const topPercent = maskTop / element.height;
+            const rightPercent = 1 - maskRight / element.width;
+            const bottomPercent = 1 - maskBottom / element.height;
+            const leftPercent = maskLeft / element.width;
+
+            const clipTop = topPercent * imgHeight;
+            const clipRight = rightPercent * imgWidth;
+            const clipBottom = bottomPercent * imgHeight;
+            const clipLeft = leftPercent * imgWidth;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+              -imgWidth / 2 + clipLeft,
+              -imgHeight / 2 + clipTop,
+              imgWidth - clipLeft - clipRight,
+              imgHeight - clipTop - clipBottom
+            );
+            ctx.clip();
+            ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+            ctx.restore();
+          } else {
+            ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+          }
         } else {
-          const centerX = finalX - imgWidth / 2;
-          const centerY = finalY - imgHeight / 2;
-          ctx.drawImage(img, centerX, centerY, imgWidth, imgHeight);
+          // 檢查是否有蒙版數據
+          if (element.hasMask && element.mask) {
+            const mask = element.mask;
+            const maskLeft = mask.x - mask.width / 2;
+            const maskTop = mask.y - mask.height / 2;
+            const maskRight = mask.x + mask.width / 2;
+            const maskBottom = mask.y + mask.height / 2;
+
+            const topPercent = maskTop / element.height;
+            const rightPercent = 1 - maskRight / element.width;
+            const bottomPercent = 1 - maskBottom / element.height;
+            const leftPercent = maskLeft / element.width;
+
+            const clipTop = topPercent * imgHeight;
+            const clipRight = rightPercent * imgWidth;
+            const clipBottom = bottomPercent * imgHeight;
+            const clipLeft = leftPercent * imgWidth;
+
+            const centerX = finalX - imgWidth / 2;
+            const centerY = finalY - imgHeight / 2;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+              centerX + clipLeft,
+              centerY + clipTop,
+              imgWidth - clipLeft - clipRight,
+              imgHeight - clipTop - clipBottom
+            );
+            ctx.clip();
+            ctx.drawImage(img, centerX, centerY, imgWidth, imgHeight);
+            ctx.restore();
+          } else {
+            const centerX = finalX - imgWidth / 2;
+            const centerY = finalY - imgHeight / 2;
+            ctx.drawImage(img, centerX, centerY, imgWidth, imgHeight);
+          }
         }
 
         ctx.restore();
@@ -244,11 +310,77 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
         if (element.rotation && element.rotation !== 0) {
           ctx.translate(finalX, finalY);
           ctx.rotate((element.rotation * Math.PI) / 180);
-          ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+
+          // 檢查是否有蒙版數據
+          if (element.hasMask && element.mask) {
+            const mask = element.mask;
+            const maskLeft = mask.x - mask.width / 2;
+            const maskTop = mask.y - mask.height / 2;
+            const maskRight = mask.x + mask.width / 2;
+            const maskBottom = mask.y + mask.height / 2;
+
+            const topPercent = maskTop / element.height;
+            const rightPercent = 1 - maskRight / element.width;
+            const bottomPercent = 1 - maskBottom / element.height;
+            const leftPercent = maskLeft / element.width;
+
+            const clipTop = topPercent * imgHeight;
+            const clipRight = rightPercent * imgWidth;
+            const clipBottom = bottomPercent * imgHeight;
+            const clipLeft = leftPercent * imgWidth;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+              -imgWidth / 2 + clipLeft,
+              -imgHeight / 2 + clipTop,
+              imgWidth - clipLeft - clipRight,
+              imgHeight - clipTop - clipBottom
+            );
+            ctx.clip();
+            ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+            ctx.restore();
+          } else {
+            ctx.drawImage(img, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+          }
         } else {
-          const centerX = finalX - imgWidth / 2;
-          const centerY = finalY - imgHeight / 2;
-          ctx.drawImage(img, centerX, centerY, imgWidth, imgHeight);
+          // 檢查是否有蒙版數據
+          if (element.hasMask && element.mask) {
+            const mask = element.mask;
+            const maskLeft = mask.x - mask.width / 2;
+            const maskTop = mask.y - mask.height / 2;
+            const maskRight = mask.x + mask.width / 2;
+            const maskBottom = mask.y + mask.height / 2;
+
+            const topPercent = maskTop / element.height;
+            const rightPercent = 1 - maskRight / element.width;
+            const bottomPercent = 1 - maskBottom / element.height;
+            const leftPercent = maskLeft / element.width;
+
+            const clipTop = topPercent * imgHeight;
+            const clipRight = rightPercent * imgWidth;
+            const clipBottom = bottomPercent * imgHeight;
+            const clipLeft = leftPercent * imgWidth;
+
+            const centerX = finalX - imgWidth / 2;
+            const centerY = finalY - imgHeight / 2;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+              centerX + clipLeft,
+              centerY + clipTop,
+              imgWidth - clipLeft - clipRight,
+              imgHeight - clipTop - clipBottom
+            );
+            ctx.clip();
+            ctx.drawImage(img, centerX, centerY, imgWidth, imgHeight);
+            ctx.restore();
+          } else {
+            const centerX = finalX - imgWidth / 2;
+            const centerY = finalY - imgHeight / 2;
+            ctx.drawImage(img, centerX, centerY, imgWidth, imgHeight);
+          }
         }
 
         ctx.restore();

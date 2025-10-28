@@ -103,9 +103,86 @@ const generateUVTexture = async (product, designElements, backgroundColor) => {
         if (el.rotation && el.rotation !== 0) {
           ctx.translate(relX, relY);
           ctx.rotate((el.rotation * Math.PI) / 180);
-          ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+          // 檢查是否有蒙版數據
+          if (el.hasMask && el.mask) {
+            // 繪製蒙版後的圖片
+            const mask = el.mask;
+
+            // 計算蒙版在圖片中的位置（相對於圖片左上角）
+            const maskLeft = mask.x - mask.width / 2;
+            const maskTop = mask.y - mask.height / 2;
+            const maskRight = mask.x + mask.width / 2;
+            const maskBottom = mask.y + mask.height / 2;
+
+            // 轉換為百分比
+            const topPercent = maskTop / el.height;
+            const rightPercent = 1 - maskRight / el.width;
+            const bottomPercent = 1 - maskBottom / el.height;
+            const leftPercent = maskLeft / el.width;
+
+            // 計算實際剪裁區域（像素）
+            const clipTop = topPercent * h;
+            const clipRight = rightPercent * w;
+            const clipBottom = bottomPercent * h;
+            const clipLeft = leftPercent * w;
+
+            // 應用剪裁
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+              -w / 2 + clipLeft,
+              -h / 2 + clipTop,
+              w - clipLeft - clipRight,
+              h - clipTop - clipBottom
+            );
+            ctx.clip();
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            ctx.restore();
+          } else {
+            // 無蒙版，直接繪製
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+          }
         } else {
-          ctx.drawImage(img, relX - w / 2, relY - h / 2, w, h);
+          // 檢查是否有蒙版數據
+          if (el.hasMask && el.mask) {
+            // 繪製蒙版後的圖片
+            const mask = el.mask;
+
+            // 計算蒙版在圖片中的位置（相對於圖片左上角）
+            const maskLeft = mask.x - mask.width / 2;
+            const maskTop = mask.y - mask.height / 2;
+            const maskRight = mask.x + mask.width / 2;
+            const maskBottom = mask.y + mask.height / 2;
+
+            // 轉換為百分比
+            const topPercent = maskTop / el.height;
+            const rightPercent = 1 - maskRight / el.width;
+            const bottomPercent = 1 - maskBottom / el.height;
+            const leftPercent = maskLeft / el.width;
+
+            // 計算實際剪裁區域（像素）
+            const clipTop = topPercent * h;
+            const clipRight = rightPercent * w;
+            const clipBottom = bottomPercent * h;
+            const clipLeft = leftPercent * w;
+
+            // 應用剪裁
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+              relX - w / 2 + clipLeft,
+              relY - h / 2 + clipTop,
+              w - clipLeft - clipRight,
+              h - clipTop - clipBottom
+            );
+            ctx.clip();
+            ctx.drawImage(img, relX - w / 2, relY - h / 2, w, h);
+            ctx.restore();
+          } else {
+            // 無蒙版，直接繪製
+            ctx.drawImage(img, relX - w / 2, relY - h / 2, w, h);
+          }
         }
 
         ctx.restore();
