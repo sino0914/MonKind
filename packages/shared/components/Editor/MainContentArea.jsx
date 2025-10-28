@@ -198,8 +198,8 @@ const MainContentArea = ({
                   return null;
                 })}
 
-              {/* 圖片工具列 */}
-              {designElements
+              {/* 圖片工具列 - 剪裁模式時隱藏 */}
+              {!croppingElement && designElements
                 .filter((element) => !hiddenLayers.has(element.id))
                 .map((element) => {
                   if (

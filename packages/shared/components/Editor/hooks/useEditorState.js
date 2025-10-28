@@ -197,6 +197,7 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
 
   // 選擇操作
   const selectElement = (element) => {
+    console.log('✅ selectElement 被呼叫', { elementId: element?.id, type: element?.type, hasMask: element?.hasMask });
     setSelectedElement(element);
     if (element?.type === 'text') {
       setShowTextToolbar(true);
@@ -207,6 +208,8 @@ const useEditorState = (initialElements = [], initialBackgroundColor = DEFAULT_B
   };
 
   const clearSelection = () => {
+    console.log('❌ clearSelection 被呼叫');
+    console.trace('clearSelection 呼叫堆疊');
     setSelectedElement(null);
     setShowTextToolbar(false);
     setEditingText(null);

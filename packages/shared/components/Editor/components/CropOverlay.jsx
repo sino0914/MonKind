@@ -210,22 +210,40 @@ const CropOverlay = ({
   // 計算蒙版框在畫布上的絕對位置
   // element.x, element.y 是圖片元素中心點
   // maskRect.x, maskRect.y 是蒙版中心點（相對於圖片元素）
-  const elementLeft = element.x - element.width / 2;
-  const elementTop = element.y - element.height / 2;
 
-  // 蒙版中心點在畫布上的絕對位置
-  const maskCenterAbsX = elementLeft + maskRect.x;
-  const maskCenterAbsY = elementTop + maskRect.y;
+  // 蒙版框應該使用與元素相同的定位方式（中心點定位）
+  // 蒙版中心點在畫布上的絕對位置（相對於元素中心）
+  const maskCenterAbsX = element.x + (maskRect.x - element.width / 2);
+  const maskCenterAbsY = element.y + (maskRect.y - element.height / 2);
 
-  // 蒙版左上角在畫布上的絕對位置
-  const maskAbsLeft = maskCenterAbsX - maskRect.width / 2;
-  const maskAbsTop = maskCenterAbsY - maskRect.height / 2;
-
-  // 轉換為百分比（相對於 400px 畫布）
-  const maskLeftPercent = (maskAbsLeft / 400) * 100;
-  const maskTopPercent = (maskAbsTop / 400) * 100;
+  // 轉換為百分比（相對於 400px 畫布）- 使用中心點定位
+  const maskCenterXPercent = (maskCenterAbsX / 400) * 100;
+  const maskCenterYPercent = (maskCenterAbsY / 400) * 100;
   const maskWidthPercent = (maskRect.width / 400) * 100;
   const maskHeightPercent = (maskRect.height / 400) * 100;
+
+  // 計算旋轉後的四個角座標（用於半透明遮罩的 clip-path）
+  const rotation = (element.rotation || 0) * Math.PI / 180;
+  const halfWidth = maskRect.width / 2;
+  const halfHeight = maskRect.height / 2;
+
+  // 四個角相對於蒙版中心的座標（未旋轉）
+  const corners = [
+    { x: -halfWidth, y: -halfHeight }, // 左上
+    { x: -halfWidth, y: halfHeight },  // 左下
+    { x: halfWidth, y: halfHeight },   // 右下
+    { x: halfWidth, y: -halfHeight },  // 右上
+  ];
+
+  // 旋轉後的四個角座標（絕對座標）
+  const rotatedCorners = corners.map(corner => {
+    const rotatedX = corner.x * Math.cos(rotation) - corner.y * Math.sin(rotation);
+    const rotatedY = corner.x * Math.sin(rotation) + corner.y * Math.cos(rotation);
+    return {
+      x: ((maskCenterAbsX + rotatedX) / 400) * 100,
+      y: ((maskCenterAbsY + rotatedY) / 400) * 100,
+    };
+  });
 
   return (
     <>
@@ -257,11 +275,11 @@ const CropOverlay = ({
             100% 100%,
             100% 0%,
             0% 0%,
-            ${maskLeftPercent}% ${maskTopPercent}%,
-            ${maskLeftPercent}% ${maskTopPercent + maskHeightPercent}%,
-            ${maskLeftPercent + maskWidthPercent}% ${maskTopPercent + maskHeightPercent}%,
-            ${maskLeftPercent + maskWidthPercent}% ${maskTopPercent}%,
-            ${maskLeftPercent}% ${maskTopPercent}%
+            ${rotatedCorners[0].x}% ${rotatedCorners[0].y}%,
+            ${rotatedCorners[1].x}% ${rotatedCorners[1].y}%,
+            ${rotatedCorners[2].x}% ${rotatedCorners[2].y}%,
+            ${rotatedCorners[3].x}% ${rotatedCorners[3].y}%,
+            ${rotatedCorners[0].x}% ${rotatedCorners[0].y}%
           )`
         }}
       />
@@ -270,10 +288,12 @@ const CropOverlay = ({
       <div
         className="absolute border-2 border-white pointer-events-auto cursor-move"
         style={{
-          left: `${maskLeftPercent}%`,
-          top: `${maskTopPercent}%`,
+          left: `${maskCenterXPercent}%`,
+          top: `${maskCenterYPercent}%`,
           width: `${maskWidthPercent}%`,
           height: `${maskHeightPercent}%`,
+          transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
+          transformOrigin: 'center',
           zIndex: 9999,
           boxShadow: '0 0 0 1px rgba(0,0,0,0.3)',
         }}
@@ -323,40 +343,53 @@ const CropOverlay = ({
           onMouseDown={(e) => handleMouseDown(e, 'e')}
         />
 
-        {/* 操作按鈕 */}
-        <div
-          className="absolute bottom-full mb-3 left-1/2 transform -translate-x-1/2 flex gap-2 pointer-events-auto"
-          style={{ whiteSpace: 'nowrap' }}
-        >
-          {onReset && (
-            <button
-              onClick={onReset}
-              className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors shadow-lg"
-            >
-              🔄 重置
-            </button>
-          )}
-          <button
-            onClick={onCancel}
-            className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors shadow-lg"
-          >
-            ❌ 取消
-          </button>
-          <button
-            onClick={onApply}
-            className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-lg"
-          >
-            ✓ 確認
-          </button>
-        </div>
+      </div>
 
-        {/* 顯示蒙版尺寸資訊 */}
-        <div
-          className="absolute top-full mt-1 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded pointer-events-none"
-          style={{ whiteSpace: 'nowrap' }}
+      {/* 操作按鈕 - 固定在蒙版框上方，不受旋轉影響 */}
+      <div
+        className="absolute flex gap-2 pointer-events-auto"
+        style={{
+          left: `${maskCenterXPercent}%`,
+          top: `${maskCenterYPercent}%`,
+          transform: `translate(-50%, calc(-${maskHeightPercent * 2}% - 3rem - 100%))`,
+          whiteSpace: 'nowrap',
+          zIndex: 10000,
+        }}
+      >
+        {onReset && (
+          <button
+            onClick={onReset}
+            className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors shadow-lg"
+          >
+            🔄 重置
+          </button>
+        )}
+        <button
+          onClick={onCancel}
+          className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors shadow-lg"
         >
-          {Math.round(maskRect.width)} × {Math.round(maskRect.height)} px
-        </div>
+          ❌ 取消
+        </button>
+        <button
+          onClick={onApply}
+          className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-lg"
+        >
+          ✓ 確認
+        </button>
+      </div>
+
+      {/* 顯示蒙版尺寸資訊 - 固定在蒙版框中心上方 */}
+      <div
+        className="absolute bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded pointer-events-none"
+        style={{
+          left: `${maskCenterXPercent}%`,
+          top: `${maskCenterYPercent}%`,
+          transform: `translate(-50%, calc(${(maskHeightPercent / 2)}% + 0.25rem + 150%))`,
+          whiteSpace: 'nowrap',
+          zIndex: 10000,
+        }}
+      >
+        {Math.round(maskRect.width)} × {Math.round(maskRect.height)} px
       </div>
     </>
   );

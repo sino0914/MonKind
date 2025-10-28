@@ -57,7 +57,15 @@ const DesignElementsLayer = ({
       className="absolute inset-0"
       style={{ zIndex: 10, pointerEvents: 'none' }}
     >
-      <div className="w-full h-full relative" style={{ pointerEvents: 'auto' }}>
+      <div
+        className="w-full h-full relative"
+        style={{ pointerEvents: 'auto' }}
+        onClick={(e) => {
+          // 阻止事件冒泡到畫布，避免取消選取
+          // 但只阻止冒泡，不阻止預設行為，讓子元素的點擊事件正常執行
+          e.stopPropagation();
+        }}
+      >
         {/* 設計區域裁切容器 - 只裁切元素內容，不裁切選取框 */}
         <div
           className="absolute overflow-hidden"
@@ -143,7 +151,7 @@ const DesignElementsLayer = ({
                         top: `${(element.y / 400) * 100}%`,
                         width: `${(element.width / 400) * 100}%`,
                         height: `${(element.height / 400) * 100}%`,
-                        transform: "translate(-50%, -50%)",
+                        transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
                         transformOrigin: "center",
                         opacity: element.opacity || 1,
                         overflow: 'hidden', // 重要：隱藏超出部分
@@ -155,7 +163,6 @@ const DesignElementsLayer = ({
                         <div
                           className="w-full h-full relative"
                           style={{
-                            transform: `rotate(${element.rotation || 0}deg)`,
                             overflow: 'hidden', // 關鍵：隱藏超出蒙版的部分
                           }}
                         >
@@ -215,9 +222,6 @@ const DesignElementsLayer = ({
                           src={displayUrl}
                           alt="設計圖片"
                           className="w-full h-full object-contain pointer-events-none"
-                          style={{
-                            transform: `rotate(${element.rotation || 0}deg)`,
-                          }}
                           draggable={false}
                           onLoad={(e) => {
                           // 圖片載入成功時，清除錯誤狀態並移除錯誤提示
@@ -301,52 +305,56 @@ const DesignElementsLayer = ({
             }
 
             return (
-              <div
-                key={`interaction-${element.id}`}
-                className={`absolute pointer-events-auto ${
-                  isLocked
-                    ? "cursor-not-allowed"
-                    : draggedElement === element.id
-                    ? "cursor-grabbing z-50"
-                    : "cursor-grab"
-                }`}
-                style={{
-                  left: `${(element.x / 400) * 100}%`,
-                  top: `${(element.y / 400) * 100}%`,
-                  width:
-                    element.type === "text"
-                      ? `${elementWidth}px`
-                      : `${(element.width / 400) * 100}%`,
-                  height:
-                    element.type === "text"
-                      ? `${elementHeight}px`
-                      : `${(element.height / 400) * 100}%`,
-                  transform: `translate(-50%, -50%) rotate(${
-                    element.rotation || 0
-                  }deg)`,
-                  transformOrigin: "center",
-                }}
-                onMouseDown={(e) => handleMouseDown(e, element)}
-                onClick={(e) => {
-                  e.stopPropagation(); // 阻止冒泡到畫布
-                  handleSelectElement(element);
-                }}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  // 雙擊文字元素進入編輯模式
-                  if (element.type === 'text' && !isLocked) {
-                    handleStartTextEdit(element);
-                  }
-                }}
-              >
+              <React.Fragment key={`interaction-${element.id}`}>
+                {/* 主要互動層（元素框） */}
+                <div
+                  className={`absolute pointer-events-auto ${
+                    isLocked
+                      ? "cursor-not-allowed"
+                      : draggedElement === element.id
+                      ? "cursor-grabbing z-50"
+                      : "cursor-grab"
+                  }`}
+                  style={{
+                    left: `${(element.x / 400) * 100}%`,
+                    top: `${(element.y / 400) * 100}%`,
+                    width:
+                      element.type === "text"
+                        ? `${elementWidth}px`
+                        : `${(element.width / 400) * 100}%`,
+                    height:
+                      element.type === "text"
+                        ? `${elementHeight}px`
+                        : `${(element.height / 400) * 100}%`,
+                    transform: `translate(-50%, -50%) rotate(${
+                      element.rotation || 0
+                    }deg)`,
+                    transformOrigin: "center",
+                  }}
+                  onMouseDown={(e) => handleMouseDown(e, element)}
+                  onClick={(e) => {
+                    e.stopPropagation(); // 阻止冒泡到畫布
+                    handleSelectElement(element);
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    // 雙擊文字元素進入編輯模式
+                    if (element.type === 'text' && !isLocked) {
+                      handleStartTextEdit(element);
+                    }
+                  }}
+                >
                 {/* 選取框 */}
                 {isSelected && (
                   <>
-                    <div className={`absolute inset-0 border-2 ${
-                      isLocked
-                        ? "border-orange-500"
-                        : "border-blue-500"
-                    } pointer-events-none`} style={{ backgroundColor: 'transparent' }} />
+                    {/* 原本的元素框線 - 當有 mask 時隱藏 */}
+                    {!element.hasMask && (
+                      <div className={`absolute inset-0 border-2 ${
+                        isLocked
+                          ? "border-orange-500"
+                          : "border-blue-500"
+                      } pointer-events-none z-40`} style={{ backgroundColor: 'transparent' }} />
+                    )}
 
                     {/* 鎖定圖層顯示鎖定圖示 */}
                     {isLocked && (
@@ -355,8 +363,8 @@ const DesignElementsLayer = ({
                       </div>
                     )}
 
-                    {/* 縮放控制點 - 圖片和文字都顯示，且未鎖定、未編輯 */}
-                    {(element.type === "image" || (element.type === "text" && editingText !== element.id)) && !isLocked && (
+                    {/* 縮放控制點 - 圖片和文字都顯示，且未鎖定、未編輯、無 mask */}
+                    {(element.type === "image" || (element.type === "text" && editingText !== element.id)) && !isLocked && !element.hasMask && (
                       <>
                         <div
                           className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-nw-resize pointer-events-auto"
@@ -393,8 +401,8 @@ const DesignElementsLayer = ({
                       </>
                     )}
 
-                    {/* 旋轉控制點 - 圖片和文字都顯示，且未鎖定 */}
-                    {!isLocked && (
+                    {/* 旋轉控制點 - 圖片和文字都顯示，且未鎖定、無 mask */}
+                    {!isLocked && !element.hasMask && (
                       <div
                         className="absolute w-3 h-3 bg-green-500 border border-white rounded-full pointer-events-auto"
                         style={{
@@ -409,8 +417,8 @@ const DesignElementsLayer = ({
                       />
                     )}
 
-                    {/* 刪除按鈕 - 未鎖定才顯示 */}
-                    {!isLocked && (
+                    {/* 刪除按鈕 - 未鎖定且無 mask 才顯示 */}
+                    {!isLocked && !element.hasMask && (
                       <button
                         className="absolute w-6 h-6 bg-red-500 hover:bg-red-600 text-white border border-white rounded-full pointer-events-auto flex items-center justify-center text-xs font-bold transition-colors"
                         style={{
@@ -429,6 +437,129 @@ const DesignElementsLayer = ({
                   </>
                 )}
               </div>
+
+              {/* 裁剪區域框 - 顯示 mask 的實際範圍（不在剪裁模式時顯示） */}
+              {element.type === "image" && element.hasMask && element.mask && !croppingElement && isSelected && (() => {
+                // 計算考慮旋轉後的 mask 中心點位置
+                const rotation = (element.rotation || 0) * Math.PI / 180;
+
+                // mask 相對於元素左上角的偏移
+                const maskOffsetX = element.mask.x - element.width / 2;
+                const maskOffsetY = element.mask.y - element.height / 2;
+
+                // 應用旋轉矩陣計算實際偏移
+                const rotatedOffsetX = maskOffsetX * Math.cos(rotation) - maskOffsetY * Math.sin(rotation);
+                const rotatedOffsetY = maskOffsetX * Math.sin(rotation) + maskOffsetY * Math.cos(rotation);
+
+                // 計算 mask 中心點的絕對位置
+                const maskCenterX = element.x + rotatedOffsetX;
+                const maskCenterY = element.y + rotatedOffsetY;
+
+                return (
+                  <div
+                    className="absolute"
+                    style={{
+                      // 使用中心點定位
+                      left: `${(maskCenterX / 400) * 100}%`,
+                      top: `${(maskCenterY / 400) * 100}%`,
+                      width: `${(element.mask.width / 400) * 100}%`,
+                      height: `${(element.mask.height / 400) * 100}%`,
+                      transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
+                      transformOrigin: "center",
+                      zIndex: 9990,
+                    }}
+                  onMouseDown={(e) => {
+                    console.log('🔵 剪裁框 onMouseDown', { elementId: element.id, hasMask: element.hasMask });
+                    e.stopPropagation();
+                    handleMouseDown(e, element);
+                  }}
+                  onClick={(e) => {
+                    console.log('🟢 剪裁框 onClick', { elementId: element.id, hasMask: element.hasMask });
+                    e.stopPropagation();
+                    handleSelectElement(element);
+                  }}
+                >
+                  {/* 邊框 */}
+                  <div
+                    className="absolute inset-0 border-2 border-blue-500 pointer-events-none"
+                    style={{ backgroundColor: 'transparent' }}
+                  />
+
+                  {/* 縮放控制點 - 四個角 */}
+                  {!isLocked && (
+                    <>
+                      <div
+                        className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-nw-resize pointer-events-auto"
+                        style={{
+                          top: "-6px",
+                          left: "-6px",
+                        }}
+                        onMouseDown={(e) => handleMouseDown(e, element, "nw")}
+                      />
+                      <div
+                        className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-ne-resize pointer-events-auto"
+                        style={{
+                          top: "-6px",
+                          right: "-6px",
+                        }}
+                        onMouseDown={(e) => handleMouseDown(e, element, "ne")}
+                      />
+                      <div
+                        className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-sw-resize pointer-events-auto"
+                        style={{
+                          bottom: "-6px",
+                          left: "-6px",
+                        }}
+                        onMouseDown={(e) => handleMouseDown(e, element, "sw")}
+                      />
+                      <div
+                        className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-se-resize pointer-events-auto"
+                        style={{
+                          bottom: "-6px",
+                          right: "-6px",
+                        }}
+                        onMouseDown={(e) => handleMouseDown(e, element, "se")}
+                      />
+                    </>
+                  )}
+
+                  {/* 旋轉控制點 */}
+                  {!isLocked && (
+                    <div
+                      className="absolute w-3 h-3 bg-green-500 border border-white rounded-full pointer-events-auto"
+                      style={{
+                        top: "-20px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        cursor:
+                          'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>\') 12 12, auto',
+                      }}
+                      onMouseDown={(e) => handleMouseDown(e, element, "rotate")}
+                      title="拖曳旋轉"
+                    />
+                  )}
+
+                  {/* 刪除按鈕 */}
+                  {!isLocked && (
+                    <button
+                      className="absolute w-6 h-6 bg-red-500 hover:bg-red-600 text-white border border-white rounded-full pointer-events-auto flex items-center justify-center text-xs font-bold transition-colors"
+                      style={{
+                        top: "-12px",
+                        right: "-12px",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteElement(element.id);
+                      }}
+                      title="刪除元素"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                );
+              })()}
+            </React.Fragment>
             );
           })}
 

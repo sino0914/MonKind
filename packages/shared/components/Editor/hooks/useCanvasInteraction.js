@@ -223,10 +223,26 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
             }
           }
 
-          updateElement(selectedElement.id, {
+          // 計算縮放比例
+          const scaleX = newWidth / selectedElement.width;
+          const scaleY = newHeight / selectedElement.height;
+
+          const updates = {
             width: newWidth,
             height: newHeight,
-          });
+          };
+
+          // 如果元素有 mask，同比例縮放 mask
+          if (selectedElement.hasMask && selectedElement.mask) {
+            updates.mask = {
+              x: selectedElement.mask.x * scaleX,
+              y: selectedElement.mask.y * scaleY,
+              width: selectedElement.mask.width * scaleX,
+              height: selectedElement.mask.height * scaleY,
+            };
+          }
+
+          updateElement(selectedElement.id, updates);
         } else if (selectedElement.type === 'text') {
           // 文字縮放 - 調整 fontSize
           // 計算滑鼠到文字中心的距離
@@ -264,6 +280,7 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
 
   // 處理畫布點擊（取消選擇）
   const handleCanvasClick = useCallback((e) => {
+    console.log('🔴 畫布 onClick - 取消選取', { target: e.target.className });
     // 點擊畫布空白處就取消選取
     // 元素會在自己的 onClick 中 stopPropagation，所以不會執行到這裡
     clearSelection();
