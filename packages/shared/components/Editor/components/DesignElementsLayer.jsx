@@ -36,6 +36,7 @@ const DesignElementsLayer = ({
   croppingElement,
   maskRect,
   onUpdateMaskRect,
+  onUpdateElement,
   onApplyCrop,
   onCancelCrop,
   onResetCrop,
@@ -437,6 +438,7 @@ const DesignElementsLayer = ({
             element={croppingElement}
             maskRect={maskRect}
             onUpdateMaskRect={onUpdateMaskRect}
+            onUpdateElement={onUpdateElement}
             onApply={onApplyCrop}
             onCancel={onCancelCrop}
             onReset={onResetCrop}

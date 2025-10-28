@@ -55,6 +55,7 @@ const CanvasArea = ({
   croppingElement,
   maskRect,
   onUpdateMaskRect,
+  onUpdateElement,
   onApplyCrop,
   onCancelCrop,
   onResetCrop,
@@ -324,6 +325,7 @@ const CanvasArea = ({
             croppingElement={croppingElement}
             maskRect={maskRect}
             onUpdateMaskRect={onUpdateMaskRect}
+            onUpdateElement={onUpdateElement}
             onApplyCrop={onApplyCrop}
             onCancelCrop={onCancelCrop}
             onResetCrop={onResetCrop}

@@ -14,6 +14,7 @@ const CropOverlay = ({
   element,
   maskRect,
   onUpdateMaskRect,
+  onUpdateElement,
   onApply,
   onCancel,
   onReset,
@@ -35,9 +36,14 @@ const CropOverlay = ({
     setDragStart({
       x: e.clientX,
       y: e.clientY,
-      maskRect: { ...maskRect }
+      maskRect: { ...maskRect },
+      // 記錄剪裁框在畫布上的絕對位置（左上角）
+      cropBoxCanvasPos: {
+        x: element.x + (maskRect.x - element.width / 2) - maskRect.width / 2,
+        y: element.y + (maskRect.y - element.height / 2) - maskRect.height / 2
+      }
     });
-  }, [maskRect]);
+  }, [maskRect, element]);
 
   /**
    * 拖曳中
@@ -56,22 +62,44 @@ const CropOverlay = ({
 
     let newRect = { ...dragStart.maskRect };
 
-    // 邊界限制：蒙版不能超出圖片範圍
+    // 邊界限制：蒙版大小不能超出圖片元素原始尺寸
     const maxWidth = element.width;
     const maxHeight = element.height;
 
     // 根據拖曳類型更新蒙版
     switch (dragging) {
       case 'move':
-        // 移動整個蒙版（移動中心點）
-        newRect.x = Math.max(newRect.width / 2, Math.min(maxWidth - newRect.width / 2, dragStart.maskRect.x + dx));
-        newRect.y = Math.max(newRect.height / 2, Math.min(maxHeight - newRect.height / 2, dragStart.maskRect.y + dy));
-        break;
+        // 策略：只移動元素，不改變蒙版位置
+        // 這樣剪裁框在畫布上保持固定，圖片在下方移動
 
+        // 計算蒙版的新位置（與鼠標移動方向相反）
+        const newMaskX = dragStart.maskRect.x - dx;
+        const newMaskY = dragStart.maskRect.y - dy;
+        // 邊界限制：確保剪裁框完全在圖片範圍內（不露出空白）
+        const minX = newRect.width / 2;
+        const maxX = maxWidth - newRect.width / 2;
+        const minY = newRect.height / 2;
+        const maxY = maxHeight - newRect.height / 2;
+        // 應用邊界限制
+        const constrainedMaskX = Math.max(minX, Math.min(maxX, newMaskX));
+        const constrainedMaskY = Math.max(minY, Math.min(maxY, newMaskY));
+        // 計算蒙版元素移動的距離（受邊界限制）
+        const elementDx = dragStart.maskRect.x - constrainedMaskX;
+        const elementDy = dragStart.maskRect.y - constrainedMaskY;
+        // 只移動元素
+        if (onUpdateElement) {
+          onUpdateElement(element.id, {
+            x: element.x + elementDx,
+            y: element.y + elementDy
+          });
+        }
+
+        break;
       case 'nw': // 西北角
         {
-          const newWidth = Math.max(20, dragStart.maskRect.width - dx);
-          const newHeight = Math.max(20, dragStart.maskRect.height - dy);
+          // 限制最大尺寸不超過元素尺寸
+          const newWidth = Math.max(20, Math.min(maxWidth, dragStart.maskRect.width - dx));
+          const newHeight = Math.max(20, Math.min(maxHeight, dragStart.maskRect.height - dy));
           newRect.width = newWidth;
           newRect.height = newHeight;
           newRect.x = dragStart.maskRect.x + dx / 2;
@@ -81,8 +109,8 @@ const CropOverlay = ({
 
       case 'ne': // 東北角
         {
-          const newWidth = Math.max(20, dragStart.maskRect.width + dx);
-          const newHeight = Math.max(20, dragStart.maskRect.height - dy);
+          const newWidth = Math.max(20, Math.min(maxWidth, dragStart.maskRect.width + dx));
+          const newHeight = Math.max(20, Math.min(maxHeight, dragStart.maskRect.height - dy));
           newRect.width = newWidth;
           newRect.height = newHeight;
           newRect.x = dragStart.maskRect.x + dx / 2;
@@ -92,8 +120,8 @@ const CropOverlay = ({
 
       case 'sw': // 西南角
         {
-          const newWidth = Math.max(20, dragStart.maskRect.width - dx);
-          const newHeight = Math.max(20, dragStart.maskRect.height + dy);
+          const newWidth = Math.max(20, Math.min(maxWidth, dragStart.maskRect.width - dx));
+          const newHeight = Math.max(20, Math.min(maxHeight, dragStart.maskRect.height + dy));
           newRect.width = newWidth;
           newRect.height = newHeight;
           newRect.x = dragStart.maskRect.x + dx / 2;
@@ -103,8 +131,8 @@ const CropOverlay = ({
 
       case 'se': // 東南角
         {
-          const newWidth = Math.max(20, dragStart.maskRect.width + dx);
-          const newHeight = Math.max(20, dragStart.maskRect.height + dy);
+          const newWidth = Math.max(20, Math.min(maxWidth, dragStart.maskRect.width + dx));
+          const newHeight = Math.max(20, Math.min(maxHeight, dragStart.maskRect.height + dy));
           newRect.width = newWidth;
           newRect.height = newHeight;
           newRect.x = dragStart.maskRect.x + dx / 2;
@@ -114,7 +142,7 @@ const CropOverlay = ({
 
       case 'n': // 北邊
         {
-          const newHeight = Math.max(20, dragStart.maskRect.height - dy);
+          const newHeight = Math.max(20, Math.min(maxHeight, dragStart.maskRect.height - dy));
           newRect.height = newHeight;
           newRect.y = dragStart.maskRect.y + dy / 2;
         }
@@ -122,7 +150,7 @@ const CropOverlay = ({
 
       case 's': // 南邊
         {
-          const newHeight = Math.max(20, dragStart.maskRect.height + dy);
+          const newHeight = Math.max(20, Math.min(maxHeight, dragStart.maskRect.height + dy));
           newRect.height = newHeight;
           newRect.y = dragStart.maskRect.y + dy / 2;
         }
@@ -130,7 +158,7 @@ const CropOverlay = ({
 
       case 'w': // 西邊
         {
-          const newWidth = Math.max(20, dragStart.maskRect.width - dx);
+          const newWidth = Math.max(20, Math.min(maxWidth, dragStart.maskRect.width - dx));
           newRect.width = newWidth;
           newRect.x = dragStart.maskRect.x + dx / 2;
         }
@@ -138,7 +166,7 @@ const CropOverlay = ({
 
       case 'e': // 東邊
         {
-          const newWidth = Math.max(20, dragStart.maskRect.width + dx);
+          const newWidth = Math.max(20, Math.min(maxWidth, dragStart.maskRect.width + dx));
           newRect.width = newWidth;
           newRect.x = dragStart.maskRect.x + dx / 2;
         }
@@ -148,7 +176,7 @@ const CropOverlay = ({
         break;
     }
 
-    // 確保蒙版不超出圖片邊界
+    // 最終邊界檢查：確保剪裁框不超出圖片範圍
     newRect.x = Math.max(newRect.width / 2, Math.min(maxWidth - newRect.width / 2, newRect.x));
     newRect.y = Math.max(newRect.height / 2, Math.min(maxHeight - newRect.height / 2, newRect.y));
     newRect.width = Math.min(maxWidth, Math.max(20, newRect.width));
@@ -201,7 +229,24 @@ const CropOverlay = ({
 
   return (
     <>
-      {/* 半透明遮罩 - 使用 clip-path 創建蒙版區域外的遮罩 */}
+      {/* 全屏遮罩層 - 擋住剪裁區域外的所有點擊事件 */}
+      <div
+        className="absolute inset-0 pointer-events-auto"
+        style={{
+          zIndex: 9997,
+          cursor: 'default'
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      />
+
+      {/* 半透明遮罩 - 使用 clip-path 創建蒙版區域外的遮罩（視覺效果） */}
       <div
         className="absolute inset-0 bg-black bg-opacity-50 pointer-events-none"
         style={{
@@ -326,6 +371,7 @@ CropOverlay.propTypes = {
     height: PropTypes.number
   }),
   onUpdateMaskRect: PropTypes.func.isRequired,
+  onUpdateElement: PropTypes.func,
   onApply: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   onReset: PropTypes.func,

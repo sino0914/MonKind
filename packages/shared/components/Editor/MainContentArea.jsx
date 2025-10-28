@@ -48,6 +48,7 @@ const MainContentArea = ({
   croppingElement,
   maskRect,
   onUpdateMaskRect,
+  onUpdateElement,
   onApplyCrop,
   onCancelCrop,
   onResetCrop,
@@ -145,6 +146,7 @@ const MainContentArea = ({
                   croppingElement={croppingElement}
                   maskRect={maskRect}
                   onUpdateMaskRect={onUpdateMaskRect}
+                  onUpdateElement={onUpdateElement}
                   onApplyCrop={onApplyCrop}
                   onCancelCrop={onCancelCrop}
                   onResetCrop={onResetCrop}

@@ -808,6 +808,7 @@ const UniversalEditor = ({
           croppingElement={imageCrop.croppingElement}
           maskRect={imageCrop.maskRect}
           onUpdateMaskRect={imageCrop.updateMaskRect}
+          onUpdateElement={editorState.updateElement}
           onApplyCrop={imageCrop.applyCrop}
           onCancelCrop={imageCrop.cancelCrop}
           onResetCrop={imageCrop.resetCrop}
