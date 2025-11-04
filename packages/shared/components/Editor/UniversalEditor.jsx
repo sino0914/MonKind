@@ -273,6 +273,14 @@ const UniversalEditor = ({
     };
   }, [editorState.selectedElement, editorState.editingText, editorState.deleteElement]);
 
+  // 當選取元素改變或取消選取時，自動關閉自由變形
+  useEffect(() => {
+    if (freeTransform.isFreeTransform) {
+      freeTransform.disableFreeTransform();
+      console.log('🔲 元素選取改變，自動關閉自由變形模式');
+    }
+  }, [editorState.selectedElement?.id]);
+
   // 載入商品資料
   const loadProduct = async () => {
     if (!productId || product) return;

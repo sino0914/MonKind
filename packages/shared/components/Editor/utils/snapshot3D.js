@@ -95,8 +95,11 @@ const generateUVTexture = async (product, designElements, backgroundColor) => {
       let img = el.imageElement;
       if (!img && el.url) img = await loadImage(el.url);
       if (img) {
-        const w = el.width || 100;
-        const h = el.height || 100;
+        // 計算實際渲染尺寸（考慮自由變形 scaleX/scaleY）
+        const baseW = el.width || 100;
+        const baseH = el.height || 100;
+        const w = baseW * (el.scaleX || 1);
+        const h = baseH * (el.scaleY || 1);
 
         ctx.save();
 

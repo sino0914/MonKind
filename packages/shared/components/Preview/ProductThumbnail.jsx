@@ -158,9 +158,10 @@ const ProductThumbnail = ({
                 <img
                   src={element.url}
                   alt="預覽圖片"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full"
                   style={{
                     transform: `rotate(${element.rotation || 0}deg)`,
+                    objectFit: (element.scaleX && element.scaleY && element.scaleX !== element.scaleY) ? 'fill' : 'cover',
                     clipPath: element.hasMask && element.mask ? `inset(
                       ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
                       ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%

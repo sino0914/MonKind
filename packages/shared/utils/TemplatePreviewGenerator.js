@@ -200,11 +200,15 @@ class TemplatePreviewGenerator {
         const displayWidth = element.width || 50;
         const displayHeight = element.height || 50;
 
-        // 轉換到預覽圖座標
+        // 考慮元素的自由變形 (scaleX/scaleY)
+        const elementScaleX = element.scaleX || 1;
+        const elementScaleY = element.scaleY || 1;
+
+        // 轉換到預覽圖座標（同時應用預覽縮放和元素自由變形）
         const previewX = displayX * scaleX;
         const previewY = displayY * scaleY;
-        const previewWidth = displayWidth * scaleX;
-        const previewHeight = displayHeight * scaleY;
+        const previewWidth = displayWidth * scaleX * elementScaleX;
+        const previewHeight = displayHeight * scaleY * elementScaleY;
 
         // 計算最終位置（中心對齊）
         const x = previewX - previewWidth / 2;

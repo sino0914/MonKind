@@ -191,8 +191,11 @@ const ProductPreview = ({
         let img = el.imageElement;
         if (!img && el.url) img = await loadImage(el.url);
         if (img) {
-          const w = el.width || 100;
-          const h = el.height || 100;
+          // 計算實際渲染尺寸（考慮自由變形 scaleX/scaleY）
+          const baseW = el.width || 100;
+          const baseH = el.height || 100;
+          const w = baseW * (el.scaleX || 1);
+          const h = baseH * (el.scaleY || 1);
 
           // 保存當前狀態
           ctx.save();
@@ -502,9 +505,10 @@ const ProductPreview = ({
                     <img
                       src={element.url}
                       alt="預覽圖片"
-                      className="w-full h-full object-contain"
+                      className="w-full h-full"
                       style={{
                         transform: `rotate(${element.rotation || 0}deg)`,
+                        objectFit: (element.scaleX && element.scaleY && element.scaleX !== element.scaleY) ? 'fill' : 'cover',
                         clipPath: element.hasMask && element.mask ? `inset(
                           ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
                           ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
@@ -571,9 +575,10 @@ const ProductPreview = ({
                       <img
                         src={element.url}
                         alt="預覽圖片"
-                        className="w-full h-full object-contain"
+                        className="w-full h-full"
                         style={{
                           transform: `rotate(${element.rotation || 0}deg)`,
+                          objectFit: (element.scaleX && element.scaleY && element.scaleX !== element.scaleY) ? 'fill' : 'cover',
                           clipPath: element.hasMask && element.mask ? `inset(
                             ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
                             ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
