@@ -783,6 +783,7 @@ const UniversalEditor = ({
                     moveLayerDown={layerManager.moveLayerDown}
                     handleDeleteElement={editorState.deleteElement}
                     backgroundColor={editorState.backgroundColor}
+                    reorderLayers={layerManager.reorderLayers}
                   />
                 );
               default:

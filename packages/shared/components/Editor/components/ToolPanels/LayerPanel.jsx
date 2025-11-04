@@ -18,11 +18,15 @@ const LayerPanel = ({
   moveLayerDown,
   handleDeleteElement,
   backgroundColor,
+  reorderLayers,
 }) => {
   // 正在編輯名稱的圖層 ID
   const [editingLayerId, setEditingLayerId] = useState(null);
   // 編輯中的名稱
   const [editingName, setEditingName] = useState("");
+  // 拖曳狀態
+  const [draggedLayerId, setDraggedLayerId] = useState(null);
+  const [dragOverLayerId, setDragOverLayerId] = useState(null);
 
   /**
    * 開始編輯圖層名稱
@@ -64,6 +68,59 @@ const LayerPanel = ({
       return `圖片: ${element.url ? "自訂圖片" : "圖片"}`;
     }
   };
+
+  /**
+   * 拖曳開始
+   */
+  const handleDragStart = (e, elementId) => {
+    setDraggedLayerId(elementId);
+    e.dataTransfer.effectAllowed = 'move';
+    // 設置拖曳時的半透明效果
+    e.currentTarget.style.opacity = '0.5';
+  };
+
+  /**
+   * 拖曳經過
+   */
+  const handleDragOver = (e, elementId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (draggedLayerId !== elementId) {
+      setDragOverLayerId(elementId);
+    }
+  };
+
+  /**
+   * 拖曳離開
+   */
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDragOverLayerId(null);
+  };
+
+  /**
+   * 放下
+   */
+  const handleDrop = (e, targetId) => {
+    e.preventDefault();
+
+    if (draggedLayerId && draggedLayerId !== targetId && reorderLayers) {
+      reorderLayers(draggedLayerId, targetId);
+    }
+
+    setDragOverLayerId(null);
+  };
+
+  /**
+   * 拖曳結束
+   */
+  const handleDragEnd = (e) => {
+    e.currentTarget.style.opacity = '1';
+    setDraggedLayerId(null);
+    setDragOverLayerId(null);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -82,14 +139,27 @@ const LayerPanel = ({
           const isEditing = editingLayerId === element.id;
           const displayName = element.layerName || getDefaultLayerName(element);
 
+          const isDragging = draggedLayerId === element.id;
+          const isDragOver = dragOverLayerId === element.id;
+
           return (
             <div
               key={element.id}
-              className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors select-none ${
+              draggable={true}
+              onDragStart={(e) => handleDragStart(e, element.id)}
+              onDragOver={(e) => handleDragOver(e, element.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, element.id)}
+              onDragEnd={handleDragEnd}
+              className={`flex items-center justify-between p-2 rounded cursor-move transition-all select-none ${
                 isSelected
                   ? "bg-blue-100 border border-blue-300"
                   : "bg-gray-50 hover:bg-gray-100 border border-gray-200"
-              } ${isHidden ? "opacity-50" : ""} ${isLocked ? "border-l-4 border-l-orange-500" : ""}`}
+              } ${isHidden ? "opacity-50" : ""} ${
+                isLocked ? "border-l-4 border-l-orange-500" : ""
+              } ${isDragging ? "border-dashed border-2 border-blue-400" : ""} ${
+                isDragOver ? "border-t-4 border-t-green-500" : ""
+              }`}
               onClick={() => !isEditing && handleSelectElement(element)}
             >
               <div className="flex items-center space-x-2 flex-1 min-w-0">
@@ -264,6 +334,7 @@ LayerPanel.propTypes = {
   moveLayerDown: PropTypes.func.isRequired,
   handleDeleteElement: PropTypes.func.isRequired,
   backgroundColor: PropTypes.string.isRequired,
+  reorderLayers: PropTypes.func,
 };
 
 export default LayerPanel;

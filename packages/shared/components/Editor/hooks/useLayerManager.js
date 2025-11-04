@@ -130,6 +130,29 @@ const useLayerManager = (editorState) => {
     });
   }, [setLockedLayers]);
 
+  /**
+   * 重新排序圖層（拖曳排序）
+   * @param {string} draggedId - 被拖曳的元素 ID
+   * @param {string} targetId - 目標位置的元素 ID
+   */
+  const reorderLayers = useCallback((draggedId, targetId) => {
+    if (draggedId === targetId) return;
+
+    const draggedIndex = designElements.findIndex(el => el.id === draggedId);
+    const targetIndex = designElements.findIndex(el => el.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newElements = [...designElements];
+    // 移除被拖曳的元素
+    const [draggedElement] = newElements.splice(draggedIndex, 1);
+    // 插入到目標位置
+    newElements.splice(targetIndex, 0, draggedElement);
+
+    setDesignElements(newElements);
+    console.log('🔄 圖層已重新排序:', { draggedId, targetId });
+  }, [designElements, setDesignElements]);
+
   return {
     toggleLayerVisibility,
     moveLayerUp,
@@ -138,6 +161,7 @@ const useLayerManager = (editorState) => {
     moveLayerToBottom,
     renameLayer,
     toggleLayerLock,
+    reorderLayers,
   };
 };
 
