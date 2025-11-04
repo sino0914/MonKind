@@ -1,6 +1,7 @@
 import React from 'react';
 import TextEditingInput from './TextEditingInput';
 import CropOverlay from './CropOverlay';
+import AspectRatioLockToggle from './AspectRatioLockToggle';
 import { CANVAS_SIZE, DISPLAY_SIZE } from '../constants/editorConfig';
 
 /**
@@ -40,6 +41,10 @@ const DesignElementsLayer = ({
   onApplyCrop,
   onCancelCrop,
   onResetCrop,
+
+  // 自由變形相關
+  isFreeTransform,
+  onToggleFreeTransform,
 
   // 事件處理函數
   handleMouseDown,
@@ -172,7 +177,11 @@ const DesignElementsLayer = ({
                             alt="設計圖片"
                             className="w-full h-full pointer-events-none"
                             style={{
-                              objectFit: 'contain',
+                              // 自由拉伸過（scaleX ≠ scaleY）用 fill，其他用 cover（包括替換圖片）
+                              objectFit: (element.scaleX && element.scaleY && element.scaleX !== element.scaleY) ? 'fill' : 'cover',
+                              transformOrigin: 'center center',
+                              // 有 mask 時不套用 transform，避免干擾 clip-path 裁切
+                              transform: 'none',
                               // 只有在非剪裁模式時才套用 clip-path
                               clipPath: (croppingElement && croppingElement.id === element.id) ? 'none' : `inset(
                                 ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
@@ -221,7 +230,11 @@ const DesignElementsLayer = ({
                         <img
                           src={displayUrl}
                           alt="設計圖片"
-                          className="w-full h-full object-contain pointer-events-none"
+                          className="w-full h-full pointer-events-none"
+                          style={{
+                            // 自由拉伸過（scaleX ≠ scaleY）用 fill，其他用 cover
+                            objectFit: (element.scaleX && element.scaleY && element.scaleX !== element.scaleY) ? 'fill' : 'cover',
+                          }}
                           draggable={false}
                           onLoad={(e) => {
                           // 圖片載入成功時，清除錯誤狀態並移除錯誤提示
@@ -562,6 +575,16 @@ const DesignElementsLayer = ({
             </React.Fragment>
             );
           })}
+
+        {/* 比例鎖開關 - 選取圖片元素時顯示，且不在剪裁模式時 */}
+        {selectedElement && selectedElement.type === 'image' && !croppingElement && (
+          <AspectRatioLockToggle
+            element={selectedElement}
+            isFreeTransform={isFreeTransform}
+            onToggle={onToggleFreeTransform}
+            selectedElement={selectedElement}
+          />
+        )}
 
         {/* 剪裁覆蓋層（蒙版模式） */}
         {croppingElement && maskRect && (

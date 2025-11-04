@@ -349,8 +349,8 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
     }
 
     if (targetImageElement && imageReplace) {
-      // 替換圖片
-      updateElement(targetImageElement.id, { url: draggingImageUrl });
+      // 替換圖片 - 直接傳入 targetId 執行替換（不需要啟動替換模式）
+      imageReplace.executeReplace(draggingImageUrl, targetImageElement.id);
     } else {
       // 新增圖片到畫布
       editorState.addElement({

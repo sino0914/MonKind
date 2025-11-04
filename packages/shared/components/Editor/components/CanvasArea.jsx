@@ -60,6 +60,10 @@ const CanvasArea = ({
   onCancelCrop,
   onResetCrop,
 
+  // 自由變形相關
+  isFreeTransform,
+  onToggleFreeTransform,
+
   // 視窗控制
   viewport = null,
 }) => {
@@ -329,6 +333,8 @@ const CanvasArea = ({
             onApplyCrop={onApplyCrop}
             onCancelCrop={onCancelCrop}
             onResetCrop={onResetCrop}
+            isFreeTransform={isFreeTransform}
+            onToggleFreeTransform={onToggleFreeTransform}
             handleMouseDown={handleMouseDown}
             handleSelectElement={handleSelectElement}
             handleFinishTextEdit={handleFinishTextEdit}

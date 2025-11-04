@@ -223,24 +223,42 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
             }
           }
 
-          // 計算縮放比例
-          const scaleX = newWidth / selectedElement.width;
-          const scaleY = newHeight / selectedElement.height;
+          // 計算縮放比例（相對於原始尺寸）
+          // 獲取原始尺寸（第一次縮放時儲存）
+          const originalWidth = selectedElement.originalWidth || selectedElement.width;
+          const originalHeight = selectedElement.originalHeight || selectedElement.height;
+
+          const scaleX = newWidth / originalWidth;
+          const scaleY = newHeight / originalHeight;
 
           const updates = {
             width: newWidth,
             height: newHeight,
+            scaleX: scaleX,
+            scaleY: scaleY,
+            originalWidth: originalWidth,
+            originalHeight: originalHeight,
           };
 
           // 如果元素有 mask，同比例縮放 mask
           if (selectedElement.hasMask && selectedElement.mask) {
+            const maskScaleX = newWidth / selectedElement.width;
+            const maskScaleY = newHeight / selectedElement.height;
+
             updates.mask = {
-              x: selectedElement.mask.x * scaleX,
-              y: selectedElement.mask.y * scaleY,
-              width: selectedElement.mask.width * scaleX,
-              height: selectedElement.mask.height * scaleY,
+              x: selectedElement.mask.x * maskScaleX,
+              y: selectedElement.mask.y * maskScaleY,
+              width: selectedElement.mask.width * maskScaleX,
+              height: selectedElement.mask.height * maskScaleY,
             };
           }
+
+          console.log('📐 縮放資訊:', {
+            原始尺寸: { width: originalWidth, height: originalHeight },
+            新尺寸: { width: newWidth, height: newHeight },
+            縮放比例: { scaleX: scaleX.toFixed(2), scaleY: scaleY.toFixed(2) },
+            模式: isFreeTransform ? '自由變形' : '等比例',
+          });
 
           updateElement(selectedElement.id, updates);
         } else if (selectedElement.type === 'text') {
@@ -413,8 +431,8 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
     }
 
     if (targetImageElement && imageReplace) {
-      // 替換圖片
-      updateElement(targetImageElement.id, { url: draggingImageUrl });
+      // 替換圖片 - 直接傳入 targetId 執行替換（不需要啟動替換模式）
+      imageReplace.executeReplace(draggingImageUrl, targetImageElement.id);
     } else {
       // 新增圖片到畫布
       editorState.addElement({

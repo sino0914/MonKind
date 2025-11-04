@@ -150,6 +150,8 @@ const MainContentArea = ({
                   onApplyCrop={onApplyCrop}
                   onCancelCrop={onCancelCrop}
                   onResetCrop={onResetCrop}
+                  isFreeTransform={isFreeTransform}
+                  onToggleFreeTransform={onToggleFreeTransform}
                 />
 
                 {/* 工具列容器 - 與 Canvas 內容使用相同的 transform */}
