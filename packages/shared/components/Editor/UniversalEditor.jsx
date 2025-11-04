@@ -135,7 +135,8 @@ const UniversalEditor = ({
     imageReplace,
     imageManager.draggingImageUrl,
     viewport,
-    freeTransform.isFreeTransform
+    freeTransform.isFreeTransform,
+    imageManager.handleAddImageToCanvas
   );
   const templateManager = useTemplateManager(
     currentProduct,

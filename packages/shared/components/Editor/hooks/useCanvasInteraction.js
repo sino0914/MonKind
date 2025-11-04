@@ -6,7 +6,7 @@ import { MIN_ELEMENT_SIZE } from '../constants/editorConfig';
  * 畫布交互邏輯 Hook
  * 處理拖曳、縮放、旋轉、圖片替換拖曳預覽
  */
-const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, draggingImageUrl = null, viewport = null, isFreeTransform = false) => {
+const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, draggingImageUrl = null, viewport = null, isFreeTransform = false, addImageToCanvas = null) => {
   const {
     draggedElement,
     dragOffset,
@@ -434,18 +434,12 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
       // 替換圖片 - 直接傳入 targetId 執行替換（不需要啟動替換模式）
       imageReplace.executeReplace(draggingImageUrl, targetImageElement.id);
     } else {
-      // 新增圖片到畫布
-      editorState.addElement({
-        id: `image-${Date.now()}`,
-        type: 'image',
-        url: draggingImageUrl,
-        width: 100,
-        height: 100,
-        x: canvasX,
-        y: canvasY,
-        rotation: 0,
-        opacity: 1,
-      });
+      // 新增圖片到畫布 - 使用統一的新增邏輯
+      if (addImageToCanvas) {
+        addImageToCanvas(draggingImageUrl, { x: canvasX, y: canvasY });
+      } else {
+        console.warn('addImageToCanvas 函數未提供，無法新增圖片');
+      }
     }
 
     // 清除預覽

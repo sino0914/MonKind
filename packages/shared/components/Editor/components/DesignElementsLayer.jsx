@@ -1,7 +1,6 @@
 import React from 'react';
 import TextEditingInput from './TextEditingInput';
 import CropOverlay from './CropOverlay';
-import AspectRatioLockToggle from './AspectRatioLockToggle';
 import { CANVAS_SIZE, DISPLAY_SIZE } from '../constants/editorConfig';
 
 /**
@@ -575,16 +574,6 @@ const DesignElementsLayer = ({
             </React.Fragment>
             );
           })}
-
-        {/* 比例鎖開關 - 選取圖片元素時顯示，且不在剪裁模式時 */}
-        {selectedElement && selectedElement.type === 'image' && !croppingElement && (
-          <AspectRatioLockToggle
-            element={selectedElement}
-            isFreeTransform={isFreeTransform}
-            onToggle={onToggleFreeTransform}
-            selectedElement={selectedElement}
-          />
-        )}
 
         {/* 剪裁覆蓋層（蒙版模式） */}
         {croppingElement && maskRect && (

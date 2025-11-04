@@ -134,21 +134,31 @@ const useImageManager = (editorState, imageReplace = null) => {
 
   /**
    * 將已上傳的圖片添加到畫布
-   * @param {Object} image - 圖片對象
+   * @param {Object|string} imageOrUrl - 圖片對象或 URL 字串
+   * @param {Object} position - 可選的位置參數 { x, y }，預設為 { x: 150, y: 150 }
    */
-  const handleAddImageToCanvas = useCallback(async (image) => {
-    if (!image || !image.url) return;
+  const handleAddImageToCanvas = useCallback(async (imageOrUrl, position = { x: 150, y: 150 }) => {
+    // 處理參數：統一轉換為 URL
+    let imageUrl;
+    if (typeof imageOrUrl === 'string') {
+      imageUrl = imageOrUrl;
+    } else if (imageOrUrl && imageOrUrl.url) {
+      imageUrl = imageOrUrl.url;
+    } else {
+      console.error('無效的圖片參數:', imageOrUrl);
+      return;
+    }
 
     // 如果處於替換模式，執行替換
     if (imageReplace?.isReplacingImage) {
-      imageReplace.executeReplace(image.url);
+      imageReplace.executeReplace(imageUrl);
       return;
     }
 
     // 載入圖片獲取原始尺寸
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = image.url;
+    img.src = imageUrl;
 
     await new Promise((resolve) => {
       img.onload = () => {
@@ -169,25 +179,26 @@ const useImageManager = (editorState, imageReplace = null) => {
 
         console.log('📐 圖片尺寸計算:', {
           original: { width: img.naturalWidth, height: img.naturalHeight },
-          scaled: { width, height }
+          scaled: { width, height },
+          position
         });
 
-        // 否則新增圖片（保持寬高比）
+        // 新增圖片（保持寬高比）
         addElement({
           id: `image-${Date.now()}`,
           type: 'image',
-          url: image.url,
+          url: imageUrl,
           width,
           height,
-          x: 150,
-          y: 150,
+          x: position.x,
+          y: position.y,
           rotation: 0,
           opacity: 1,
         });
         resolve();
       };
       img.onerror = () => {
-        console.error('圖片載入失敗:', image.url);
+        console.error('圖片載入失敗:', imageUrl);
         alert('圖片載入失敗，請重試');
         resolve();
       };
