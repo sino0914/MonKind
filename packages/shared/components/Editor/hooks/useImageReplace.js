@@ -64,23 +64,95 @@ const useImageReplace = (editorState) => {
     // 載入新圖片以取得其尺寸
     const img = new Image();
     img.onload = () => {
-      // 🔥 檢查是否已有剪裁：如果已有 mask，只更換 URL，保持所有其他屬性
+      // 🔥 檢查是否已有剪裁：將剪裁區作為新的基準點
       if (element.hasMask && element.mask) {
-        updateElement(elementId, {
-          url: newImageUrl,
+        // 步驟 1：計算剪裁區在畫布上的絕對位置
+        // mask.x, mask.y 是相對於元素左上角的距離
+        // 需要先計算元素左上角的畫布座標，再加上 mask 偏移
+        const elementLeft = element.x - element.width / 2;
+        const elementTop = element.y - element.height / 2;
+
+        // 剪裁區中心在畫布上的絕對位置
+        const clipCenterX = elementLeft + element.mask.x;
+        const clipCenterY = elementTop + element.mask.y;
+        const clipWidth = element.mask.width;
+        const clipHeight = element.mask.height;
+
+        console.log('📐 已剪裁圖片替換 - 將元素移動到剪裁區位置:', {
+          原元素位置: { x: element.x, y: element.y },
+          元素左上角: { x: elementLeft, y: elementTop },
+          mask相對左上角: { x: element.mask.x, y: element.mask.y },
+          剪裁區畫布位置: { x: clipCenterX, y: clipCenterY },
+          剪裁區尺寸: { width: clipWidth, height: clipHeight },
         });
 
-        console.log('✅ 替換已剪裁圖片（保持原有設定）:', {
+        // 步驟 2：應用 object-fit: cover（以剪裁區為容器）
+        const imageRatio = img.width / img.height;
+        const clipRatio = clipWidth / clipHeight;
+
+        let newWidth, newHeight;
+
+        if (imageRatio === clipRatio) {
+          // 比例相同：直接使用剪裁區尺寸
+          newWidth = clipWidth;
+          newHeight = clipHeight;
+          console.log('✅ 比例完全匹配剪裁區域');
+        } else if (imageRatio > clipRatio) {
+          // 圖片更寬：以高度為基準放大
+          newHeight = clipHeight;
+          newWidth = clipHeight * imageRatio;
+          console.log('📏 圖片較寬，以高度為基準放大');
+        } else {
+          // 圖片更高：以寬度為基準放大
+          newWidth = clipWidth;
+          newHeight = clipWidth / imageRatio;
+          console.log('📏 圖片較高，以寬度為基準放大');
+        }
+
+        // 步驟 3：判斷是否需要剪裁（等同 hasMask=false 邏輯）
+        let needsMask = false;
+        let newMask = null;
+
+        if (imageRatio !== clipRatio) {
+          // 圖片比例與剪裁區不同，需要剪裁
+          needsMask = true;
+          newMask = {
+            x: newWidth / 2,       // mask 中心相對於新元素中心
+            y: newHeight / 2,
+            width: clipWidth,      // 保持原剪裁區尺寸
+            height: clipHeight,
+          };
+          console.log('✂️ 需要剪裁，創建新 mask:', newMask);
+        } else {
+          // 比例完全匹配，不需要剪裁
+          console.log('✅ 比例匹配，移除 mask');
+        }
+
+        // 步驟 4：更新元素
+        updateElement(elementId, {
+          url: newImageUrl,
+          x: clipCenterX,              // 移動到剪裁區位置
+          y: clipCenterY,
+          width: Math.round(newWidth),
+          height: Math.round(newHeight),
+          hasMask: needsMask,
+          mask: newMask,
+          // 重置縮放比例為 1（未變形狀態）
+          scaleX: 1,
+          scaleY: 1,
+          // 記錄原始尺寸（用於日後自由拉伸）
+          originalWidth: Math.round(newWidth),
+          originalHeight: Math.round(newHeight),
+        });
+
+        console.log('✅ 替換已剪裁圖片（移動到剪裁區位置並重新計算）:', {
           elementId: elementId,
           oldUrl: element.url,
           newUrl: newImageUrl,
-          保持的屬性: {
-            width: element.width,
-            height: element.height,
-            mask: element.mask,
-            scaleX: element.scaleX,
-            scaleY: element.scaleY,
-          },
+          新元素位置: { x: clipCenterX, y: clipCenterY },
+          新元素尺寸: { width: Math.round(newWidth), height: Math.round(newHeight) },
+          需要剪裁: needsMask,
+          新剪裁區: needsMask ? newMask : '無',
         });
 
         // 只有在替換模式下才取消模式
