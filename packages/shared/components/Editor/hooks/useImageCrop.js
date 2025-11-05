@@ -11,6 +11,9 @@ const useImageCrop = (editorState) => {
   // 蒙版數據（相對於圖片元素的座標）
   const [maskRect, setMaskRect] = useState(null);
 
+  // 儲存進入剪裁前的旋轉角度
+  const [originalRotation, setOriginalRotation] = useState(null);
+
   /**
    * 開始剪裁
    * @param {Object} element - 要剪裁的圖片元素
@@ -22,6 +25,21 @@ const useImageCrop = (editorState) => {
     }
 
     console.log('✂️ 開始剪裁圖片:', element.id);
+
+    // 儲存當前旋轉角度
+    const currentRotation = element.rotation || 0;
+    setOriginalRotation(currentRotation);
+    console.log('  - 儲存原始旋轉角度:', currentRotation);
+
+    // 如果有旋轉，先將旋轉重置為 0
+    if (currentRotation !== 0) {
+      console.log('  - 暫時將旋轉角度重置為 0');
+      editorState.updateElement(element.id, {
+        rotation: 0
+      });
+      // 更新 element 物件以反映新的旋轉角度
+      element = { ...element, rotation: 0 };
+    }
 
     setCroppingElement(element);
 
@@ -73,9 +91,19 @@ const useImageCrop = (editorState) => {
    */
   const cancelCrop = useCallback(() => {
     console.log('❌ 取消剪裁');
+
+    // 恢復原始旋轉角度
+    if (croppingElement && originalRotation !== null) {
+      console.log('  - 恢復原始旋轉角度:', originalRotation);
+      editorState.updateElement(croppingElement.id, {
+        rotation: originalRotation
+      });
+    }
+
     setCroppingElement(null);
     setMaskRect(null);
-  }, []);
+    setOriginalRotation(null);
+  }, [croppingElement, originalRotation, editorState]);
 
   /**
    * 應用剪裁（蒙版模式）
@@ -114,9 +142,9 @@ const useImageCrop = (editorState) => {
     console.log('  - 當前元素位置:', { x: currentElement.x, y: currentElement.y });
     console.log('  - 計算後的蒙版位置:', { x: newMaskX, y: newMaskY });
 
-    // 只更新蒙版數據和 hasMask 標記
+    // 只更新蒙版數據和 hasMask 標記，同時恢復原始旋轉角度
     // 圖片元素的 width, height, x, y 完全不變
-    editorState.updateElement(croppingElement.id, {
+    const updateData = {
       hasMask: true,
       mask: {
         x: Math.round(newMaskX),
@@ -124,11 +152,21 @@ const useImageCrop = (editorState) => {
         width: Math.round(maskRect.width),
         height: Math.round(maskRect.height)
       }
-    });
+    };
 
-    // 退出剪裁模式
-    cancelCrop();
-  }, [croppingElement, maskRect, editorState, cancelCrop]);
+    // 恢復原始旋轉角度
+    if (originalRotation !== null) {
+      console.log('  - 恢復原始旋轉角度:', originalRotation);
+      updateData.rotation = originalRotation;
+    }
+
+    editorState.updateElement(croppingElement.id, updateData);
+
+    // 清空狀態（不使用 cancelCrop 以避免重複更新旋轉）
+    setCroppingElement(null);
+    setMaskRect(null);
+    setOriginalRotation(null);
+  }, [croppingElement, maskRect, originalRotation, editorState]);
 
   /**
    * 重置剪裁（移除蒙版數據）

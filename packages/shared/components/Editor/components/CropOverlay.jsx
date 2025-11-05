@@ -211,6 +211,9 @@ const CropOverlay = ({
   // element.x, element.y 是圖片元素中心點
   // maskRect.x, maskRect.y 是蒙版中心點（相對於圖片元素）
 
+  // 注意：進入剪裁模式時，圖片的 rotation 已經被重置為 0
+  // 因此不需要處理旋轉矩陣，簡化計算
+
   // 蒙版框應該使用與元素相同的定位方式（中心點定位）
   // 蒙版中心點在畫布上的絕對位置（相對於元素中心）
   const maskCenterAbsX = element.x + (maskRect.x - element.width / 2);
@@ -222,28 +225,18 @@ const CropOverlay = ({
   const maskWidthPercent = (maskRect.width / 400) * 100;
   const maskHeightPercent = (maskRect.height / 400) * 100;
 
-  // 計算旋轉後的四個角座標（用於半透明遮罩的 clip-path）
-  const rotation = (element.rotation || 0) * Math.PI / 180;
+  // 計算四個角座標（用於半透明遮罩的 clip-path）
+  // 由於剪裁時 rotation = 0，不需要旋轉計算
   const halfWidth = maskRect.width / 2;
   const halfHeight = maskRect.height / 2;
 
-  // 四個角相對於蒙版中心的座標（未旋轉）
+  // 四個角的絕對座標（百分比）
   const corners = [
-    { x: -halfWidth, y: -halfHeight }, // 左上
-    { x: -halfWidth, y: halfHeight },  // 左下
-    { x: halfWidth, y: halfHeight },   // 右下
-    { x: halfWidth, y: -halfHeight },  // 右上
+    { x: ((maskCenterAbsX - halfWidth) / 400) * 100, y: ((maskCenterAbsY - halfHeight) / 400) * 100 }, // 左上
+    { x: ((maskCenterAbsX - halfWidth) / 400) * 100, y: ((maskCenterAbsY + halfHeight) / 400) * 100 }, // 左下
+    { x: ((maskCenterAbsX + halfWidth) / 400) * 100, y: ((maskCenterAbsY + halfHeight) / 400) * 100 }, // 右下
+    { x: ((maskCenterAbsX + halfWidth) / 400) * 100, y: ((maskCenterAbsY - halfHeight) / 400) * 100 }, // 右上
   ];
-
-  // 旋轉後的四個角座標（絕對座標）
-  const rotatedCorners = corners.map(corner => {
-    const rotatedX = corner.x * Math.cos(rotation) - corner.y * Math.sin(rotation);
-    const rotatedY = corner.x * Math.sin(rotation) + corner.y * Math.cos(rotation);
-    return {
-      x: ((maskCenterAbsX + rotatedX) / 400) * 100,
-      y: ((maskCenterAbsY + rotatedY) / 400) * 100,
-    };
-  });
 
   return (
     <>
@@ -275,16 +268,16 @@ const CropOverlay = ({
             100% 100%,
             100% 0%,
             0% 0%,
-            ${rotatedCorners[0].x}% ${rotatedCorners[0].y}%,
-            ${rotatedCorners[1].x}% ${rotatedCorners[1].y}%,
-            ${rotatedCorners[2].x}% ${rotatedCorners[2].y}%,
-            ${rotatedCorners[3].x}% ${rotatedCorners[3].y}%,
-            ${rotatedCorners[0].x}% ${rotatedCorners[0].y}%
+            ${corners[0].x}% ${corners[0].y}%,
+            ${corners[1].x}% ${corners[1].y}%,
+            ${corners[2].x}% ${corners[2].y}%,
+            ${corners[3].x}% ${corners[3].y}%,
+            ${corners[0].x}% ${corners[0].y}%
           )`
         }}
       />
 
-      {/* 蒙版框 */}
+      {/* 蒙版框 - 由於剪裁時 rotation = 0，不需要旋轉 transform */}
       <div
         className="absolute border-2 border-white pointer-events-auto cursor-move"
         style={{
@@ -292,7 +285,7 @@ const CropOverlay = ({
           top: `${maskCenterYPercent}%`,
           width: `${maskWidthPercent}%`,
           height: `${maskHeightPercent}%`,
-          transform: `translate(-50%, -50%) rotate(${element.rotation || 0}deg)`,
+          transform: `translate(-50%, -50%)`,
           transformOrigin: 'center',
           zIndex: 9999,
           boxShadow: '0 0 0 1px rgba(0,0,0,0.3)',
