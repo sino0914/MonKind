@@ -167,7 +167,7 @@ import { API } from '@monkind/shared/services/api';
 - ✅ 統一依賴管理
 - ✅ 支援跨專案重構
 
-**詳細遷移文檔:** 請參閱 `gwgw-gift-admin/REFACTORING.md`
+**詳細遷移文檔:** 請參閱 `MONOREPO_MIGRATION.md`
 
 ## 🔧 故障排除
 

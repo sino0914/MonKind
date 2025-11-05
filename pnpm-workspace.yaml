@@ -1,5 +1,2 @@
 packages:
   - 'packages/*'
-  - 'packages/**'
-  - '!gwgw-gift-admin'
-  - '!my-react-app'

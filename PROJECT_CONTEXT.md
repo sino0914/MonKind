@@ -1,17 +1,15 @@
-# MonKind 專案重構記錄
+# MonKind 專案說明
 
 ## 專案結構概覽
 
-### 舊程式目錄 (重構前)
-- `gwgw-gift-admin/` - 舊版管理後台
-- `my-react-app/` - 舊版主應用程式
+MonKind 專案採用 Monorepo 架構，所有應用統一管理：
 
-**重要**: 這兩個目錄保留作為參考,不應修改。重構時可以參考這些舊程式碼。
-
-### 新程式目錄 (重構後)
-- `packages/admin-app/` - 新版管理後台 (Monorepo 架構)
-- `packages/customer-app/` - 新版客戶端應用
+### 專案目錄
+- `packages/admin-app/` - 管理後台應用
+- `packages/customer-app/` - 客戶端應用
 - `packages/shared/` - 共用元件與服務
+
+詳細的 Monorepo 遷移說明請參考 `MONOREPO_MIGRATION.md`
 
 ## 安裝與啟動
 
