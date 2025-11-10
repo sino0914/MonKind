@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import DesignElementsLayer from './DesignElementsLayer';
+import { calculateBleedBounds } from '../../../utils/bleedAreaUtils';
 
 /**
  * 畫布區域組件
@@ -309,6 +310,51 @@ const CanvasArea = ({
               zIndex: 2,
             }}
           />
+
+          {/* 出血區域視覺提示 */}
+          {currentProduct.bleedArea && (() => {
+            const bleedBounds = calculateBleedBounds(currentProduct.printArea, currentProduct.bleedArea);
+            return (
+              <>
+                {/* 出血區域半透明背景 */}
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: `${(bleedBounds.x / 400) * 100}%`,
+                    top: `${(bleedBounds.y / 400) * 100}%`,
+                    width: `${(bleedBounds.width / 400) * 100}%`,
+                    height: `${(bleedBounds.height / 400) * 100}%`,
+                    backgroundColor: 'rgba(255, 200, 200, 0.1)',
+                    zIndex: 3,
+                  }}
+                />
+
+                {/* 出血區域虛線邊框 */}
+                <div
+                  className="absolute border-2 border-red-500 border-dashed pointer-events-none"
+                  style={{
+                    left: `${(bleedBounds.x / 400) * 100}%`,
+                    top: `${(bleedBounds.y / 400) * 100}%`,
+                    width: `${(bleedBounds.width / 400) * 100}%`,
+                    height: `${(bleedBounds.height / 400) * 100}%`,
+                    zIndex: 4,
+                  }}
+                />
+
+                {/* 出血區域標籤 */}
+                <div
+                  className="absolute text-xs text-red-500 bg-white px-1 py-0.5 rounded pointer-events-none shadow-sm"
+                  style={{
+                    left: `${(bleedBounds.x / 400) * 100}%`,
+                    top: `${((bleedBounds.y - 20) / 400) * 100}%`,
+                    zIndex: 5,
+                  }}
+                >
+                  出血區域 {Math.round(bleedBounds.width)}×{Math.round(bleedBounds.height)}px
+                </div>
+              </>
+            );
+          })()}
 
           {/* Design Elements Layer - 不受設計區裁切，正常渲染 */}
           <DesignElementsLayer

@@ -38,6 +38,11 @@ class ProductDataManager {
         product.printArea = { x: 50, y: 50, width: 200, height: 150 };
       }
 
+      // 確保商品有出血區域設定（即使為 null 也是有效的）
+      if (product && product.bleedArea === undefined) {
+        product.bleedArea = null; // 預設無出血區域
+      }
+
       // 儲存到快取
       this.cache.products.set(cacheKey, {
         data: product,
@@ -69,7 +74,8 @@ class ProductDataManager {
       // 確保所有商品都有設計區設定
       const processedProducts = products.map(product => ({
         ...product,
-        printArea: product.printArea || { x: 50, y: 50, width: 200, height: 150 }
+        printArea: product.printArea || { x: 50, y: 50, width: 200, height: 150 },
+        bleedArea: product.bleedArea !== undefined ? product.bleedArea : null
       }));
 
       // 儲存到快取

@@ -573,10 +573,13 @@ router.patch('/:orderId/status', async (req, res) => {
 /**
  * 下載訂單項目的列印檔案（支援按需重建）
  * GET /api/orders/:orderId/items/:itemId/print-file
+ * Query Parameters:
+ *   - showCropMarks: 'true' | 'false' - 是否顯示裁切線（僅在有出血區域時有效）
  */
 router.get('/:orderId/items/:itemId/print-file', async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
+    const { showCropMarks } = req.query;
 
     // 讀取訂單資料
     const orderPath = path.join(ORDERS_DIR, orderId, 'order.json');
@@ -620,9 +623,17 @@ router.get('/:orderId/items/:itemId/print-file', async (req, res) => {
     }
 
     console.log(`🔨 開始重建列印檔案: ${orderId}/${itemId}`);
+    console.log(`   裁切線選項: ${showCropMarks === 'true' ? '顯示' : '隱藏'}`);
 
     // 使用 Canvas 重建列印檔案（Node.js 環境）
     // 注意：這裡需要使用 node-canvas 或類似的伺服器端 Canvas 實現
+    // TODO: 實作伺服器端重建功能
+    // 1. 載入商品資料（包含 printArea 和 bleedArea）
+    // 2. 使用 node-canvas 渲染設計元素
+    // 3. 根據 showCropMarks 參數決定是否繪製裁切線
+    // 4. 使用 generatePrintFile 函數生成高解析度列印檔案
+    //    options: { scaleFactor: 8, useBleedArea: true, showCropMarks: showCropMarks === 'true' }
+
     // 目前先返回錯誤，提示需要實作伺服器端渲染
     return res.status(501).json({
       success: false,

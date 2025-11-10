@@ -116,7 +116,11 @@ const Checkout = () => {
               item, // product
               item.designData.elements || [],
               item.designData.backgroundColor || '#ffffff',
-              8 // scaleFactor for high resolution
+              {
+                scaleFactor: 8,      // 高解析度輸出
+                useBleedArea: true,  // 使用出血區域（廠商列印需要）
+                showCropMarks: false // 預設不顯示裁切線（廠商可在 OrderDetail 選擇）
+              }
             );
 
             // 上傳列印檔案

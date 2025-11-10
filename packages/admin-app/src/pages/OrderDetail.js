@@ -12,6 +12,7 @@ const OrderDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [downloadingItems, setDownloadingItems] = useState({}); // 追蹤每個項目的下載狀態
+  const [showCropMarks, setShowCropMarks] = useState({}); // 追蹤每個項目的裁切線選項
 
   useEffect(() => {
     loadOrderDetail();
@@ -89,7 +90,9 @@ const OrderDetail = () => {
       // 設置下載中狀態
       setDownloadingItems(prev => ({ ...prev, [itemId]: true }));
 
-      const url = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}/api/orders/${orderId}/items/${itemId}/print-file`;
+      // 添加裁切線參數
+      const cropMarks = showCropMarks[itemId] ? 'true' : 'false';
+      const url = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:3002'}/api/orders/${orderId}/items/${itemId}/print-file?showCropMarks=${cropMarks}`;
 
       const response = await fetch(url);
 
@@ -252,17 +255,33 @@ const OrderDetail = () => {
                         NT$ {item.price?.toLocaleString()}
                       </p>
                       {item.printFile && (
-                        <button
-                          onClick={() => handleDownloadPrintFile(item.itemId)}
-                          disabled={downloadingItems[item.itemId]}
-                          className={`inline-flex items-center mt-2 text-sm rounded transition-colors ${
-                            downloadingItems[item.itemId]
-                              ? 'text-gray-400 cursor-not-allowed'
-                              : 'text-blue-600 hover:text-blue-800'
-                          }`}
-                        >
-                          {downloadingItems[item.itemId] ? '⏳ 下載中...' : '📥 下載列印檔案'}
-                        </button>
+                        <div className="mt-2">
+                          <div className="flex items-center gap-3 mb-2">
+                            <label className="flex items-center text-xs text-gray-600 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={showCropMarks[item.itemId] || false}
+                                onChange={(e) => setShowCropMarks(prev => ({
+                                  ...prev,
+                                  [item.itemId]: e.target.checked
+                                }))}
+                                className="mr-1.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              包含裁切線
+                            </label>
+                          </div>
+                          <button
+                            onClick={() => handleDownloadPrintFile(item.itemId)}
+                            disabled={downloadingItems[item.itemId]}
+                            className={`inline-flex items-center text-sm rounded transition-colors ${
+                              downloadingItems[item.itemId]
+                                ? 'text-gray-400 cursor-not-allowed'
+                                : 'text-blue-600 hover:text-blue-800'
+                            }`}
+                          >
+                            {downloadingItems[item.itemId] ? '⏳ 下載中...' : '📥 下載列印檔案'}
+                          </button>
+                        </div>
                       )}
                     </div>
                     <div className="text-right">

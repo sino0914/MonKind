@@ -496,7 +496,11 @@ const UniversalEditor = ({
       await exportDesignToImage(
         currentProduct,
         editorState.designElements,
-        editorState.backgroundColor
+        editorState.backgroundColor,
+        {
+          useBleedArea: true,  // 擷取範圍到出血區域
+          showCropMarks: true  // 測試輸出固定顯示裁切線
+        }
       );
       alert("設計區域已成功輸出為圖片！");
     } catch (error) {

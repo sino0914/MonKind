@@ -2,6 +2,7 @@ import React from 'react';
 import TextEditingInput from './TextEditingInput';
 import CropOverlay from './CropOverlay';
 import { CANVAS_SIZE, DISPLAY_SIZE } from '../constants/editorConfig';
+import { calculateBleedBounds } from '../../../utils/bleedAreaUtils';
 
 /**
  * 設計元素圖層組件
@@ -70,30 +71,37 @@ const DesignElementsLayer = ({
           e.stopPropagation();
         }}
       >
-        {/* 設計區域裁切容器 - 只裁切元素內容，不裁切選取框 */}
-        <div
-          className="absolute overflow-hidden"
-          style={{
-            left: `${(currentProduct.printArea.x / 400) * 100}%`,
-            top: `${(currentProduct.printArea.y / 400) * 100}%`,
-            width: `${(currentProduct.printArea.width / 400) * 100}%`,
-            height: `${(currentProduct.printArea.height / 400) * 100}%`,
-          }}
-        >
-          {/* 元素內容渲染區 - 使用負偏移回到畫布原點 */}
-          <div
-            className="absolute"
-            style={{
-              left: `${
-                -(currentProduct.printArea.x / currentProduct.printArea.width) * 100
-              }%`,
-              top: `${
-                -(currentProduct.printArea.y / currentProduct.printArea.height) * 100
-              }%`,
-              width: `${(400 / currentProduct.printArea.width) * 100}%`,
-              height: `${(400 / currentProduct.printArea.height) * 100}%`,
-            }}
-          >
+        {/* 設計區域/出血區域裁切容器 - 只裁切元素內容，不裁切選取框 */}
+        {(() => {
+          // 如果有出血區域，使用出血區域範圍；否則使用設計區域
+          const clipBounds = currentProduct.bleedArea
+            ? calculateBleedBounds(currentProduct.printArea, currentProduct.bleedArea)
+            : currentProduct.printArea;
+
+          return (
+            <div
+              className="absolute overflow-hidden"
+              style={{
+                left: `${(clipBounds.x / 400) * 100}%`,
+                top: `${(clipBounds.y / 400) * 100}%`,
+                width: `${(clipBounds.width / 400) * 100}%`,
+                height: `${(clipBounds.height / 400) * 100}%`,
+              }}
+            >
+              {/* 元素內容渲染區 - 使用負偏移回到畫布原點 */}
+              <div
+                className="absolute"
+                style={{
+                  left: `${
+                    -(clipBounds.x / clipBounds.width) * 100
+                  }%`,
+                  top: `${
+                    -(clipBounds.y / clipBounds.height) * 100
+                  }%`,
+                  width: `${(400 / clipBounds.width) * 100}%`,
+                  height: `${(400 / clipBounds.height) * 100}%`,
+                }}
+              >
             {designElements
               .filter((element) => !hiddenLayers.has(element.id))
               .map((element) => {
@@ -290,9 +298,11 @@ const DesignElementsLayer = ({
               })}
           </div>
         </div>
+      );
+    })()}
 
-        {/* 互動層 - 在裁切容器外，可拖曳選取 */}
-        {designElements
+    {/* 互動層 - 在裁切容器外，可拖曳選取 */}
+    {designElements
           .filter((element) => !hiddenLayers.has(element.id))
           .map((element) => {
             const isSelected =
@@ -572,10 +582,10 @@ const DesignElementsLayer = ({
                 );
               })()}
             </React.Fragment>
-            );
-          })}
+          );
+        })}
 
-        {/* 剪裁覆蓋層（蒙版模式） */}
+    {/* 剪裁覆蓋層（蒙版模式） */}
         {croppingElement && maskRect && (
           <CropOverlay
             element={croppingElement}

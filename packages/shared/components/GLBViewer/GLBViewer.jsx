@@ -9,7 +9,7 @@ import {
 } from "@react-three/drei";
 import * as THREE from "three";
 
-// GLB模型組件
+// GLB模型組件 - 支援物件旋轉而非攝影機旋轉
 function GLBModel({
   url,
   showWireframe = false,
@@ -23,6 +23,32 @@ function GLBModel({
 
   // 複製場景以避免修改原始資料
   const clonedScene = scene.clone();
+
+  // 物件旋轉狀態
+  const [modelRotation, setModelRotation] = useState([0, 2.5, 0]);
+  const [isDragging, setIsDragging] = useState(false);
+  const previousMouse = useRef({ x: 0, y: 0 });
+  const velocity = useRef({ x: 0, y: 0 });
+  const rotationSpeed = 0.005;
+
+  // 處理慣性旋轉
+  useFrame(() => {
+    if (!isDragging && group.current) {
+      const velocityMagnitude = Math.sqrt(
+        velocity.current.x ** 2 + velocity.current.y ** 2
+      );
+
+      if (velocityMagnitude > 0.0001) {
+        // 應用慣性旋轉
+        group.current.rotation.y += velocity.current.x;
+        group.current.rotation.x += velocity.current.y;
+
+        // 阻尼效果（減速）
+        velocity.current.x *= 0.95;
+        velocity.current.y *= 0.95;
+      }
+    }
+  });
 
   useEffect(() => {
     if (showWireframe && materials) {
@@ -60,9 +86,50 @@ function GLBModel({
     }
   }, [showWireframe, materials, testTexture, uvMapping]);
 
+  // 拖拽事件處理
+  const handlePointerDown = (e) => {
+    e.stopPropagation();
+    setIsDragging(true);
+    previousMouse.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+    velocity.current = { x: 0, y: 0 }; // 重置速度
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging || !group.current) return;
+
+    const deltaX = e.clientX - previousMouse.current.x;
+    const deltaY = e.clientY - previousMouse.current.y;
+
+    // 更新旋轉
+    group.current.rotation.y += deltaX * rotationSpeed;
+    group.current.rotation.x += deltaY * rotationSpeed;
+
+    // 記錄速度供慣性使用
+    velocity.current.x = deltaX * rotationSpeed;
+    velocity.current.y = deltaY * rotationSpeed;
+
+    previousMouse.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+  };
+
+  const handlePointerUp = () => {
+    setIsDragging(false);
+  };
+
   return (
-    <group ref={group}>
-      <primitive object={clonedScene} rotation={rotation} />
+    <group
+      ref={group}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+    >
+      <primitive object={clonedScene} rotation={modelRotation} />
     </group>
   );
 }
@@ -160,11 +227,11 @@ export default function GLBViewer({
             testTexture={testTexture}
           />
 
-          {/* 軌道控制器 */}
+          {/* 軌道控制器 - 禁用旋轉，保留縮放和平移 */}
           <OrbitControls
             enablePan={true}
             enableZoom={true}
-            enableRotate={true}
+            enableRotate={false}
             target={[0, 0.3, 0]}
             autoRotate={false}
           />

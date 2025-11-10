@@ -1,5 +1,6 @@
 import { CANVAS_SIZE, SCALE_FACTOR } from '../constants/editorConfig';
 import { loadImage } from './imageUtils';
+import { calculateBleedBounds, drawCropMarks } from '../../../utils/bleedAreaUtils';
 
 // 計算設計區域中心點
 export const calculateCenter = (printArea) => {
@@ -27,8 +28,13 @@ export const measureTextWidth = (text, fontSize, fontFamily, fontWeight = "norma
 };
 
 // 輸出設計區域為圖片
-export const exportDesignToImage = async (productInfo, designElements, backgroundColor) => {
-  const { printArea, type: productType, title } = productInfo;
+export const exportDesignToImage = async (productInfo, designElements, backgroundColor, options = {}) => {
+  const {
+    useBleedArea = false,  // 是否使用出血區域
+    showCropMarks = false  // 是否顯示裁切線
+  } = options;
+
+  const { printArea, bleedArea, type: productType, title } = productInfo;
 
   if (!printArea) {
     throw new Error("無法輸出：商品未設定設計區域");
@@ -36,9 +42,18 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-  const { width: printWidth, height: printHeight } = printArea;
 
-  // 2D 和 3D 商品都輸出設計區域大小（不再輸出正方形）
+  // 決定輸出範圍：出血區域或設計區域
+  let outputBounds;
+  if (useBleedArea && bleedArea) {
+    outputBounds = calculateBleedBounds(printArea, bleedArea);
+  } else {
+    outputBounds = printArea;
+  }
+
+  const { width: printWidth, height: printHeight } = outputBounds;
+
+  // 2D 和 3D 商品都輸出指定區域大小
   const canvasWidth = printWidth;
   const canvasHeight = printHeight;
 
@@ -56,7 +71,9 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
   }
 
   console.log("開始輸出設計區域:", {
-    設計區域: `${printWidth}×${printHeight}`,
+    輸出範圍: useBleedArea && bleedArea ? "出血區域" : "設計區域",
+    輸出尺寸: `${printWidth}×${printHeight}`,
+    顯示裁切線: showCropMarks,
     元素數量: designElements.length,
     背景色: backgroundColor,
   });
@@ -72,8 +89,9 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
   for (const element of sortedElements) {
     if (!element) continue;
 
-    const elementX = element.x - printArea.x;
-    const elementY = element.y - printArea.y;
+    // 元素座標相對於輸出邊界（出血區域或設計區域）
+    const elementX = element.x - outputBounds.x;
+    const elementY = element.y - outputBounds.y;
     const finalX = elementX;
     const finalY = elementY;
 
@@ -196,6 +214,17 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
 
   console.log("所有元素渲染完成，開始輸出圖片...");
 
+  // 如果需要，繪製裁切線（只在使用出血區域時才有意義）
+  if (showCropMarks && useBleedArea && bleedArea) {
+    // 注意：ctx 已經被 scale() 過了，所以這裡傳 scale=1
+    drawCropMarks(ctx, printArea, outputBounds, 1, {
+      lineWidth: 1,
+      dashPattern: [5, 5],
+      color: 'black'
+    });
+    console.log("✅ 裁切線已繪製");
+  }
+
   // 轉換為 Blob 並下載
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -204,7 +233,8 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download = `${title}_設計區域_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.png`;
+          const areaType = useBleedArea && bleedArea ? "含出血區" : "設計區域";
+          a.download = `${title}_${areaType}_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.png`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -230,8 +260,14 @@ export const calculateInputWidth = (text, fontSize, fontFamily, fontWeight, font
 };
 
 // 生成高解析度列印檔案（用於廠商列印）
-export const generatePrintFile = async (productInfo, designElements, backgroundColor, scaleFactor = 8) => {
-  const { printArea, type: productType } = productInfo;
+export const generatePrintFile = async (productInfo, designElements, backgroundColor, options = {}) => {
+  const {
+    scaleFactor = 8,      // 縮放倍數（預設8倍）
+    useBleedArea = true,  // 是否使用出血區域（預設true，用於廠商列印）
+    showCropMarks = false // 是否顯示裁切線
+  } = options;
+
+  const { printArea, bleedArea, type: productType } = productInfo;
 
   if (!printArea) {
     throw new Error("無法生成列印檔案：商品未設定設計區域");
@@ -239,9 +275,18 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-  const { width: printWidth, height: printHeight } = printArea;
 
-  // 2D 和 3D 商品都輸出設計區域大小（不再輸出正方形）
+  // 決定輸出範圍：出血區域或設計區域
+  let outputBounds;
+  if (useBleedArea && bleedArea) {
+    outputBounds = calculateBleedBounds(printArea, bleedArea);
+  } else {
+    outputBounds = printArea;
+  }
+
+  const { width: printWidth, height: printHeight } = outputBounds;
+
+  // 2D 和 3D 商品都輸出指定區域大小
   const canvasWidth = printWidth;
   const canvasHeight = printHeight;
 
@@ -259,9 +304,11 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
   }
 
   console.log("開始生成列印檔案:", {
-    設計區域: `${printWidth}×${printHeight}`,
+    輸出範圍: useBleedArea && bleedArea ? "出血區域" : "設計區域",
+    輸出尺寸: `${printWidth}×${printHeight}`,
     縮放倍數: scaleFactor,
-    輸出尺寸: `${canvas.width}×${canvas.height}`,
+    實際輸出: `${canvas.width}×${canvas.height}`,
+    顯示裁切線: showCropMarks,
     元素數量: designElements.length,
   });
 
@@ -276,8 +323,9 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
   for (const element of sortedElements) {
     if (!element) continue;
 
-    const elementX = element.x - printArea.x;
-    const elementY = element.y - printArea.y;
+    // 元素座標相對於輸出邊界（出血區域或設計區域）
+    const elementX = element.x - outputBounds.x;
+    const elementY = element.y - outputBounds.y;
     const finalX = elementX;
     const finalY = elementY;
 
@@ -392,6 +440,17 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
         ctx.restore();
       }
     }
+  }
+
+  // 如果需要，繪製裁切線（只在使用出血區域時才有意義）
+  if (showCropMarks && useBleedArea && bleedArea) {
+    // 注意：ctx 已經被 scale() 過了，所以這裡傳 scale=1
+    drawCropMarks(ctx, printArea, outputBounds, 1, {
+      lineWidth: 1,
+      dashPattern: [5, 5],
+      color: 'black'
+    });
+    console.log("✅ 裁切線已繪製");
   }
 
   console.log("✅ 列印檔案生成完成");
