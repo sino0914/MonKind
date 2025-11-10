@@ -9,7 +9,7 @@ import {
 } from "@react-three/drei";
 import * as THREE from "three";
 
-// GLB模型組件 - 支援物件旋轉而非攝影機旋轉
+// GLB模型組件 - 物件 Y 軸旋轉 + 攝影機高度調整
 function GLBModel({
   url,
   showWireframe = false,
@@ -17,8 +17,13 @@ function GLBModel({
   rotation = [0, 0, 0],
   uvMapping,
   testTexture,
+  isDragging,
+  velocity,
+  groupRef,
+  setCameraPosition,
+  minCameraHeight,
+  maxCameraHeight,
 }) {
-  const group = useRef();
   const { scene, materials } = useGLTF(url);
 
   // 複製場景以避免修改原始資料
@@ -26,22 +31,24 @@ function GLBModel({
 
   // 物件旋轉狀態
   const [modelRotation, setModelRotation] = useState([0, 2.5, 0]);
-  const [isDragging, setIsDragging] = useState(false);
-  const previousMouse = useRef({ x: 0, y: 0 });
-  const velocity = useRef({ x: 0, y: 0 });
-  const rotationSpeed = 0.005;
 
   // 處理慣性旋轉
   useFrame(() => {
-    if (!isDragging && group.current) {
+    if (!isDragging && groupRef.current) {
       const velocityMagnitude = Math.sqrt(
         velocity.current.x ** 2 + velocity.current.y ** 2
       );
 
       if (velocityMagnitude > 0.0001) {
-        // 應用慣性旋轉
-        group.current.rotation.y += velocity.current.x;
-        group.current.rotation.x += velocity.current.y;
+        // 物體 Y 軸旋轉慣性
+        groupRef.current.rotation.y += velocity.current.x;
+
+        // 攝影機高度慣性
+        setCameraPosition((prev) => {
+          const newY = prev[1] - velocity.current.y;
+          const clampedY = Math.max(minCameraHeight, Math.min(maxCameraHeight, newY));
+          return [prev[0], clampedY, prev[2]];
+        });
 
         // 阻尼效果（減速）
         velocity.current.x *= 0.95;
@@ -86,49 +93,8 @@ function GLBModel({
     }
   }, [showWireframe, materials, testTexture, uvMapping]);
 
-  // 拖拽事件處理
-  const handlePointerDown = (e) => {
-    e.stopPropagation();
-    setIsDragging(true);
-    previousMouse.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-    velocity.current = { x: 0, y: 0 }; // 重置速度
-  };
-
-  const handlePointerMove = (e) => {
-    if (!isDragging || !group.current) return;
-
-    const deltaX = e.clientX - previousMouse.current.x;
-    const deltaY = e.clientY - previousMouse.current.y;
-
-    // 更新旋轉
-    group.current.rotation.y += deltaX * rotationSpeed;
-    group.current.rotation.x += deltaY * rotationSpeed;
-
-    // 記錄速度供慣性使用
-    velocity.current.x = deltaX * rotationSpeed;
-    velocity.current.y = deltaY * rotationSpeed;
-
-    previousMouse.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-  };
-
   return (
-    <group
-      ref={group}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
-    >
+    <group ref={groupRef}>
       <primitive object={clonedScene} rotation={modelRotation} />
     </group>
   );
@@ -157,6 +123,61 @@ export default function GLBViewer({
   const [showWireframe, setShowWireframe] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [cameraPosition, setCameraPosition] = useState([1, 1, 1]);
+
+  // 物件旋轉狀態（整個 Canvas 都可拖曳）
+  const [isDragging, setIsDragging] = useState(false);
+  const previousMouse = useRef({ x: 0, y: 0 });
+  const velocity = useRef({ x: 0, y: 0 });
+  const rotationSpeed = 0.005;
+  const cameraHeightSpeed = 0.002; // 攝影機高度變化速度
+  const groupRef = useRef();
+
+  // 攝影機高度限制
+  const minCameraHeight = 0.2;
+  const maxCameraHeight = 2.0;
+
+  // 拖拽事件處理
+  const handlePointerDown = (e) => {
+    // 只允許左鍵（button === 0）拖曳旋轉
+    if (e.button !== 0) return;
+
+    setIsDragging(true);
+    previousMouse.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+    velocity.current = { x: 0, y: 0 }; // 重置速度
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging || !groupRef.current) return;
+
+    const deltaX = e.clientX - previousMouse.current.x;
+    const deltaY = e.clientY - previousMouse.current.y;
+
+    // 左右拖曳（deltaX）：旋轉物體的 Y 軸（左右旋轉馬克杯）
+    groupRef.current.rotation.y += deltaX * rotationSpeed;
+
+    // 上下拖曳（deltaY）：移動攝影機 Y 軸位置（視角高度）
+    setCameraPosition((prev) => {
+      const newY = prev[1] - deltaY * cameraHeightSpeed; // 向上拖曳增加高度
+      const clampedY = Math.max(minCameraHeight, Math.min(maxCameraHeight, newY));
+      return [prev[0], clampedY, prev[2]];
+    });
+
+    // 記錄速度供慣性使用
+    velocity.current.x = deltaX * rotationSpeed;
+    velocity.current.y = deltaY * cameraHeightSpeed;
+
+    previousMouse.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+  };
+
+  const handlePointerUp = () => {
+    setIsDragging(false);
+  };
 
   if (!glbUrl) {
     return (
@@ -188,6 +209,10 @@ export default function GLBViewer({
   return (
     <div
       className={`relative bg-gray-900 rounded-lg overflow-hidden ${className}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
     >
       {/* 3D Canvas */}
       <Canvas
@@ -225,6 +250,12 @@ export default function GLBViewer({
             rotation={[0, 2.5, 0]}
             uvMapping={uvMapping}
             testTexture={testTexture}
+            isDragging={isDragging}
+            velocity={velocity}
+            groupRef={groupRef}
+            setCameraPosition={setCameraPosition}
+            minCameraHeight={minCameraHeight}
+            maxCameraHeight={maxCameraHeight}
           />
 
           {/* 軌道控制器 - 禁用旋轉，保留縮放和平移 */}

@@ -17,6 +17,7 @@ const draftRoutes = require('./routes/drafts');
 const orderRoutes = require('./routes/orders');
 const vendorRoutes = require('./routes/vendors');
 const authRoutes = require('./routes/auth');
+const pricingSettingsRoutes = require('./routes/pricing-settings');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -114,6 +115,7 @@ app.use('/api/drafts', draftRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/pricing-settings', pricingSettingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

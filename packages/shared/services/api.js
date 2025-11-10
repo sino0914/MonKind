@@ -217,6 +217,24 @@ export const API = {
     delete: (id) => HttpAPI.vendors.delete(id),
   },
 
+  // 定價設定相關 API
+  pricingSettings: {
+    // 獲取所有定價設定
+    getAll: () => HttpAPI.pricingSettings.getAll(),
+    // 獲取當前啟用的定價設定
+    getActive: () => HttpAPI.pricingSettings.getActive(),
+    // 獲取單個定價設定
+    getById: (id) => HttpAPI.pricingSettings.getById(id),
+    // 建立定價設定
+    create: (data) => HttpAPI.pricingSettings.create(data),
+    // 更新定價設定
+    update: (id, data) => HttpAPI.pricingSettings.update(id, data),
+    // 刪除定價設定
+    delete: (id) => HttpAPI.pricingSettings.delete(id),
+    // 計算價格
+    calculate: (productPrice, designElements) => HttpAPI.pricingSettings.calculate(productPrice, designElements),
+  },
+
   // 文件上傳相關 API
   upload: {
     // GLB 文件上傳

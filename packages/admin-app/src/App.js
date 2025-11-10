@@ -14,6 +14,7 @@ import ProductMaintenance from './pages/Products/ProductMaintenance';
 import TemplateManagement from './pages/Templates/TemplateManagement';
 import TemplateEditor from './pages/Templates/TemplateEditor';
 import ElementManagement from './pages/Elements/ElementManagement';
+import PricingSettings from './pages/PricingSettings';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false }) => {
@@ -131,6 +132,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute adminOnly={true}>
             <ElementManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pricing-settings"
+        element={
+          <ProtectedRoute adminOnly={true}>
+            <PricingSettings />
           </ProtectedRoute>
         }
       />

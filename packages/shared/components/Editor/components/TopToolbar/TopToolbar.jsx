@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import WorkNameEditor from './WorkNameEditor';
 import ToolbarActions from './ToolbarActions';
+import PriceDisplay from './PriceDisplay';
 
 /**
  * 頂部工具列主組件
@@ -33,6 +34,7 @@ const TopToolbar = ({
   onRedo,
   canUndo = false,
   canRedo = false,
+  calculatedPrice = null, // 計算後的價格
 }) => {
   const navigate = useNavigate();
 
@@ -98,19 +100,24 @@ const TopToolbar = ({
 
   // 默認右側內容
   const defaultTopToolbarRight = (
-    <ToolbarActions
-      mode={mode}
-      onSaveDraft={onSaveDraft}
-      onAddToCart={onAddToCart}
-      onTestOutput={onTestOutput}
-      isEditingFromCart={isEditingFromCart}
-      onResetView={onResetView}
-      currentZoom={currentZoom}
-      onUndo={onUndo}
-      onRedo={onRedo}
-      canUndo={canUndo}
-      canRedo={canRedo}
-    />
+    <div className="flex items-center">
+      {mode === 'product' && calculatedPrice !== null && (
+        <PriceDisplay price={calculatedPrice} />
+      )}
+      <ToolbarActions
+        mode={mode}
+        onSaveDraft={onSaveDraft}
+        onAddToCart={onAddToCart}
+        onTestOutput={onTestOutput}
+        isEditingFromCart={isEditingFromCart}
+        onResetView={onResetView}
+        currentZoom={currentZoom}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+      />
+    </div>
   );
 
   if (!showTopToolbar) {
@@ -144,6 +151,7 @@ TopToolbar.propTypes = {
   onSaveDraft: PropTypes.func,
   onAddToCart: PropTypes.func,
   onTestOutput: PropTypes.func,
+  calculatedPrice: PropTypes.number,
 };
 
 TopToolbar.defaultProps = {

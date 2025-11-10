@@ -150,6 +150,62 @@ const UniversalEditor = ({
   // 計算工具列表
   const tools = useMemo(() => createTools(showTemplateTools), [showTemplateTools]);
 
+  // 價格計算邏輯
+  const [pricingSettings, setPricingSettings] = useState(null);
+
+  useEffect(() => {
+    // 載入啟用的定價設定
+    const loadPricingSettings = async () => {
+      try {
+        const settings = await API.pricingSettings.getActive();
+        console.log('💰 載入定價設定:', `文字 $${settings.textElementPrice} | 圖片 $${settings.imageElementPrice} | 最低設計費 $${settings.minimumDesignFee}`);
+        setPricingSettings(settings);
+      } catch (error) {
+        console.error('💰 載入定價設定失敗:', error);
+        // 使用預設值
+        const defaultSettings = {
+          textElementPrice: 10,
+          imageElementPrice: 30,
+          minimumDesignFee: 50,
+          enableMinimumFee: true,
+        };
+        setPricingSettings(defaultSettings);
+      }
+    };
+
+    if (mode === 'product') {
+      loadPricingSettings();
+    }
+  }, [mode]);
+
+  // 計算即時價格
+  const calculatedPrice = useMemo(() => {
+    if (mode !== 'product' || !currentProduct || !pricingSettings) {
+      return null;
+    }
+
+    const basePrice = currentProduct.price || 0;
+    const textCount = editorState.designElements.filter(el => el.type === 'text').length;
+    const imageCount = editorState.designElements.filter(el => el.type === 'image').length;
+    const totalElements = textCount + imageCount;
+
+    // 計算元素費用
+    const textCost = textCount * pricingSettings.textElementPrice;
+    const imageCost = imageCount * pricingSettings.imageElementPrice;
+    let designCost = textCost + imageCost;
+
+    // 套用最低設計費
+    if (pricingSettings.enableMinimumFee && totalElements > 0 && designCost < pricingSettings.minimumDesignFee) {
+      designCost = pricingSettings.minimumDesignFee;
+    }
+
+    const totalPrice = basePrice + designCost;
+
+    console.log(`💰 價格計算: 基礎 $${basePrice} + 文字 ${textCount}×$${pricingSettings.textElementPrice} + 圖片 ${imageCount}×$${pricingSettings.imageElementPrice} = 總價 $${totalPrice}`);
+
+    return totalPrice;
+  }, [mode, currentProduct, pricingSettings, editorState.designElements]);
+
   // 計算編輯中文字的實際寬度
   const editingInputWidth = useMemo(() => {
     if (!editorState.editingText || !editorState.editingContent) return 100;
@@ -707,6 +763,7 @@ const UniversalEditor = ({
         onRedo={editorState.redo}
         canUndo={editorState.canUndo}
         canRedo={editorState.canRedo}
+        calculatedPrice={calculatedPrice}
       />
 
       <div className="flex-1 flex">

@@ -20,6 +20,7 @@ const Layout = ({ children }) => {
     { name: '商品維護', path: '/products', icon: '📦', adminOnly: true },
     { name: '版型管理', path: '/templates', icon: '📐', adminOnly: true },
     { name: '元素管理', path: '/elements', icon: '🎨', adminOnly: true },
+    { name: '定價設定', path: '/pricing-settings', icon: '💰', adminOnly: true },
   ];
 
   // 根據角色過濾導航項目

@@ -544,6 +544,48 @@ export const HttpAPI = {
     },
   },
 
+  // 定價設定相關 API
+  pricingSettings: {
+    // 獲取所有定價設定
+    getAll: async () => {
+      const response = await httpApiService.get('/pricing-settings');
+      return response;
+    },
+    // 獲取當前啟用的定價設定
+    getActive: async () => {
+      const response = await httpApiService.get('/pricing-settings/active');
+      return response.data;
+    },
+    // 獲取單個定價設定
+    getById: async (id) => {
+      const response = await httpApiService.get(`/pricing-settings/${id}`);
+      return response.data;
+    },
+    // 建立定價設定
+    create: async (data) => {
+      const response = await httpApiService.post('/pricing-settings', data);
+      return response;
+    },
+    // 更新定價設定
+    update: async (id, data) => {
+      const response = await httpApiService.put(`/pricing-settings/${id}`, data);
+      return response;
+    },
+    // 刪除定價設定
+    delete: async (id) => {
+      const response = await httpApiService.delete(`/pricing-settings/${id}`);
+      return response;
+    },
+    // 計算價格
+    calculate: async (productPrice, designElements) => {
+      const response = await httpApiService.post('/pricing-settings/calculate', {
+        productPrice,
+        designElements
+      });
+      return response.data;
+    },
+  },
+
   // 系統相關 API
   system: {
     health: () => httpApiService.checkHealth(),
