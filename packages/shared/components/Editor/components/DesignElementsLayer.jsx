@@ -330,7 +330,7 @@ const DesignElementsLayer = ({
               <React.Fragment key={`interaction-${element.id}`}>
                 {/* 主要互動層（元素框） */}
                 <div
-                  className={`absolute pointer-events-auto ${
+                  className={`absolute ${element.hasMask ? 'pointer-events-none' : 'pointer-events-auto'} ${
                     isLocked
                       ? "cursor-not-allowed"
                       : draggedElement === element.id
@@ -479,7 +479,7 @@ const DesignElementsLayer = ({
 
                 return (
                   <div
-                    className="absolute"
+                    className="absolute pointer-events-auto cursor-grab"
                     style={{
                       // 使用中心點定位
                       left: `${(maskCenterX / 400) * 100}%`,
