@@ -3,45 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { API } from "@monkind/shared/services/api";
 import GLBViewer from "@monkind/shared/components/GLBViewer";
 import UVMapper from "@monkind/shared/components/UVMapper";
-import Layout from "../../components/Layout";
-import { useNotification } from "./hooks/useNotification";
-import { useDesignArea } from "./hooks/useDesignArea";
-import NotificationMessage from "./components/NotificationMessage";
-import DesignAreaPreview from "./components/DesignAreaPreview";
-import BleedAreaSettings from "./components/BleedAreaSettings";
 
 const ProductMaintenance = () => {
   const navigate = useNavigate();
-
-  // 使用通知 Hook
-  const { notification, showNotification } = useNotification();
-
-  // 使用設計區域 Hook
-  const {
-    tempPrintArea,
-    setTempPrintArea,
-    tempBleedArea,
-    bleedMode,
-    isDragging,
-    dragType,
-    updatePrintArea,
-    resetPrintArea,
-    enableBleedArea,
-    disableBleedArea,
-    toggleBleedMode,
-    updateBleedArea,
-    resetBleedArea,
-    startDrag,
-    stopDrag,
-    handleDragMove,
-  } = useDesignArea();
-
-  // 其他狀態
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [tempPrintArea, setTempPrintArea] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragType, setDragType] = useState(null); // 'move', 'resize'
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [notification, setNotification] = useState(null);
   const [editingProduct, setEditingProduct] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -57,9 +31,6 @@ const ProductMaintenance = () => {
   // UV 測試圖片狀態
   const [uvTestImage, setUvTestImage] = useState(null);
 
-  // 拖曳狀態 (由 hook 管理，但需要保留用於滑鼠事件)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
   // 載入商品資料
   const loadProducts = async () => {
     try {
@@ -70,14 +41,11 @@ const ProductMaintenance = () => {
 
       if (productsData.length > 0) {
         setSelectedProduct(productsData[0]);
-
-        // 使用 hook 的 reset 函數初始化設計區域
-        resetPrintArea(
-          productsData[0].printArea || { x: 50, y: 50, width: 200, height: 150 }
+        setTempPrintArea(
+          productsData[0].printArea
+            ? { ...productsData[0].printArea }
+            : { x: 50, y: 50, width: 200, height: 150 }
         );
-
-        // 使用 hook 的 reset 函數初始化出血區域
-        resetBleedArea(productsData[0].bleedArea || null);
       }
     } catch (error) {
       console.error("載入商品失敗:", error);
@@ -90,6 +58,14 @@ const ProductMaintenance = () => {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // 顯示提示訊息
+  const showNotification = (message, type = "success") => {
+    setNotification({ message, type });
+    setTimeout(() => {
+      setNotification(null);
+    }, 3000);
+  };
 
   // 產品類型變更處理
   const handleProductTypeChange = async (newType) => {
@@ -379,13 +355,11 @@ const ProductMaintenance = () => {
       !!product.mockupImage
     );
     setSelectedProduct(product);
-
-    // 使用 hook 的 reset 函數初始化設計區域和出血區域
-    resetPrintArea(
-      product.printArea || { x: 50, y: 50, width: 200, height: 150 }
+    setTempPrintArea(
+      product.printArea
+        ? { ...product.printArea }
+        : { x: 50, y: 50, width: 200, height: 150 }
     );
-    resetBleedArea(product.bleedArea || null);
-
     // 強制重新渲染以確保底圖正確顯示
     setTimeout(() => {
       setSelectedProduct({ ...product });
@@ -394,6 +368,8 @@ const ProductMaintenance = () => {
 
   const handleMouseDown = (e, type) => {
     e.preventDefault();
+    setIsDragging(true);
+    setDragType(type);
 
     const rect = e.currentTarget
       .closest(".canvas-container")
@@ -401,13 +377,10 @@ const ProductMaintenance = () => {
     const canvasWidth = rect.width;
     const canvasHeight = rect.height;
 
-    const startPos = {
+    setDragStart({
       x: ((e.clientX - rect.left) / canvasWidth) * 400,
       y: ((e.clientY - rect.top) / canvasHeight) * 400,
-    };
-
-    setDragStart(startPos);
-    startDrag(type, startPos);
+    });
   };
 
   const handleMouseMove = (e) => {
@@ -433,10 +406,11 @@ const ProductMaintenance = () => {
         Math.min(400 - tempPrintArea.height, tempPrintArea.y + deltaY)
       );
 
-      updatePrintArea({
+      setTempPrintArea((prev) => ({
+        ...prev,
         x: parseFloat(newX.toFixed(1)),
         y: parseFloat(newY.toFixed(1)),
-      });
+      }));
     } else if (dragType === "resize") {
       const newWidth = Math.max(
         50,
@@ -447,17 +421,19 @@ const ProductMaintenance = () => {
         Math.min(400 - tempPrintArea.y, tempPrintArea.height + deltaY)
       );
 
-      updatePrintArea({
+      setTempPrintArea((prev) => ({
+        ...prev,
         width: parseFloat(newWidth.toFixed(1)),
         height: parseFloat(newHeight.toFixed(1)),
-      });
+      }));
     }
 
     setDragStart({ x: currentX, y: currentY });
   };
 
   const handleMouseUp = () => {
-    stopDrag();
+    setIsDragging(false);
+    setDragType(null);
   };
 
   const handleSavePrintArea = async () => {
@@ -467,16 +443,10 @@ const ProductMaintenance = () => {
       setSaving(true);
       setError(null);
 
-      // 準備更新資料（包含設計區和出血區域）
-      const updateData = {
-        printArea: tempPrintArea,
-        bleedArea: tempBleedArea
-      };
-
-      // 使用 API 保存設計區範圍和出血區域
-      const updatedProduct = await API.products.update(
+      // 使用 API 保存設計區範圍
+      const updatedProduct = await API.products.updatePrintArea(
         selectedProduct.id,
-        updateData
+        tempPrintArea
       );
 
       // 更新本地狀態
@@ -487,9 +457,8 @@ const ProductMaintenance = () => {
       setProducts(updatedProducts);
       setSelectedProduct(updatedProduct);
 
-      showNotification("設計區範圍和出血區域已成功儲存！");
+      showNotification("設計區範圍已成功儲存！");
       console.log("設計區範圍已保存:", tempPrintArea);
-      console.log("出血區域已保存:", tempBleedArea);
     } catch (error) {
       console.error("保存設計區失敗:", error);
       setError("保存失敗: " + error.message);
@@ -928,144 +897,225 @@ const ProductMaintenance = () => {
   // 載入狀態
   if (loading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">載入商品資料中...</p>
-          </div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">載入商品資料中...</p>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   // 錯誤狀態
   if (error) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center max-w-md mx-auto">
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              <p className="font-bold">載入失敗</p>
-              <p>{error}</p>
-            </div>
-            <button
-              onClick={loadProducts}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              重新載入
-            </button>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <p className="font-bold">載入失敗</p>
+            <p>{error}</p>
           </div>
+          <button
+            onClick={loadProducts}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            重新載入
+          </button>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   // 沒有商品
   if (!selectedProduct) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-gray-600 mb-4">沒有找到商品資料</p>
-            <button
-              onClick={loadProducts}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              重新載入
-            </button>
-          </div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">沒有找到商品資料</p>
+          <button
+            onClick={loadProducts}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            重新載入
+          </button>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="bg-gray-50 -m-6 p-6">
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">商品維護</h1>
-          <p className="text-gray-500 text-sm">管理商品資訊與設計區範圍</p>
-        </div>
-
-        {/* Error Display */}
-        {error && (
-            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-              <div className="flex items-center justify-between">
-                <div>
-                  <strong className="font-bold">錯誤：</strong>
-                  <span className="block sm:inline">{error}</span>
-                </div>
-                <button
-                  onClick={() => setError(null)}
-                  className="text-red-700 hover:text-red-900"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
-
-        {/* 商品選擇下拉式選單 + 新增按鈕 */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                選擇商品
-              </label>
-              <select
-                value={selectedProduct?.id || ''}
-                onChange={(e) => {
-                  const product = products.find(p => p.id === parseInt(e.target.value));
-                  if (product) handleProductSelect(product);
-                }}
-                className="w-full px-4 py-2.5 text-sm border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-              >
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.title} ({product.type || "2D"}) - NT$ {product.price} {product.isActive === false ? '(已停用)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="pt-7">
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
               <button
-                onClick={() => setShowAddModal(true)}
-                className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+                onClick={() => navigate("/admin")}
+                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mr-4"
               >
-                ➕ 新增商品
+                <svg
+                  className="w-5 h-5 mr-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                返回
               </button>
+              <h1 className="text-xl font-bold text-gray-900">
+                📦 商品維護 - 設計區管理
+              </h1>
+            </div>
+            <div className="flex items-center space-x-3">
+              {/* 移除測試編輯器按鈕 */}
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 gap-6">
-          {/* Main Content Area - 全寬顯示 */}
-          <div className="col-span-1">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 左側：設計區編輯器 */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="p-5 border-b border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <h3 className="text-base font-semibold text-gray-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            <div className="flex items-center justify-between">
+              <div>
+                <strong className="font-bold">錯誤：</strong>
+                <span className="block sm:inline">{error}</span>
+              </div>
+              <button
+                onClick={() => setError(null)}
+                className="text-red-700 hover:text-red-900"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Left Sidebar - Product List */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow border border-gray-200">
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">商品列表</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      點擊選擇要編輯的商品
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                  >
+                    ➕ 新增
+                  </button>
+                </div>
+              </div>
+              <div className="p-2 max-h-96 overflow-y-auto">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    className={`rounded-md mb-2 transition-colors ${
+                      selectedProduct?.id === product.id
+                        ? "bg-blue-50 border-blue-200 border-2"
+                        : "bg-white border-gray-100 border-b-2 hover:bg-gray-50"
+                    } ${product.isActive === false ? "opacity-50" : ""}`}
+                  >
+                    <div
+                      onClick={() => handleProductSelect(product)}
+                      className="p-3 cursor-pointer"
+                    >
+                      <div className="flex items-center">
+                        <img
+                          src={product.image}
+                          alt={product.title}
+                          className="w-12 h-12 object-cover rounded mr-3"
+                        />
+                        <div className="flex-1 min-w-0 relative">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {product.title}
+                              </p>
+                              <span
+                                className={`px-2 py-0.5 text-xs rounded-full ${
+                                  product.type === "3D"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-blue-100 text-blue-800"
+                                }`}
+                              >
+                                {product.type || "2D"}
+                              </span>
+                            </div>
+                          </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleActive(product.id);
+                              }}
+                              className={`absolute right-0 w-10 h-5 rounded-full transition-colors ${
+                                product.isActive !== false
+                                  ? "bg-green-500"
+                                  : "bg-gray-300"
+                              }`}
+                            >
+                              <div
+                                className={`w-4 h-4 bg-white rounded-full transition-transform ${
+                                  product.isActive !== false
+                                    ? "translate-x-5"
+                                    : "translate-x-0.5"
+                                }`}
+                              ></div>
+                            </button>
+                          <p className="text-xs text-gray-500">
+                            {product.category} • NT$ {product.price}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {product.printArea
+                              ? `${product.printArea.width}×${product.printArea.height}`
+                              : "未設定"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow border border-gray-200">
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h3 className="font-semibold text-gray-900">
                         設計區編輯器
                       </h3>
                       <span
-                        className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                        className={`px-3 py-1 text-sm rounded-full ${
                           selectedProduct.type === "3D"
                             ? "bg-purple-100 text-purple-800"
                             : "bg-blue-100 text-blue-800"
@@ -1074,98 +1124,227 @@ const ProductMaintenance = () => {
                         {selectedProduct.type || "2D"}
                       </span>
                     </div>
-                    <div className="flex space-x-2">
-                      {selectedProduct.type !== "3D" && (
-                        <button
-                          onClick={handleResetPrintArea}
-                          className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-xs font-medium"
-                        >
-                          ↶ 重置
-                        </button>
-                      )}
+                    <p className="text-sm text-gray-600">
+                      {selectedProduct.title}
+                    </p>
+                  </div>
+                  <div className="flex space-x-2">
+                    {selectedProduct.type !== "3D" && (
                       <button
-                        onClick={
-                          selectedProduct.type === "3D"
-                            ? handleSave3DModel
-                            : handleSavePrintArea
-                        }
-                        disabled={saving}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                          saving
-                            ? "bg-gray-400 text-white cursor-not-allowed"
-                            : "bg-green-600 text-white hover:bg-green-700"
-                        }`}
+                        onClick={handleResetPrintArea}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm"
                       >
-                        {saving ? "儲存中..." : "💾 儲存"}
+                        ↶ 重置
                       </button>
-                    </div>
+                    )}
+
+                    <button
+                      onClick={
+                        selectedProduct.type === "3D"
+                          ? handleSave3DModel
+                          : handleSavePrintArea
+                      }
+                      disabled={saving}
+                      className={`px-3 py-2 text-sm rounded-md transition-colors ${
+                        saving
+                          ? "bg-gray-400 text-white cursor-not-allowed"
+                          : "bg-green-600 text-white hover:bg-green-700"
+                      }`}
+                    >
+                      {saving ? "💾 儲存中..." : "💾 儲存"}
+                    </button>
                   </div>
                 </div>
 
-                {/* Canvas Area */}
-                <div className="p-5">
-                  {/* 產品類型切換 */}
-                  <div className="flex items-center justify-center space-x-4 mb-4 pb-4 border-b border-gray-200">
-                    <span className="text-xs font-medium text-gray-700">
-                      產品類型：
+                {/* 產品類型切換 */}
+                <div className="flex items-center space-x-4 mb-4">
+                  <span className="text-sm font-medium text-gray-700">
+                    產品類型：
+                  </span>
+                  <div className="flex space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="2D"
+                        checked={selectedProduct.type !== "3D"}
+                        onChange={() => handleProductTypeChange("2D")}
+                        className="mr-2"
+                      />
+                      2D 設計
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="3D"
+                        checked={selectedProduct.type === "3D"}
+                        onChange={() => handleProductTypeChange("3D")}
+                        className="mr-2"
+                      />
+                      3D 設計
+                    </label>
+                  </div>
+                </div>
+              </div>
+              {/* Canvas Area */}
+              <div className="p-8">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                  2D 商品底圖
+                  {selectedProduct.mockupImage && (
+                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded ml-5">
+                      ✓ 已設定
                     </span>
-                    <div className="flex space-x-3">
-                      <label className="flex items-center text-sm">
-                        <input
-                          type="radio"
-                          value="2D"
-                          checked={selectedProduct.type !== "3D"}
-                          onChange={() => handleProductTypeChange("2D")}
-                          className="mr-1.5"
+                  )}
+                </h4>
+                {/* === 2D 畫布 === */}
+                <div className="flex justify-center">
+                  <div
+                    className="canvas-container w-96 h-96 border-2 border-gray-200 rounded-lg relative overflow-hidden bg-gray-50 cursor-crosshair"
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  >
+                    {/* 底圖 */}
+                    {selectedProduct.mockupImage ? (
+                      <img
+                        key={`mockup-${
+                          selectedProduct.id
+                        }-${selectedProduct.mockupImage.substring(0, 50)}`}
+                        src={selectedProduct.mockupImage}
+                        alt={`${selectedProduct.title} 底圖`}
+                        className="w-full h-full object-contain pointer-events-none"
+                        onError={(e) => {
+                          console.error(
+                            "Mockup image failed to load:",
+                            selectedProduct.mockupImage
+                          );
+                          e.target.style.display = "none";
+                          if (e.target.nextSibling) {
+                            e.target.nextSibling.style.display = "flex";
+                          }
+                        }}
+                        onLoad={() => {
+                          console.log("Mockup image loaded successfully");
+                        }}
+                      />
+                    ) : null}
+
+                    {/* Fallback */}
+                    <div
+                      key={`fallback-${selectedProduct.id}`}
+                      className="absolute inset-0 bg-gray-50 border-2 border-dashed border-gray-300 rounded flex items-center justify-center"
+                      style={{
+                        display: selectedProduct.mockupImage ? "none" : "flex",
+                      }}
+                    >
+                      <div className="text-center">
+                        <div className="mb-3">
+                          <svg
+                            className="w-12 h-12 mx-auto text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1}
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-gray-500 text-sm mb-1">
+                          尚未設定底圖
+                        </p>
+                        <p className="text-gray-400 text-xs">
+                          使用下方控制項上傳底圖
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 設計區 Overlay */}
+                    {tempPrintArea && (
+                      <div
+                        className="absolute border-2 border-blue-500 border-solid bg-blue-50 bg-opacity-30"
+                        style={{
+                          left: `${(tempPrintArea.x / 400) * 100}%`,
+                          top: `${(tempPrintArea.y / 400) * 100}%`,
+                          width: `${(tempPrintArea.width / 400) * 100}%`,
+                          height: `${(tempPrintArea.height / 400) * 100}%`,
+                        }}
+                      >
+                        <div className="absolute -top-6 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                          設計區 {tempPrintArea.width.toFixed(1)}×
+                          {tempPrintArea.height.toFixed(1)}
+                        </div>
+
+                        <div
+                          className="absolute inset-0 cursor-move bg-blue-200 bg-opacity-20 hover:bg-opacity-30 flex items-center justify-center"
+                          onMouseDown={(e) => handleMouseDown(e, "move")}
+                        >
+                          <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded opacity-75">
+                            拖曳移動
+                          </div>
+                        </div>
+
+                        <div
+                          className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-se-resize hover:bg-blue-600"
+                          onMouseDown={(e) => handleMouseDown(e, "resize")}
+                          style={{
+                            clipPath: "polygon(100% 0, 100% 100%, 0 100%)",
+                          }}
                         />
-                        2D
-                      </label>
-                      <label className="flex items-center text-sm">
-                        <input
-                          type="radio"
-                          value="3D"
-                          checked={selectedProduct.type === "3D"}
-                          onChange={() => handleProductTypeChange("3D")}
-                          className="mr-1.5"
+
+                        <div className="absolute top-0 left-0 w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1 -translate-y-1" />
+                        <div className="absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full transform translate-x-1 -translate-y-1" />
+                        <div className="absolute bottom-0 left-0 w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1 translate-y-1" />
+                      </div>
+                    )}
+
+                    {/* Grid Overlay */}
+                    <div className="absolute inset-0 pointer-events-none">
+                      <svg className="w-full h-full">
+                        <defs>
+                          <pattern
+                            id="grid"
+                            width="20"
+                            height="20"
+                            patternUnits="userSpaceOnUse"
+                          >
+                            <path
+                              d="M 20 0 L 0 0 0 20"
+                              fill="none"
+                              stroke="#e5e7eb"
+                              strokeWidth="0.5"
+                            />
+                          </pattern>
+                        </defs>
+                        <rect
+                          width="100%"
+                          height="100%"
+                          fill="url(#grid)"
+                          opacity="0.5"
                         />
-                        3D
-                      </label>
+                      </svg>
                     </div>
                   </div>
-
-                  {/* === 2D 畫布 === */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-gray-900">
-                        2D 商品底圖
-                      </h4>
-                      {selectedProduct.mockupImage && (
-                        <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded font-medium">
-                          ✓ 已設定
-                        </span>
-                      )}
-                    </div>
-                    <DesignAreaPreview
-                      product={selectedProduct}
-                      tempPrintArea={tempPrintArea}
-                      tempBleedArea={tempBleedArea}
-                      onMouseDown={handleMouseDown}
-                      onMouseMove={handleMouseMove}
-                      onMouseUp={handleMouseUp}
-                    />
                 </div>
 
-                  {/* 提示 */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                    <div className="space-y-1 text-xs text-gray-700">
-                      <p>🖱️ <strong>拖曳</strong>藍色區域移動 | 📏 <strong>右下角</strong>調整大小</p>
-                    </div>
+                {/* 提示 */}
+                <div className="mt-4 text-center text-sm text-gray-600">
+                  <div className="space-y-1">
+                    <p>
+                      🖱️ <strong>點擊並拖曳</strong> 藍色區域來移動設計區位置
+                    </p>
+                    <p>
+                      📏 <strong>拖曳右下角</strong> 來調整設計區大小
+                    </p>
+                    <p>💾 調整完成後點擊「儲存」按鈕保存變更</p>
                   </div>
+                </div>
 
-                  {/* 底圖控制項 */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <h5 className="text-xs font-semibold text-gray-900 mb-3">底圖管理</h5>
-                    <div className="grid grid-cols-2 gap-2">
+                {/* 底圖控制項 */}
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg border mb-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* 上傳底圖 */}
                     <div>
                       <input
@@ -1177,10 +1356,10 @@ const ProductMaintenance = () => {
                       />
                       <label
                         htmlFor="mockup-upload"
-                        className="flex items-center justify-center w-full px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 cursor-pointer transition-all"
+                        className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
                       >
                         <svg
-                          className="w-3 h-3 mr-1"
+                          className="w-4 h-4 mr-2"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -1192,7 +1371,7 @@ const ProductMaintenance = () => {
                             d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                           />
                         </svg>
-                        {selectedProduct.mockupImage ? "更換" : "上傳"}
+                        {selectedProduct.mockupImage ? "更換底圖" : "上傳底圖"}
                       </label>
                     </div>
 
@@ -1200,10 +1379,10 @@ const ProductMaintenance = () => {
                     {selectedProduct.mockupImage && (
                       <button
                         onClick={handleRemoveMockupImage}
-                        className="flex items-center justify-center w-full px-3 py-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-all"
+                        className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors"
                       >
                         <svg
-                          className="w-3 h-3 mr-1"
+                          className="w-4 h-4 mr-2"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -1215,11 +1394,27 @@ const ProductMaintenance = () => {
                             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                           />
                         </svg>
-                        移除
+                        移除底圖
                       </button>
                     )}
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">支援 JPG, PNG, GIF, WebP</p>
+
+                  <div className="mt-3 text-xs text-gray-500">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="font-medium text-gray-600 mb-1">
+                          支援格式：
+                        </p>
+                        <p>JPG, PNG, GIF, WebP</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-600 mb-1">
+                          檔案處理：
+                        </p>
+                        <p>系統會自動壓縮大圖片</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 {selectedProduct.type === "3D" && (
                   <div className="space-y-6">
@@ -1313,40 +1508,42 @@ const ProductMaintenance = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar - Properties */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow border border-gray-200">
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900">商品資訊</h3>
+                  <button
+                    onClick={() => setEditingProduct(!editingProduct)}
+                    className={`px-3 py-1 text-sm rounded transition-colors ${
+                      editingProduct
+                        ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
+                  >
+                    {editingProduct ? "完成編輯" : "✏️ 編輯"}
+                  </button>
                 </div>
               </div>
-
-              {/* 右側：商品資訊 */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="p-5 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-semibold text-gray-900">商品資訊</h3>
-                    <button
-                      onClick={() => setEditingProduct(!editingProduct)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                        editingProduct
-                          ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          : "bg-blue-600 text-white hover:bg-blue-700"
-                      }`}
-                    >
-                      {editingProduct ? "完成" : "✏️ 編輯"}
-                    </button>
-                  </div>
-                </div>
-                <div className="p-5 space-y-4 max-h-[600px] overflow-y-auto">
+              <div className="p-4 space-y-4">
                 {/* 商品圖片 */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     商品主圖
                   </label>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-4">
                     <img
                       src={selectedProduct.image}
                       alt={selectedProduct.title}
-                      className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                      className="w-20 h-20 object-cover rounded border"
                     />
                     {editingProduct && (
-                      <div className="flex-1">
+                      <div>
                         <input
                           type="file"
                           accept="image/*"
@@ -1356,26 +1553,29 @@ const ProductMaintenance = () => {
                         />
                         <label
                           htmlFor="image-upload"
-                          className="cursor-pointer inline-block px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          className="cursor-pointer px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                         >
-                          📷 更換
+                          📷 更換主圖
                         </label>
+                        <p className="text-xs text-gray-500 mt-1">
+                          支援 JPG, PNG, GIF (最大 5MB)
+                        </p>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* 內容圖片 */}
-                <div className="pt-4 border-t border-gray-200">
-                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     內容圖片
-                    <span className="text-xs text-gray-500 ml-2 font-normal">
+                    <span className="text-xs text-gray-500 ml-2">
                       ({selectedProduct.contentImages?.length || 0}/10)
                     </span>
                   </label>
 
                   {/* 圖片預覽區域 */}
-                  <div className="grid grid-cols-3 gap-2 mb-2">
+                  <div className="grid grid-cols-3 gap-3 mb-3">
                     {selectedProduct.contentImages?.map((imageUrl, index) => (
                       <div key={index} className="relative group">
                         <img
@@ -1478,8 +1678,8 @@ const ProductMaintenance = () => {
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-gray-200">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     商品名稱
                   </label>
                   {editingProduct ? (
@@ -1489,7 +1689,7 @@ const ProductMaintenance = () => {
                       onChange={(e) =>
                         handleUpdateProduct("title", e.target.value)
                       }
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md"
                     />
                   ) : (
                     <p className="text-sm text-gray-900">
@@ -1499,7 +1699,7 @@ const ProductMaintenance = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     類別
                   </label>
                   {editingProduct ? (
@@ -1508,7 +1708,7 @@ const ProductMaintenance = () => {
                       onChange={(e) =>
                         handleUpdateProduct("category", e.target.value)
                       }
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md"
                     >
                       <option value="mug">馬克杯</option>
                       <option value="tshirt">T恤</option>
@@ -1525,12 +1725,12 @@ const ProductMaintenance = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     價格
                   </label>
                   {editingProduct ? (
                     <div className="flex items-center">
-                      <span className="text-xs text-gray-500 mr-2">NT$</span>
+                      <span className="text-sm text-gray-500 mr-2">NT$</span>
                       <input
                         type="number"
                         value={selectedProduct.price}
@@ -1540,7 +1740,7 @@ const ProductMaintenance = () => {
                             parseInt(e.target.value) || 0
                           )
                         }
-                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all"
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md"
                         min="0"
                       />
                     </div>
@@ -1552,7 +1752,7 @@ const ProductMaintenance = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     商品描述
                   </label>
                   {editingProduct ? (
@@ -1562,7 +1762,7 @@ const ProductMaintenance = () => {
                         handleUpdateProduct("description", e.target.value)
                       }
                       rows={3}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md"
                       placeholder="輸入商品描述..."
                     />
                   ) : (
@@ -1594,121 +1794,106 @@ const ProductMaintenance = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     商品狀態
                   </label>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span
-                        className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                          selectedProduct.isActive !== false
-                            ? "bg-green-500"
-                            : "bg-red-500"
-                        }`}
-                      ></span>
-                      <span className="text-sm text-gray-900">
-                        {selectedProduct.isActive !== false ? "已啟用" : "已停用"}
-                      </span>
-                    </div>
-                    {editingProduct && (
-                      <button
-                        onClick={() => handleToggleActive(selectedProduct.id)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                          selectedProduct.isActive !== false
-                            ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
-                            : "bg-green-100 text-green-700 hover:bg-green-200"
-                        }`}
-                      >
-                        {selectedProduct.isActive !== false ? "停用商品" : "啟用商品"}
-                      </button>
-                    )}
+                  <div className="flex items-center">
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                        selectedProduct.isActive !== false
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                      }`}
+                    ></span>
+                    <span className="text-sm text-gray-900">
+                      {selectedProduct.isActive !== false ? "已啟用" : "已停用"}
+                    </span>
                   </div>
                 </div>
 
                 {tempPrintArea && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <h4 className="text-xs font-semibold text-gray-900 mb-3">
-                      設計區屬性
-                    </h4>
+                  <>
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold text-gray-900 mb-3">
+                        設計區屬性
+                      </h4>
+                    </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-gray-700 mb-1">
-                          X
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          X 座標
                         </label>
                         <input
                           type="number"
                           step="0.1"
                           value={tempPrintArea.x.toFixed(1)}
                           onChange={(e) =>
-                            updatePrintArea({ x: parseFloat(e.target.value) || 0 })
+                            setTempPrintArea((prev) => ({
+                              ...prev,
+                              x: parseFloat(e.target.value) || 0,
+                            }))
                           }
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-700 mb-1">
-                          Y
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Y 座標
                         </label>
                         <input
                           type="number"
                           step="0.1"
                           value={tempPrintArea.y.toFixed(1)}
                           onChange={(e) =>
-                            updatePrintArea({ y: parseFloat(e.target.value) || 0 })
+                            setTempPrintArea((prev) => ({
+                              ...prev,
+                              y: parseFloat(e.target.value) || 0,
+                            }))
                           }
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-700 mb-1">
-                          寬
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          寬度
                         </label>
                         <input
                           type="number"
                           step="0.1"
                           value={tempPrintArea.width.toFixed(1)}
                           onChange={(e) =>
-                            updatePrintArea({ width: parseFloat(e.target.value) || 50 })
+                            setTempPrintArea((prev) => ({
+                              ...prev,
+                              width: parseFloat(e.target.value) || 50,
+                            }))
                           }
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-700 mb-1">
-                          高
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          高度
                         </label>
                         <input
                           type="number"
                           step="0.1"
                           value={tempPrintArea.height.toFixed(1)}
                           onChange={(e) =>
-                            updatePrintArea({ height: parseFloat(e.target.value) || 50 })
+                            setTempPrintArea((prev) => ({
+                              ...prev,
+                              height: parseFloat(e.target.value) || 50,
+                            }))
                           }
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                         />
                       </div>
                     </div>
-                  </div>
-                )}
 
-                {/* 出血區域設定 */}
-                <BleedAreaSettings
-                  tempBleedArea={tempBleedArea}
-                  bleedMode={bleedMode}
-                  onToggleEnable={() => {
-                    if (tempBleedArea) {
-                      disableBleedArea();
-                      showNotification("已停用出血區域");
-                    } else {
-                      enableBleedArea();
-                      showNotification("已啟用出血區域（預設3px）");
-                    }
-                  }}
-                  onModeChange={(mode) => {
-                    toggleBleedMode(mode);
-                  }}
-                  onValueChange={(updates) => {
-                    updateBleedArea(updates);
-                  }}
-                />
+                    <div className="text-xs text-gray-500 mt-2">
+                      <p>• 座標系統：400×400 像素</p>
+                      <p>• 左上角為原點 (0,0)</p>
+                      <p>• 最小尺寸：50×50 像素</p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1904,9 +2089,27 @@ const ProductMaintenance = () => {
       )}
 
       {/* 懸浮提示訊息 */}
-      <NotificationMessage notification={notification} />
-      </div>
-    </Layout>
+      {notification && (
+        <div
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+            notification.type === "error"
+              ? "bg-red-500 text-white"
+              : "bg-green-500 text-white"
+          }`}
+        >
+          <div className="flex items-center">
+            <div className="flex-1">
+              <span className="text-sm font-medium">
+                {notification.message}
+              </span>
+            </div>
+            <div
+              className={`ml-3 w-2 h-2 rounded-full bg-white animate-pulse`}
+            ></div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

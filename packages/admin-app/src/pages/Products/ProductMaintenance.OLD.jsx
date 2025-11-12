@@ -1053,6 +1053,78 @@ const ProductMaintenance = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-6">
+          {/* 已隱藏左側商品列表，改用上方下拉選單 */}
+          <div className="hidden">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    className={`rounded-lg mb-3 transition-all duration-200 ${
+                      selectedProduct?.id === product.id
+                        ? "bg-blue-50 border-blue-300 border-2 shadow-sm"
+                        : "bg-white border-gray-200 border hover:bg-gray-50 hover:shadow-sm"
+                    } ${product.isActive === false ? "opacity-50" : ""}`}
+                  >
+                    <div
+                      onClick={() => handleProductSelect(product)}
+                      className="p-4 cursor-pointer"
+                    >
+                      <div className="flex items-center">
+                        <img
+                          src={product.image}
+                          alt={product.title}
+                          className="w-16 h-16 object-cover rounded-lg mr-4 flex-shrink-0 shadow-sm"
+                        />
+                        <div className="flex-1 min-w-0 relative">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {product.title}
+                              </p>
+                              <span
+                                className={`px-2 py-0.5 text-xs rounded-full ${
+                                  product.type === "3D"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-blue-100 text-blue-800"
+                                }`}
+                              >
+                                {product.type || "2D"}
+                              </span>
+                            </div>
+                          </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleActive(product.id);
+                              }}
+                              className={`absolute right-0 w-10 h-5 rounded-full transition-colors ${
+                                product.isActive !== false
+                                  ? "bg-green-500"
+                                  : "bg-gray-300"
+                              }`}
+                            >
+                              <div
+                                className={`w-4 h-4 bg-white rounded-full transition-transform ${
+                                  product.isActive !== false
+                                    ? "translate-x-5"
+                                    : "translate-x-0.5"
+                                }`}
+                              ></div>
+                            </button>
+                          <p className="text-xs text-gray-500">
+                            {product.category} • NT$ {product.price}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {product.printArea
+                              ? `${product.printArea.width}×${product.printArea.height}`
+                              : "未設定"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+          </div>
+
           {/* Main Content Area - 全寬顯示 */}
           <div className="col-span-1">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1594,31 +1666,17 @@ const ProductMaintenance = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     商品狀態
                   </label>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span
-                        className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                          selectedProduct.isActive !== false
-                            ? "bg-green-500"
-                            : "bg-red-500"
-                        }`}
-                      ></span>
-                      <span className="text-sm text-gray-900">
-                        {selectedProduct.isActive !== false ? "已啟用" : "已停用"}
-                      </span>
-                    </div>
-                    {editingProduct && (
-                      <button
-                        onClick={() => handleToggleActive(selectedProduct.id)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                          selectedProduct.isActive !== false
-                            ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
-                            : "bg-green-100 text-green-700 hover:bg-green-200"
-                        }`}
-                      >
-                        {selectedProduct.isActive !== false ? "停用商品" : "啟用商品"}
-                      </button>
-                    )}
+                  <div className="flex items-center">
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                        selectedProduct.isActive !== false
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                      }`}
+                    ></span>
+                    <span className="text-sm text-gray-900">
+                      {selectedProduct.isActive !== false ? "已啟用" : "已停用"}
+                    </span>
                   </div>
                 </div>
 

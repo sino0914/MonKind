@@ -1794,17 +1794,31 @@ const ProductMaintenance = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     商品狀態
                   </label>
-                  <div className="flex items-center">
-                    <span
-                      className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                        selectedProduct.isActive !== false
-                          ? "bg-green-500"
-                          : "bg-red-500"
-                      }`}
-                    ></span>
-                    <span className="text-sm text-gray-900">
-                      {selectedProduct.isActive !== false ? "已啟用" : "已停用"}
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span
+                        className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                          selectedProduct.isActive !== false
+                            ? "bg-green-500"
+                            : "bg-red-500"
+                        }`}
+                      ></span>
+                      <span className="text-sm text-gray-900">
+                        {selectedProduct.isActive !== false ? "已啟用" : "已停用"}
+                      </span>
+                    </div>
+                    {editingProduct && (
+                      <button
+                        onClick={() => handleToggleActive(selectedProduct.id)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                          selectedProduct.isActive !== false
+                            ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                            : "bg-green-100 text-green-700 hover:bg-green-200"
+                        }`}
+                      >
+                        {selectedProduct.isActive !== false ? "停用商品" : "啟用商品"}
+                      </button>
+                    )}
                   </div>
                 </div>
 

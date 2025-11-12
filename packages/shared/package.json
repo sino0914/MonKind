@@ -10,6 +10,7 @@
     "./components/Editor/utils": "./components/Editor/utils/index.js",
     "./components/Preview": "./components/Preview/index.js",
     "./components/Preview/ProductThumbnail": "./components/Preview/ProductThumbnail.jsx",
+    "./components/ProductMaintenance": "./components/ProductMaintenance/index.js",
     "./services/api": "./services/index.js",
     "./utils": "./utils/index.js"
   },
