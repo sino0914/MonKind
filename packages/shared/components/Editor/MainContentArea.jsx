@@ -2,6 +2,8 @@ import React, { useMemo, useRef } from "react";
 import ProductPreview from "../Preview/ProductPreview";
 import TextToolbar from "./components/TextToolbar";
 import CanvasArea from "./components/CanvasArea";
+import { calculateSelectionBoxBounds } from './utils/canvasUtils';
+import { TOOLBAR_MARGIN } from './constants/editorConfig';
 
 const MainContentArea = ({
   // 商品相關
@@ -209,10 +211,14 @@ const MainContentArea = ({
                     selectedElement &&
                     selectedElement.id === element.id
                   ) {
-                    // 使用元素的原始座標（transform 由外層容器處理）
-                    const left = `${(element.x / 400) * 100}%`;
-                    const top = `${(element.y / 400) * 100}%`;
-                    const transform = "translate(-50%, calc(-100% - 80px))";
+                    // 計算選取框邊界（考慮旋轉和 hasMask）
+                    const bounds = calculateSelectionBoxBounds(element);
+
+                    // 計算工具列位置：選取框頂部上方
+                    const toolbarTop = bounds.top - TOOLBAR_MARGIN;
+
+                    const left = `${(bounds.centerX / 400) * 100}%`;
+                    const top = `${(toolbarTop / 400) * 100}%`;
 
                     // 檢查圖片是否載入失敗
                     const isImageBroken = imageLoadErrors && imageLoadErrors.has(element.id);
@@ -224,8 +230,8 @@ const MainContentArea = ({
                         style={{
                           left,
                           top,
-                          // 外層只處理 translate，不受 scale 影響
-                          transform: "translate(-50%, calc(-100% - 80px))",
+                          // 置中對齊，並向上移動工具列自身的高度
+                          transform: "translate(-50%, -100%)",
                           transformOrigin: 'center bottom',
                           zIndex: 10000,
                         }}

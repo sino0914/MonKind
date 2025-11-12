@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import { TOOLBAR_MARGIN } from '../constants/editorConfig';
 
 /**
  * 圖片剪裁覆蓋層組件（蒙版模式）
@@ -225,6 +226,11 @@ const CropOverlay = ({
   const maskWidthPercent = (maskRect.width / 400) * 100;
   const maskHeightPercent = (maskRect.height / 400) * 100;
 
+  // 計算剪裁框頂部位置（用於工具列定位）
+  const maskTopY = maskCenterAbsY - maskRect.height / 2;
+  const toolbarTopY = maskTopY - TOOLBAR_MARGIN;
+  const toolbarTopPercent = (toolbarTopY / 400) * 100;
+
   // 計算四個角座標（用於半透明遮罩的 clip-path）
   // 由於剪裁時 rotation = 0，不需要旋轉計算
   const halfWidth = maskRect.width / 2;
@@ -343,8 +349,8 @@ const CropOverlay = ({
         className="absolute flex gap-2 pointer-events-auto"
         style={{
           left: `${maskCenterXPercent}%`,
-          top: `${maskCenterYPercent}%`,
-          transform: `translate(-50%, calc(-${maskHeightPercent * 2}% - 3rem - 100%))`,
+          top: `${toolbarTopPercent}%`,
+          transform: `translate(-50%, -100%)`,
           whiteSpace: 'nowrap',
           zIndex: 10000,
         }}

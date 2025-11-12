@@ -41,3 +41,6 @@ export const DEFAULT_BG_COLOR = "#ffffff";
 // 縮放配置
 export const MIN_ELEMENT_SIZE = 20;
 export const SCALE_FACTOR = 3; // 輸出時的縮放倍數
+
+// 工具列配置
+export const TOOLBAR_MARGIN = 30; // 工具列與選取框的間距（px）

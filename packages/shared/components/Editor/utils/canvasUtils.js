@@ -38,6 +38,69 @@ export const calculateMaskCenter = (element) => {
   };
 };
 
+// 計算選取框邊界（考慮旋轉）
+export const calculateSelectionBoxBounds = (element) => {
+  // 決定使用哪個框的尺寸和中心
+  let centerX, centerY, width, height;
+
+  if (element.hasMask && element.mask) {
+    // 使用剪裁框
+    const maskCenter = calculateMaskCenter(element);
+    centerX = maskCenter.x;
+    centerY = maskCenter.y;
+    width = element.mask.width;
+    height = element.mask.height;
+  } else {
+    // 使用元素框
+    centerX = element.x;
+    centerY = element.y;
+    width = element.width;
+    height = element.height;
+  }
+
+  // 計算旋轉角度
+  const rotation = (element.rotation || 0) * Math.PI / 180;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+
+  // 計算四個角點（相對於中心）
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+
+  const corners = [
+    { x: -halfWidth, y: -halfHeight },  // 左上
+    { x: halfWidth, y: -halfHeight },   // 右上
+    { x: -halfWidth, y: halfHeight },   // 左下
+    { x: halfWidth, y: halfHeight }     // 右下
+  ];
+
+  // 旋轉角點並轉換為絕對座標
+  const rotatedCorners = corners.map(corner => ({
+    x: centerX + (corner.x * cos - corner.y * sin),
+    y: centerY + (corner.x * sin + corner.y * cos)
+  }));
+
+  // 找出邊界
+  const xs = rotatedCorners.map(c => c.x);
+  const ys = rotatedCorners.map(c => c.y);
+
+  const left = Math.min(...xs);
+  const right = Math.max(...xs);
+  const top = Math.min(...ys);
+  const bottom = Math.max(...ys);
+
+  return {
+    left,
+    right,
+    top,
+    bottom,
+    width: right - left,
+    height: bottom - top,
+    centerX,
+    centerY
+  };
+};
+
 // 測量文字尺寸
 export const measureTextWidth = (text, fontSize, fontFamily, fontWeight = "normal", fontStyle = "normal") => {
   if (!text || text.length === 0) {

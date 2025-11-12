@@ -1,4 +1,6 @@
 import React from 'react';
+import { calculateSelectionBoxBounds } from '../utils/canvasUtils';
+import { TOOLBAR_MARGIN } from '../constants/editorConfig';
 
 /**
  * 文字工具列組件
@@ -20,13 +22,14 @@ const TextToolbar = ({
 }) => {
   if (!element) return null;
 
-  // 計算考慮視圖變換後的位置
-  let left = `${(element.x / 400) * 100}%`;
-  let top = `${(element.y / 400) * 100}%`;
-  let transform = "translate(-50%, calc(-100% - 80px))";
+  // 計算選取框邊界（考慮旋轉和 hasMask）
+  const bounds = calculateSelectionBoxBounds(element);
 
-  // 不需要手動計算 viewport 變換，因為 Canvas 的 transform 已經處理了
-  // 工具列容器應該與 Canvas 內容在同一層，使用相同的 transform
+  // 計算工具列位置：選取框頂部上方
+  const toolbarTop = bounds.top - TOOLBAR_MARGIN;
+
+  const left = `${(bounds.centerX / 400) * 100}%`;
+  const top = `${(toolbarTop / 400) * 100}%`;
 
   return (
     <div
@@ -34,8 +37,8 @@ const TextToolbar = ({
       style={{
         left,
         top,
-        // 外層只處理 translate，不受 scale 影響
-        transform: "translate(-50%, calc(-100% - 80px))",
+        // 置中對齊，並向上移動工具列自身的高度
+        transform: "translate(-50%, -100%)",
         transformOrigin: 'center bottom',
         zIndex: 1000,
       }}
