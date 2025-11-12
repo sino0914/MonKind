@@ -13,6 +13,31 @@ export const calculateCenter = (printArea) => {
   };
 };
 
+// 計算遮罩中心點（考慮元素旋轉）
+export const calculateMaskCenter = (element) => {
+  // 如果沒有遮罩，返回元素中心
+  if (!element.hasMask || !element.mask) {
+    return { x: element.x, y: element.y };
+  }
+
+  // 將旋轉角度轉換為弧度
+  const rotation = (element.rotation || 0) * Math.PI / 180;
+
+  // 計算遮罩中心相對於元素中心的偏移量
+  const maskOffsetX = element.mask.x - element.width / 2;
+  const maskOffsetY = element.mask.y - element.height / 2;
+
+  // 應用旋轉矩陣計算旋轉後的偏移量
+  const rotatedOffsetX = maskOffsetX * Math.cos(rotation) - maskOffsetY * Math.sin(rotation);
+  const rotatedOffsetY = maskOffsetX * Math.sin(rotation) + maskOffsetY * Math.cos(rotation);
+
+  // 返回遮罩中心的絕對座標
+  return {
+    x: element.x + rotatedOffsetX,
+    y: element.y + rotatedOffsetY
+  };
+};
+
 // 測量文字尺寸
 export const measureTextWidth = (text, fontSize, fontFamily, fontWeight = "normal", fontStyle = "normal") => {
   if (!text || text.length === 0) {

@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { validatePrintArea } from '../utils/validationUtils';
 import { MIN_ELEMENT_SIZE } from '../constants/editorConfig';
+import { calculateMaskCenter } from '../utils/canvasUtils';
 
 /**
  * 畫布交互邏輯 Hook
@@ -146,12 +147,35 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
       const { canvasX: currentX, canvasY: currentY } = screenToCanvasCoords(e.clientX, e.clientY, canvasRect);
 
       if (resizeHandle === 'rotate') {
-        // 旋轉
-        const centerX = selectedElement.x;
-        const centerY = selectedElement.y;
-        const angle = Math.atan2(currentY - centerY, currentX - centerX);
+        // 旋轉 - 當有遮罩時以遮罩中心為旋轉中心，否則以元素中心為旋轉中心
+        const center = calculateMaskCenter(selectedElement);
+        const angle = Math.atan2(currentY - center.y, currentX - center.x);
         const degrees = (angle * 180) / Math.PI + 90;
-        updateElement(selectedElement.id, { rotation: degrees });
+
+        const updates = { rotation: degrees };
+
+        // 如果有遮罩，需要調整元素位置使遮罩中心保持固定
+        if (selectedElement.hasMask && selectedElement.mask) {
+          // 計算遮罩中心相對於元素中心的偏移（未旋轉時）
+          const maskOffsetX = selectedElement.mask.x - selectedElement.width / 2;
+          const maskOffsetY = selectedElement.mask.y - selectedElement.height / 2;
+
+          // 計算舊的旋轉角度下的偏移
+          const oldRotation = (selectedElement.rotation || 0) * Math.PI / 180;
+          const oldRotatedOffsetX = maskOffsetX * Math.cos(oldRotation) - maskOffsetY * Math.sin(oldRotation);
+          const oldRotatedOffsetY = maskOffsetX * Math.sin(oldRotation) + maskOffsetY * Math.cos(oldRotation);
+
+          // 計算新的旋轉角度下的偏移
+          const newRotation = degrees * Math.PI / 180;
+          const newRotatedOffsetX = maskOffsetX * Math.cos(newRotation) - maskOffsetY * Math.sin(newRotation);
+          const newRotatedOffsetY = maskOffsetX * Math.sin(newRotation) + maskOffsetY * Math.cos(newRotation);
+
+          // 調整元素位置，使遮罩中心保持在原位置
+          updates.x = selectedElement.x + (oldRotatedOffsetX - newRotatedOffsetX);
+          updates.y = selectedElement.y + (oldRotatedOffsetY - newRotatedOffsetY);
+        }
+
+        updateElement(selectedElement.id, updates);
       } else {
         // 縮放（圖片和文字）
         if (selectedElement.type === 'image') {
@@ -159,30 +183,33 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
           let newWidth = selectedElement.width;
           let newHeight = selectedElement.height;
 
+          // 當有遮罩時，使用遮罩中心作為縮放中心；否則使用元素中心
+          const scaleCenter = selectedElement.hasMask ? calculateMaskCenter(selectedElement) : { x: selectedElement.x, y: selectedElement.y };
+
           // 判斷是否為自由變形模式（非等比例縮放）
           if (isFreeTransform) {
             // 非等比例縮放：獨立調整寬高
-            const deltaX = currentX - selectedElement.x;
-            const deltaY = currentY - selectedElement.y;
+            const deltaX = currentX - scaleCenter.x;
+            const deltaY = currentY - scaleCenter.y;
 
             if (resizeHandle === 'se') {
               newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
               newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
             } else if (resizeHandle === 'nw') {
-              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(selectedElement.x - currentX) * 2);
-              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(selectedElement.y - currentY) * 2);
+              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(scaleCenter.x - currentX) * 2);
+              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(scaleCenter.y - currentY) * 2);
             } else if (resizeHandle === 'ne') {
               newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
-              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(selectedElement.y - currentY) * 2);
+              newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(scaleCenter.y - currentY) * 2);
             } else if (resizeHandle === 'sw') {
-              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(selectedElement.x - currentX) * 2);
+              newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(scaleCenter.x - currentX) * 2);
               newHeight = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaY) * 2);
             }
           } else {
-            // 等比例縮放（原邏輯）
+            // 等比例縮放
             if (resizeHandle === 'se') {
-              const deltaX = currentX - selectedElement.x;
-              const deltaY = currentY - selectedElement.y;
+              const deltaX = currentX - scaleCenter.x;
+              const deltaY = currentY - scaleCenter.y;
               if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
                 newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
                 newHeight = newWidth / aspectRatio;
@@ -191,8 +218,8 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
                 newWidth = newHeight * aspectRatio;
               }
             } else if (resizeHandle === 'nw') {
-              const deltaX = selectedElement.x - currentX;
-              const deltaY = selectedElement.y - currentY;
+              const deltaX = scaleCenter.x - currentX;
+              const deltaY = scaleCenter.y - currentY;
               if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
                 newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
                 newHeight = newWidth / aspectRatio;
@@ -201,8 +228,8 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
                 newWidth = newHeight * aspectRatio;
               }
             } else if (resizeHandle === 'ne') {
-              const deltaX = currentX - selectedElement.x;
-              const deltaY = selectedElement.y - currentY;
+              const deltaX = currentX - scaleCenter.x;
+              const deltaY = scaleCenter.y - currentY;
               if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
                 newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
                 newHeight = newWidth / aspectRatio;
@@ -211,8 +238,8 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
                 newWidth = newHeight * aspectRatio;
               }
             } else if (resizeHandle === 'sw') {
-              const deltaX = selectedElement.x - currentX;
-              const deltaY = currentY - selectedElement.y;
+              const deltaX = scaleCenter.x - currentX;
+              const deltaY = currentY - scaleCenter.y;
               if (Math.abs(deltaX) > Math.abs(deltaY * aspectRatio)) {
                 newWidth = Math.max(MIN_ELEMENT_SIZE, Math.abs(deltaX) * 2);
                 newHeight = newWidth / aspectRatio;
@@ -240,17 +267,37 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
             originalHeight: originalHeight,
           };
 
-          // 如果元素有 mask，同比例縮放 mask
+          // 如果元素有 mask，需要調整元素位置使遮罩中心保持固定
           if (selectedElement.hasMask && selectedElement.mask) {
             const maskScaleX = newWidth / selectedElement.width;
             const maskScaleY = newHeight / selectedElement.height;
 
+            // 縮放遮罩尺寸
             updates.mask = {
               x: selectedElement.mask.x * maskScaleX,
               y: selectedElement.mask.y * maskScaleY,
               width: selectedElement.mask.width * maskScaleX,
               height: selectedElement.mask.height * maskScaleY,
             };
+
+            // 計算舊的遮罩中心（相對於元素中心的偏移）
+            const oldMaskOffsetX = selectedElement.mask.x - selectedElement.width / 2;
+            const oldMaskOffsetY = selectedElement.mask.y - selectedElement.height / 2;
+
+            // 計算新的遮罩中心（相對於新元素中心的偏移）
+            const newMaskOffsetX = updates.mask.x - newWidth / 2;
+            const newMaskOffsetY = updates.mask.y - newHeight / 2;
+
+            // 應用旋轉矩陣計算偏移差異
+            const rotation = (selectedElement.rotation || 0) * Math.PI / 180;
+            const oldRotatedOffsetX = oldMaskOffsetX * Math.cos(rotation) - oldMaskOffsetY * Math.sin(rotation);
+            const oldRotatedOffsetY = oldMaskOffsetX * Math.sin(rotation) + oldMaskOffsetY * Math.cos(rotation);
+            const newRotatedOffsetX = newMaskOffsetX * Math.cos(rotation) - newMaskOffsetY * Math.sin(rotation);
+            const newRotatedOffsetY = newMaskOffsetX * Math.sin(rotation) + newMaskOffsetY * Math.cos(rotation);
+
+            // 調整元素位置，使遮罩中心保持在原位置
+            updates.x = selectedElement.x + (oldRotatedOffsetX - newRotatedOffsetX);
+            updates.y = selectedElement.y + (oldRotatedOffsetY - newRotatedOffsetY);
           }
 
           console.log('📐 縮放資訊:', {
