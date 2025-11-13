@@ -270,16 +270,14 @@ const MainContentArea = ({
                             🔄替換
                           </button>
 
-                          {/* 複製按鈕 - 僅在圖片正常時顯示 */}
-                          {!isImageBroken && (
-                            <button
-                              onClick={handleCopyAndPaste}
-                              className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
-                              title="複製並貼上"
-                            >
-                              📋複製
-                            </button>
-                          )}
+                          {/* 複製按鈕 - 始終顯示（包含圖片失效時） */}
+                          <button
+                            onClick={handleCopyAndPaste}
+                            className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
+                            title="複製並貼上"
+                          >
+                            📋複製
+                          </button>
 
                           {/* 去背按鈕 - 僅在圖片正常時顯示 */}
                           {!isImageBroken && (
@@ -297,8 +295,8 @@ const MainContentArea = ({
                             </button>
                           )}
 
-                          {/* 自由變形按鈕 - 僅在圖片正常時顯示 */}
-                          {!isImageBroken && onToggleFreeTransform && (
+                          {/* 自由變形按鈕 - 始終顯示（包含圖片失效時） */}
+                          {onToggleFreeTransform && (
                             <button
                               onClick={onToggleFreeTransform}
                               className={`px-2 py-1 text-xs rounded transition-all ${

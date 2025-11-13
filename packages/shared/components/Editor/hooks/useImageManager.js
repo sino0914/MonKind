@@ -1,12 +1,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { HttpAPI } from '../../../services/HttpApiService';
 import { API } from '../../../services/api';
+import { calculateCenter } from '../utils/canvasUtils';
 
 /**
  * 圖片管理 Hook
  * 處理圖片上傳、管理已上傳圖片、從元素庫添加圖片
  */
-const useImageManager = (editorState, imageReplace = null) => {
+const useImageManager = (editorState, imageReplace = null, currentProduct = null) => {
   const { addElement } = editorState;
 
   // 已上傳圖片列表
@@ -135,9 +136,12 @@ const useImageManager = (editorState, imageReplace = null) => {
   /**
    * 將已上傳的圖片添加到畫布
    * @param {Object|string} imageOrUrl - 圖片對象或 URL 字串
-   * @param {Object} position - 可選的位置參數 { x, y }，預設為 { x: 150, y: 150 }
+   * @param {Object} position - 可選的位置參數 { x, y }，預設為設計區中心
    */
-  const handleAddImageToCanvas = useCallback(async (imageOrUrl, position = { x: 150, y: 150 }) => {
+  const handleAddImageToCanvas = useCallback(async (imageOrUrl, position = null) => {
+    // 計算預設位置：使用設計區中心
+    const defaultPosition = calculateCenter(currentProduct?.printArea);
+    const finalPosition = position || defaultPosition;
     // 處理參數：統一轉換為 URL
     let imageUrl;
     if (typeof imageOrUrl === 'string') {
@@ -180,7 +184,7 @@ const useImageManager = (editorState, imageReplace = null) => {
         console.log('📐 圖片尺寸計算:', {
           original: { width: img.naturalWidth, height: img.naturalHeight },
           scaled: { width, height },
-          position
+          position: finalPosition
         });
 
         // 新增圖片（保持寬高比）
@@ -190,8 +194,8 @@ const useImageManager = (editorState, imageReplace = null) => {
           url: imageUrl,
           width,
           height,
-          x: position.x,
-          y: position.y,
+          x: finalPosition.x,
+          y: finalPosition.y,
           rotation: 0,
           opacity: 1,
         });
@@ -203,7 +207,7 @@ const useImageManager = (editorState, imageReplace = null) => {
         resolve();
       };
     });
-  }, [addElement, imageReplace]);
+  }, [addElement, imageReplace, currentProduct]);
 
   /**
    * 刪除已上傳的圖片
@@ -252,6 +256,9 @@ const useImageManager = (editorState, imageReplace = null) => {
       return;
     }
 
+    // 計算預設位置：使用設計區中心
+    const { x: centerX, y: centerY } = calculateCenter(currentProduct?.printArea);
+
     // 載入圖片獲取原始尺寸
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -276,7 +283,8 @@ const useImageManager = (editorState, imageReplace = null) => {
 
         console.log('📐 元素庫圖片尺寸計算:', {
           original: { width: img.naturalWidth, height: img.naturalHeight },
-          scaled: { width, height }
+          scaled: { width, height },
+          position: { x: centerX, y: centerY }
         });
 
         // 否則新增圖片（保持寬高比）
@@ -286,8 +294,8 @@ const useImageManager = (editorState, imageReplace = null) => {
           url: element.url,
           width,
           height,
-          x: 150,
-          y: 150,
+          x: centerX,
+          y: centerY,
           rotation: 0,
           opacity: 1,
         });
@@ -299,7 +307,7 @@ const useImageManager = (editorState, imageReplace = null) => {
         resolve();
       };
     });
-  }, [addElement, imageReplace]);
+  }, [addElement, imageReplace, currentProduct]);
 
   /**
    * 載入管理的元素（從元素庫）
