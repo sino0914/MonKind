@@ -9,7 +9,7 @@ import {
 } from "@react-three/drei";
 import * as THREE from "three";
 
-// GLB模型組件 - 物件 Y 軸旋轉 + 攝影機高度調整
+// GLB模型組件 - Trackball 自由旋轉（類似 Blender）
 function GLBModel({
   url,
   showWireframe = false,
@@ -20,39 +20,27 @@ function GLBModel({
   isDragging,
   velocity,
   groupRef,
-  setCameraPosition,
-  minCameraHeight,
-  maxCameraHeight,
 }) {
   const { scene, materials } = useGLTF(url);
 
   // 複製場景以避免修改原始資料
   const clonedScene = scene.clone();
 
-  // 物件旋轉狀態
-  const [modelRotation, setModelRotation] = useState([0, 2.5, 0]);
-
   // 處理慣性旋轉
   useFrame(() => {
     if (!isDragging && groupRef.current) {
-      const velocityMagnitude = Math.sqrt(
-        velocity.current.x ** 2 + velocity.current.y ** 2
-      );
+      const velocityMagnitude = velocity.current.angle;
 
       if (velocityMagnitude > 0.0001) {
-        // 物體 Y 軸旋轉慣性
-        groupRef.current.rotation.y += velocity.current.x;
-
-        // 攝影機高度慣性
-        setCameraPosition((prev) => {
-          const newY = prev[1] - velocity.current.y;
-          const clampedY = Math.max(minCameraHeight, Math.min(maxCameraHeight, newY));
-          return [prev[0], clampedY, prev[2]];
-        });
+        // Trackball 慣性旋轉
+        const quaternion = new THREE.Quaternion().setFromAxisAngle(
+          velocity.current.axis,
+          velocity.current.angle
+        );
+        groupRef.current.quaternion.multiplyQuaternions(quaternion, groupRef.current.quaternion);
 
         // 阻尼效果（減速）
-        velocity.current.x *= 0.95;
-        velocity.current.y *= 0.95;
+        velocity.current.angle *= 0.95;
       }
     }
   });
@@ -95,7 +83,7 @@ function GLBModel({
 
   return (
     <group ref={groupRef}>
-      <primitive object={clonedScene} rotation={modelRotation} />
+      <primitive object={clonedScene} rotation={[0, 2.5, 0]} />
     </group>
   );
 }
@@ -122,19 +110,17 @@ export default function GLBViewer({
 }) {
   const [showWireframe, setShowWireframe] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
-  const [cameraPosition, setCameraPosition] = useState([1, 1, 1]);
+  const cameraPosition = [1, 1, 1]; // 固定攝影機位置
 
   // 物件旋轉狀態（整個 Canvas 都可拖曳）
   const [isDragging, setIsDragging] = useState(false);
   const previousMouse = useRef({ x: 0, y: 0 });
-  const velocity = useRef({ x: 0, y: 0 });
+  const velocity = useRef({
+    axis: new THREE.Vector3(0, 1, 0),
+    angle: 0
+  });
   const rotationSpeed = 0.005;
-  const cameraHeightSpeed = 0.002; // 攝影機高度變化速度
   const groupRef = useRef();
-
-  // 攝影機高度限制
-  const minCameraHeight = 0.2;
-  const maxCameraHeight = 2.0;
 
   // 拖拽事件處理
   const handlePointerDown = (e) => {
@@ -146,7 +132,10 @@ export default function GLBViewer({
       x: e.clientX,
       y: e.clientY,
     };
-    velocity.current = { x: 0, y: 0 }; // 重置速度
+    velocity.current = {
+      axis: new THREE.Vector3(0, 1, 0),
+      angle: 0
+    }; // 重置速度
   };
 
   const handlePointerMove = (e) => {
@@ -155,19 +144,22 @@ export default function GLBViewer({
     const deltaX = e.clientX - previousMouse.current.x;
     const deltaY = e.clientY - previousMouse.current.y;
 
-    // 左右拖曳（deltaX）：旋轉物體的 Y 軸（左右旋轉馬克杯）
-    groupRef.current.rotation.y += deltaX * rotationSpeed;
+    // Trackball 自由旋轉（類似 Blender）
+    // 計算旋轉軸：垂直於滑鼠移動方向（Y 軸倒轉）
+    const rotationAxis = new THREE.Vector3(deltaY, deltaX, 0).normalize();
 
-    // 上下拖曳（deltaY）：移動攝影機 Y 軸位置（視角高度）
-    setCameraPosition((prev) => {
-      const newY = prev[1] - deltaY * cameraHeightSpeed; // 向上拖曳增加高度
-      const clampedY = Math.max(minCameraHeight, Math.min(maxCameraHeight, newY));
-      return [prev[0], clampedY, prev[2]];
-    });
+    // 計算旋轉角度：基於滑鼠移動距離
+    const rotationAngle = Math.sqrt(deltaX * deltaX + deltaY * deltaY) * rotationSpeed;
+
+    // 建立旋轉四元數
+    const quaternion = new THREE.Quaternion().setFromAxisAngle(rotationAxis, rotationAngle);
+
+    // 應用旋轉到物體
+    groupRef.current.quaternion.multiplyQuaternions(quaternion, groupRef.current.quaternion);
 
     // 記錄速度供慣性使用
-    velocity.current.x = deltaX * rotationSpeed;
-    velocity.current.y = deltaY * cameraHeightSpeed;
+    velocity.current.axis = rotationAxis;
+    velocity.current.angle = rotationAngle;
 
     previousMouse.current = {
       x: e.clientX,
@@ -253,9 +245,6 @@ export default function GLBViewer({
             isDragging={isDragging}
             velocity={velocity}
             groupRef={groupRef}
-            setCameraPosition={setCameraPosition}
-            minCameraHeight={minCameraHeight}
-            maxCameraHeight={maxCameraHeight}
           />
 
           {/* 軌道控制器 - 禁用旋轉，保留縮放和平移 */}
