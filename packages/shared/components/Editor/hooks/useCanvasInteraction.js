@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { validatePrintArea } from '../utils/validationUtils';
 import { MIN_ELEMENT_SIZE } from '../constants/editorConfig';
-import { calculateMaskCenter } from '../utils/canvasUtils';
+import { calculateMaskCenter, measureTextWidth } from '../utils/canvasUtils';
 
 /**
  * 畫布交互邏輯 Hook
@@ -29,6 +29,9 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
 
   // 追蹤是否懸停在圖片元素上
   const [isHoveringImage, setIsHoveringImage] = useState(false);
+
+  // 記錄縮放開始時的狀態（用於文字元素縮放）
+  const [resizeStartState, setResizeStartState] = useState(null);
 
   /**
    * 將螢幕座標轉換為畫布座標（考慮視圖的縮放和平移）
@@ -101,6 +104,44 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
       setResizeHandle(handle);
       // 開始旋轉或縮放操作,暫停歷史記錄
       startResize();
+
+      // 如果是文字元素的縮放，記錄初始狀態
+      if (element.type === 'text' && handle !== 'rotate') {
+        // 尋找畫布容器以獲取滑鼠座標
+        let canvasContainer = e.currentTarget;
+        while (canvasContainer && !canvasContainer.classList.contains('canvas-container')) {
+          canvasContainer = canvasContainer.parentElement;
+        }
+
+        if (canvasContainer) {
+          const canvasRect = canvasContainer.getBoundingClientRect();
+          const { canvasX, canvasY } = screenToCanvasCoords(e.clientX, e.clientY, canvasRect);
+
+          // 計算當前文字的選取框尺寸
+          const textWidth = measureTextWidth(
+            element.content,
+            element.fontSize,
+            element.fontFamily,
+            element.fontWeight,
+            element.fontStyle
+          );
+          const textHeight = element.fontSize * 1.5;
+
+          // 計算初始滑鼠到文字中心的距離
+          const deltaX = canvasX - element.x;
+          const deltaY = canvasY - element.y;
+          const initialMouseDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+          // 計算初始對角線長度
+          const initialDiagonal = Math.sqrt(textWidth * textWidth + textHeight * textHeight);
+
+          setResizeStartState({
+            initialFontSize: element.fontSize,
+            initialMouseDistance: initialMouseDistance,
+            initialDiagonal: initialDiagonal,
+          });
+        }
+      }
     } else {
       // 尋找畫布容器 (canvas-container)
       let canvasContainer = e.currentTarget;
@@ -310,37 +351,38 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
           updateElement(selectedElement.id, updates);
         } else if (selectedElement.type === 'text') {
           // 文字縮放 - 調整 fontSize
-          // 計算滑鼠到文字中心的距離
-          const deltaX = currentX - selectedElement.x;
-          const deltaY = currentY - selectedElement.y;
-          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+          // 使用記錄的初始狀態（如果有的話）
+          if (resizeStartState) {
+            // 計算當前滑鼠到文字中心的距離
+            const deltaX = currentX - selectedElement.x;
+            const deltaY = currentY - selectedElement.y;
+            const currentMouseDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-          // 儲存初始字體大小（第一次縮放時）
-          const baseFontSize = selectedElement.baseFontSize || selectedElement.fontSize;
+            // 計算距離的變化比例（相對於初始滑鼠距離）
+            const distanceRatio = currentMouseDistance / resizeStartState.initialMouseDistance;
 
-          // 基準距離設為 50，根據距離計算縮放倍率
-          const scaleFactor = distance / 50;
+            // 根據距離變化比例計算新的字體大小
+            const MIN_FONT_SIZE = 12;
+            const MAX_FONT_SIZE = 200;
+            const newFontSize = Math.max(
+              MIN_FONT_SIZE,
+              Math.min(MAX_FONT_SIZE, resizeStartState.initialFontSize * distanceRatio)
+            );
 
-          // 計算新的字體大小，限制在最小和最大範圍內
-          const MIN_FONT_SIZE = 12;
-          const MAX_FONT_SIZE = 200;
-          const newFontSize = Math.max(
-            MIN_FONT_SIZE,
-            Math.min(MAX_FONT_SIZE, baseFontSize * scaleFactor)
-          );
-
-          updateElement(selectedElement.id, {
-            fontSize: Math.round(newFontSize),
-            baseFontSize: baseFontSize
-          });
+            updateElement(selectedElement.id, {
+              fontSize: Math.round(newFontSize)
+            });
+          }
         }
       }
     }
-  }, [draggedElement, resizeHandle, selectedElement, dragOffset, currentProduct, updateElement]);
+  }, [draggedElement, resizeHandle, selectedElement, dragOffset, currentProduct, updateElement, resizeStartState]);
 
   // 處理滑鼠放開
   const handleMouseUp = useCallback(() => {
     endDrag();
+    // 清除縮放開始狀態
+    setResizeStartState(null);
   }, [endDrag]);
 
   // 處理畫布點擊（取消選擇）
@@ -428,14 +470,22 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
     // 使用轉換函數計算畫布座標
     const { canvasX, canvasY } = screenToCanvasCoords(e.clientX, e.clientY, canvasRect);
 
-    // 找到滑鼠懸停的圖片元素（從後往前找，優先選擇 z-index 較高的）
+    // 找到滑鼠懸停的圖片元素（從後往前找，跳過模板元素）
     let hoveredImageElement = null;
     for (let i = designElements.length - 1; i >= 0; i--) {
       const element = designElements[i];
-      if (isMouseOverElement(canvasX, canvasY, element)) {
-        hoveredImageElement = element;
-        break;
+
+      // 檢查滑鼠是否在元素上
+      if (!isMouseOverElement(canvasX, canvasY, element)) continue;
+
+      // 跳過模板元素（穿透到下層）
+      if (element.isFromTemplate) {
+        continue;
       }
+
+      // 找到可替換的元素
+      hoveredImageElement = element;
+      break;
     }
 
     if (hoveredImageElement) {
@@ -467,14 +517,22 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
     // 使用轉換函數計算畫布座標
     const { canvasX, canvasY } = screenToCanvasCoords(e.clientX, e.clientY, canvasRect);
 
-    // 找到放下位置的圖片元素
+    // 找到放下位置的圖片元素（跳過模板元素）
     let targetImageElement = null;
     for (let i = designElements.length - 1; i >= 0; i--) {
       const element = designElements[i];
-      if (isMouseOverElement(canvasX, canvasY, element)) {
-        targetImageElement = element;
-        break;
+
+      // 檢查滑鼠是否在元素上
+      if (!isMouseOverElement(canvasX, canvasY, element)) continue;
+
+      // 跳過模板元素（穿透到下層）
+      if (element.isFromTemplate) {
+        continue;
       }
+
+      // 找到可替換的元素
+      targetImageElement = element;
+      break;
     }
 
     if (targetImageElement && imageReplace) {

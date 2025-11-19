@@ -215,6 +215,12 @@ const DesignElementsLayer = ({
                                 if (markImageAsError) {
                                   markImageAsError(element.id);
                                 }
+
+                                // 如果是模板元素，移除 isFromTemplate 標記
+                                if (element.isFromTemplate && onUpdateElement) {
+                                  onUpdateElement(element.id, { isFromTemplate: false });
+                                }
+
                                 e.target.style.display = 'none';
                                 const parent = e.target.parentElement?.parentElement?.parentElement;
                                 if (parent && !parent.querySelector('.image-error-placeholder')) {
@@ -260,6 +266,12 @@ const DesignElementsLayer = ({
                           if (markImageAsError) {
                             markImageAsError(element.id);
                           }
+
+                          // 如果是模板元素，移除 isFromTemplate 標記
+                          if (element.isFromTemplate && onUpdateElement) {
+                            onUpdateElement(element.id, { isFromTemplate: false });
+                          }
+
                           e.target.style.display = 'none';
                           const parent = e.target.parentElement;
                           if (!parent.querySelector('.image-error-placeholder')) {

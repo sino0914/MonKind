@@ -50,7 +50,12 @@ const useTemplateManager = (currentProduct, mode, showTemplateTools, editorState
 
     // 應用版型的元素和背景色
     if (template.elements) {
-      setDesignElements(template.elements);
+      // 為所有模板元素添加標記，禁止替換和去背
+      const elementsWithTemplateFlag = template.elements.map(element => ({
+        ...element,
+        isFromTemplate: true
+      }));
+      setDesignElements(elementsWithTemplateFlag);
     }
 
     if (template.backgroundColor) {

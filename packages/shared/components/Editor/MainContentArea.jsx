@@ -257,18 +257,20 @@ const MainContentArea = ({
                             </button>
                           )}
 
-                          {/* 替換按鈕 - 始終顯示 */}
-                          <button
-                            onClick={onReplaceClick}
-                            className={`px-2 py-1 text-xs rounded transition-all ${
-                              isReplacingImage
-                                ? 'bg-blue-500 hover:bg-blue-600'
-                                : 'bg-gray-600 hover:bg-gray-700'
-                            }`}
-                            title={isReplacingImage ? '取消替換模式' : '替換圖片'}
-                          >
-                            🔄替換
-                          </button>
+                          {/* 替換按鈕 - 僅在非模板元素時顯示 */}
+                          {!element.isFromTemplate && (
+                            <button
+                              onClick={onReplaceClick}
+                              className={`px-2 py-1 text-xs rounded transition-all ${
+                                isReplacingImage
+                                  ? 'bg-blue-500 hover:bg-blue-600'
+                                  : 'bg-gray-600 hover:bg-gray-700'
+                              }`}
+                              title={isReplacingImage ? '取消替換模式' : '替換圖片'}
+                            >
+                              🔄替換
+                            </button>
+                          )}
 
                           {/* 複製按鈕 - 始終顯示（包含圖片失效時） */}
                           <button
@@ -279,8 +281,8 @@ const MainContentArea = ({
                             📋複製
                           </button>
 
-                          {/* 去背按鈕 - 僅在圖片正常時顯示 */}
-                          {!isImageBroken && (
+                          {/* 去背按鈕 - 僅在圖片正常且非模板元素時顯示 */}
+                          {!isImageBroken && !element.isFromTemplate && (
                             <button
                               onClick={() => onRemoveBackground(element)}
                               disabled={isRemovingBackground}
