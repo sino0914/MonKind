@@ -65,11 +65,6 @@ const DesignElementsLayer = ({
       <div
         className="w-full h-full relative"
         style={{ pointerEvents: 'auto' }}
-        onClick={(e) => {
-          // 阻止事件冒泡到畫布，避免取消選取
-          // 但只阻止冒泡，不阻止預設行為，讓子元素的點擊事件正常執行
-          e.stopPropagation();
-        }}
       >
         {/* 設計區域/出血區域裁切容器 - 只裁切元素內容，不裁切選取框 */}
         {(() => {
