@@ -128,7 +128,7 @@ const UniversalEditor = ({
   const imageCrop = useImageCrop(editorState);
 
   // 使用其他 Hooks
-  const imageManager = useImageManager(editorState, imageReplace);
+  const imageManager = useImageManager(editorState, imageReplace, currentProduct);
   const canvasInteraction = useCanvasInteraction(
     editorState,
     currentProduct,
@@ -803,6 +803,7 @@ const UniversalEditor = ({
                     isReplacingImage={imageReplace.isReplacingImage}
                     isAdmin={isAdmin}
                     addElement={editorState.addElement}
+                    currentProduct={editorState.currentProduct}
                   />
                 );
               case "text":

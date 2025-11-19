@@ -15,15 +15,35 @@ const ElementPanel = ({
   isReplacingImage,
   isAdmin = false,
   addElement,
+  currentProduct,
 }) => {
+  // 計算設計區中心
+  const calculateCenter = (printArea) => {
+    if (!printArea) {
+      return { x: 200, y: 200 }; // 預設值
+    }
+    return {
+      x: printArea.x + printArea.width / 2,
+      y: printArea.y + printArea.height / 2,
+    };
+  };
+
   // 管理員測試功能：添加失效圖片
   const handleAddBrokenImage = () => {
     if (!addElement) return;
+
+    // 計算預設位置：使用設計區中心
+    const { x: centerX, y: centerY } = calculateCenter(currentProduct?.printArea);
 
     // 生成一個唯一的無效 URL（避免緩存）
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(7);
     const invalidUrl = `https://invalid-test-image-${timestamp}-${randomId}.jpg`;
+
+    console.log('📐 版型專用圖片位置計算:', {
+      position: { x: centerX, y: centerY },
+      printArea: currentProduct?.printArea
+    });
 
     // 創建失效圖片元素
     const brokenImageElement = {
@@ -32,8 +52,8 @@ const ElementPanel = ({
       url: invalidUrl,
       width: 100,
       height: 100,
-      x: 200,
-      y: 200,
+      x: centerX,
+      y: centerY,
       rotation: 0,
       opacity: 1,
     };
@@ -158,6 +178,7 @@ ElementPanel.propTypes = {
   isReplacingImage: PropTypes.bool,
   isAdmin: PropTypes.bool,
   addElement: PropTypes.func,
+  currentProduct: PropTypes.object,
 };
 
 export default ElementPanel;
