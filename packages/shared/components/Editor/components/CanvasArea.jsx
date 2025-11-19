@@ -267,37 +267,50 @@ const CanvasArea = ({
           </div>
 
           {/* 設計區域背景色 - 與即時預覽區保持一致 */}
-          {/* 對於3D產品，背景色應該顯示在底圖之上；對於2D產品，背景色保持原有邏輯 */}
-          <div
-            className="absolute"
-            style={{
-              left: `${(currentProduct.printArea.x / 400) * 100}%`,
-              top: `${(currentProduct.printArea.y / 400) * 100}%`,
-              width: `${(currentProduct.printArea.width / 400) * 100}%`,
-              height: `${(currentProduct.printArea.height / 400) * 100}%`,
-              backgroundColor:
-                currentProduct.type === "3D" ? "transparent" : backgroundColor,
-              zIndex: currentProduct.type === "3D" ? 0 : 1,
-            }}
-          />
+          {/* 背景色層 - 填充到出血區域 */}
+          {(() => {
+            // 如果有出血區域，使用出血區域範圍；否則使用設計區域
+            const backgroundBounds = currentProduct.bleedArea
+              ? calculateBleedBounds(currentProduct.printArea, currentProduct.bleedArea)
+              : currentProduct.printArea;
 
-          {/* 3D產品的背景色層，顯示在底圖之上 */}
-          {currentProduct.type === "3D" &&
-            backgroundColor &&
-            backgroundColor !== "#ffffff" && (
-              <div
-                className="absolute"
-                style={{
-                  left: `${(currentProduct.printArea.x / 400) * 100}%`,
-                  top: `${(currentProduct.printArea.y / 400) * 100}%`,
-                  width: `${(currentProduct.printArea.width / 400) * 100}%`,
-                  height: `${(currentProduct.printArea.height / 400) * 100}%`,
-                  backgroundColor: backgroundColor,
-                  opacity: 0.8,
-                  zIndex: 1,
-                }}
-              />
-            )}
+            return (
+              <>
+                {/* 對於2D產品或沒有出血區域的產品，顯示背景色 */}
+                {currentProduct.type !== "3D" && (
+                  <div
+                    className="absolute"
+                    style={{
+                      left: `${(backgroundBounds.x / 400) * 100}%`,
+                      top: `${(backgroundBounds.y / 400) * 100}%`,
+                      width: `${(backgroundBounds.width / 400) * 100}%`,
+                      height: `${(backgroundBounds.height / 400) * 100}%`,
+                      backgroundColor: backgroundColor,
+                      zIndex: 1,
+                    }}
+                  />
+                )}
+
+                {/* 3D產品的背景色層，顯示在底圖之上 */}
+                {currentProduct.type === "3D" &&
+                  backgroundColor &&
+                  backgroundColor !== "#ffffff" && (
+                    <div
+                      className="absolute"
+                      style={{
+                        left: `${(backgroundBounds.x / 400) * 100}%`,
+                        top: `${(backgroundBounds.y / 400) * 100}%`,
+                        width: `${(backgroundBounds.width / 400) * 100}%`,
+                        height: `${(backgroundBounds.height / 400) * 100}%`,
+                        backgroundColor: backgroundColor,
+                        opacity: 0.8,
+                        zIndex: 1,
+                      }}
+                    />
+                  )}
+              </>
+            );
+          })()}
 
           {/* 設計區域邊框 */}
           <div
