@@ -533,8 +533,9 @@ const DesignElementsLayer = ({
                 )}
               </div>
 
-              {/* 裁剪區域框 - 顯示 mask 的實際範圍（不在剪裁模式時顯示） */}
-              {element.type === "image" && element.hasMask && element.mask && !croppingElement && isSelected && (() => {
+              {/* 裁剪區域框 - 顯示 mask 的實際範圍（不在剪裁模式時顯示）*/}
+              {/* 無論是否選取都要渲染，以便點擊選取 */}
+              {element.type === "image" && element.hasMask && element.mask && !croppingElement && (() => {
                 // 計算考慮旋轉後的 mask 中心點位置
                 const rotation = (element.rotation || 0) * Math.PI / 180;
 
@@ -574,14 +575,16 @@ const DesignElementsLayer = ({
                     handleSelectElement(element);
                   }}
                 >
-                  {/* 邊框 */}
-                  <div
-                    className="absolute inset-0 border-2 border-blue-500 pointer-events-none"
-                    style={{ backgroundColor: 'transparent' }}
-                  />
+                  {/* 邊框 - 只在選取時顯示 */}
+                  {isSelected && (
+                    <div
+                      className="absolute inset-0 border-2 border-blue-500 pointer-events-none"
+                      style={{ backgroundColor: 'transparent' }}
+                    />
+                  )}
 
-                  {/* 縮放控制點 - 四個角 */}
-                  {!isLocked && (
+                  {/* 縮放控制點 - 四個角，只在選取時顯示 */}
+                  {isSelected && !isLocked && (
                     <>
                       <div
                         className="absolute w-3 h-3 bg-blue-500 border border-white rounded-full cursor-nw-resize pointer-events-auto"
@@ -618,8 +621,8 @@ const DesignElementsLayer = ({
                     </>
                   )}
 
-                  {/* 旋轉控制點 */}
-                  {!isLocked && (
+                  {/* 旋轉控制點 - 只在選取時顯示 */}
+                  {isSelected && !isLocked && (
                     <div
                       className="absolute w-3 h-3 bg-green-500 border border-white rounded-full pointer-events-auto"
                       style={{
@@ -634,8 +637,8 @@ const DesignElementsLayer = ({
                     />
                   )}
 
-                  {/* 刪除按鈕 */}
-                  {!isLocked && (
+                  {/* 刪除按鈕 - 只在選取時顯示 */}
+                  {isSelected && !isLocked && (
                     <button
                       className="absolute w-6 h-6 bg-red-500 hover:bg-red-600 text-white border border-white rounded-full pointer-events-auto flex items-center justify-center text-xs font-bold transition-colors"
                       style={{
