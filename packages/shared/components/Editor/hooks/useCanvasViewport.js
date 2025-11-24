@@ -3,12 +3,20 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 /**
  * 畫布視窗控制 Hook
  * 處理畫布的縮放和平移功能
+ *
+ * @param {Object} initialViewport - 初始視圖設定
+ * @param {number} initialViewport.zoom - 初始縮放倍率 (0.5 ~ 3.0)
+ * @param {number} initialViewport.panX - 初始 X 軸平移
+ * @param {number} initialViewport.panY - 初始 Y 軸平移
  */
-const useCanvasViewport = () => {
+const useCanvasViewport = (initialViewport = null) => {
   // 縮放倍率（0.5 - 3.0）
-  const [zoom, setZoom] = useState(1.0);
+  const [zoom, setZoom] = useState(initialViewport?.zoom ?? 1.0);
   // 平移位置
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [pan, setPan] = useState({
+    x: initialViewport?.panX ?? 0,
+    y: initialViewport?.panY ?? 0
+  });
   // 是否正在平移
   const [isPanning, setIsPanning] = useState(false);
   // 平移起始點
@@ -95,6 +103,35 @@ const useCanvasViewport = () => {
   }, []);
 
   /**
+   * 設定視圖（用於載入預設視圖或切換商品時）
+   */
+  const setViewport = useCallback((viewport) => {
+    if (viewport) {
+      setZoom(viewport.zoom ?? 1.0);
+      setPan({
+        x: viewport.panX ?? 0,
+        y: viewport.panY ?? 0
+      });
+    }
+    setIsPanning(false);
+  }, []);
+
+  /**
+   * 當 initialViewport 變化時（例如從 API 載入商品後），更新視圖
+   * 這是為了處理非同步載入的情況
+   */
+  useEffect(() => {
+    if (initialViewport) {
+      console.log('📐 套用預設視圖:', initialViewport);
+      setZoom(initialViewport.zoom ?? 1.0);
+      setPan({
+        x: initialViewport.panX ?? 0,
+        y: initialViewport.panY ?? 0
+      });
+    }
+  }, [initialViewport?.zoom, initialViewport?.panX, initialViewport?.panY]);
+
+  /**
    * 鍵盤快捷鍵：Ctrl+0 重置視圖
    */
   useEffect(() => {
@@ -140,6 +177,9 @@ const useCanvasViewport = () => {
     handleMouseUp,
     handleMouseLeave,
     resetView,
+    setViewport,
+    setZoom,
+    setPan,
   };
 };
 

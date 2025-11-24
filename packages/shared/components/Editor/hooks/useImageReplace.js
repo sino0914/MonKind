@@ -143,6 +143,8 @@ const useImageReplace = (editorState) => {
           // 記錄原始尺寸（用於日後自由拉伸）
           originalWidth: Math.round(newWidth),
           originalHeight: Math.round(newHeight),
+          // 保留形狀裁切設定
+          shapeClip: element.shapeClip,
         });
 
         console.log('✅ 替換已剪裁圖片（移動到剪裁區位置並重新計算）:', {
@@ -211,6 +213,8 @@ const useImageReplace = (editorState) => {
         // 記錄原始尺寸（用於日後自由拉伸）
         originalWidth: Math.round(newWidth),
         originalHeight: Math.round(newHeight),
+        // 保留形狀裁切設定
+        shapeClip: element.shapeClip,
       };
 
       // 如果需要遮罩（圖片比例與容器不同）

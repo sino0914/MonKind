@@ -334,12 +334,16 @@ const Editor = () => {
   const initialWorkName = isNewDesign ? '' : (editingData?.workName || '');
   const isEditingFromCart = !!(editingData?.cartItemId); // 判斷是否從購物車編輯
 
+  // 從商品資料取得預設視圖設定
+  const initialViewport = product?.defaultViewport || null;
+
   console.log('📤 傳遞給 UniversalEditor 的資料:');
   console.log('- initialElements:', initialElements);
   console.log('- initialBackgroundColor:', initialBackgroundColor);
   console.log('- initialWorkName:', initialWorkName);
   console.log('- isEditingExisting:', isEditingExisting);
   console.log('- isEditingFromCart:', isEditingFromCart);
+  console.log('- initialViewport:', initialViewport);
 
   return (
     <UniversalEditor
@@ -358,6 +362,8 @@ const Editor = () => {
       draftId={editingData?.draftId}
       // 傳遞是否從購物車編輯的標記
       isEditingFromCart={isEditingFromCart}
+      // 傳遞預設視圖設定
+      initialViewport={initialViewport}
     />
   );
 };

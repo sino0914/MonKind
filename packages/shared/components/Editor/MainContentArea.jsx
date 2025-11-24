@@ -312,8 +312,8 @@ const MainContentArea = ({
                             </button>
                           )}
 
-                          {/* 剪裁按鈕 - 僅在圖片正常時顯示 */}
-                          {!isImageBroken && onStartCrop && (
+                          {/* 剪裁按鈕 - 僅在圖片正常且非形狀裁切時顯示 */}
+                          {!isImageBroken && onStartCrop && !(element.shapeClip && element.shapeClip.clipPath) && (
                             <button
                               onClick={() => onStartCrop(element)}
                               className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded"

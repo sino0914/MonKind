@@ -3,6 +3,7 @@ import TextEditingInput from './TextEditingInput';
 import CropOverlay from './CropOverlay';
 import { CANVAS_SIZE, DISPLAY_SIZE } from '../constants/editorConfig';
 import { calculateBleedBounds } from '../../../utils/bleedAreaUtils';
+import { getPathTypeShapes } from '../constants/shapeClipConfig';
 
 /**
  * 設計元素圖層組件
@@ -57,11 +58,29 @@ const DesignElementsLayer = ({
   measureTextWidth,
   editingInputWidth,
 }) => {
+  // 取得需要 SVG clipPath 定義的形狀
+  const pathTypeShapes = getPathTypeShapes();
+
   return (
     <div
       className="absolute inset-0"
       style={{ zIndex: 10, pointerEvents: 'none' }}
     >
+      {/* SVG clipPath 定義 - 用於 path 類型的形狀裁切 */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          {pathTypeShapes.map(shape => (
+            <clipPath
+              key={shape.id}
+              id={`shape-clip-${shape.id}`}
+              clipPathUnits="objectBoundingBox"
+            >
+              <path d={shape.normalizedPath} />
+            </clipPath>
+          ))}
+        </defs>
+      </svg>
+
       <div
         className="w-full h-full relative"
         style={{ pointerEvents: 'auto' }}
@@ -149,6 +168,11 @@ const DesignElementsLayer = ({
                   // 使用 getDisplayUrl 獲取實際顯示的 URL（考慮預覽狀態）
                   const displayUrl = getDisplayUrl ? getDisplayUrl(element) : element.url;
 
+                  // 判斷是否有形狀裁切（形狀裁切取代矩形裁切）
+                  const hasShapeClip = element.shapeClip && element.shapeClip.clipPath;
+                  // 只有在沒有形狀裁切時才使用矩形 mask
+                  const useRectMask = !hasShapeClip && element.hasMask && element.mask;
+
                   return (
                     <div
                       key={element.id}
@@ -162,11 +186,13 @@ const DesignElementsLayer = ({
                         transformOrigin: "center",
                         opacity: element.opacity || 1,
                         overflow: 'hidden', // 重要：隱藏超出部分
+                        // 如果有形狀裁切，套用形狀 clip-path
+                        clipPath: hasShapeClip ? element.shapeClip.clipPath : 'none',
                       }}
                     >
                       {/* 圖片內容 - 使用蒙版時的特殊處理 */}
-                      {/* 測試：強制使用固定蒙版參數（50%, 50%, 寬高=元素寬高） */}
-                      {element.hasMask && element.mask ? (
+                      {/* 形狀裁切取代矩形裁切：有 shapeClip 時不使用 mask */}
+                      {useRectMask ? (
                         <div
                           className="w-full h-full relative"
                           style={{

@@ -76,6 +76,9 @@ const UniversalEditor = ({
   draftId = null, // 用於更新現有草稿的ID
   isEditingFromCart = false, // 是否從購物車編輯
 
+  // 視圖相關
+  initialViewport = null, // 預設視圖設定 { zoom, panX, panY }
+
   // 狀態相關
   loading = false,
   error = null,
@@ -118,8 +121,8 @@ const UniversalEditor = ({
   // 使用圖片替換 Hook
   const imageReplace = useImageReplace(editorState);
 
-  // 使用畫布視窗控制 Hook
-  const viewport = useCanvasViewport();
+  // 使用畫布視窗控制 Hook（傳入預設視圖設定）
+  const viewport = useCanvasViewport(initialViewport);
 
   // 使用自由變形 Hook
   const freeTransform = useFreeTransform();

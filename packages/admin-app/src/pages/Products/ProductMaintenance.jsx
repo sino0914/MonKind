@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { API } from "@monkind/shared/services/api";
 import GLBViewer from "@monkind/shared/components/GLBViewer";
 import UVMapper from "@monkind/shared/components/UVMapper";
+import useCanvasViewport from "@monkind/shared/components/Editor/hooks/useCanvasViewport";
 import Layout from "../../components/Layout";
 import { useNotification } from "./hooks/useNotification";
 import { useDesignArea } from "./hooks/useDesignArea";
@@ -35,6 +36,16 @@ const ProductMaintenance = () => {
     stopDrag,
     handleDragMove,
   } = useDesignArea();
+
+  // 使用畫布視窗控制 Hook（縮放/平移）
+  const viewport = useCanvasViewport();
+
+  // 追蹤目前視圖狀態（用於儲存）
+  const [currentViewport, setCurrentViewport] = useState({
+    zoom: 1.0,
+    panX: 0,
+    panY: 0,
+  });
 
   // 其他狀態
   const [products, setProducts] = useState([]);
@@ -376,7 +387,9 @@ const ProductMaintenance = () => {
       "Selecting product:",
       product.title,
       "mockupImage:",
-      !!product.mockupImage
+      !!product.mockupImage,
+      "defaultViewport:",
+      product.defaultViewport
     );
     setSelectedProduct(product);
 
@@ -385,6 +398,20 @@ const ProductMaintenance = () => {
       product.printArea || { x: 50, y: 50, width: 200, height: 150 }
     );
     resetBleedArea(product.bleedArea || null);
+
+    // 載入該商品的預設視圖
+    if (product.defaultViewport) {
+      viewport.setViewport(product.defaultViewport);
+      setCurrentViewport({
+        zoom: product.defaultViewport.zoom ?? 1.0,
+        panX: product.defaultViewport.panX ?? 0,
+        panY: product.defaultViewport.panY ?? 0,
+      });
+    } else {
+      // 如果沒有預設視圖，重置為預設值
+      viewport.resetView();
+      setCurrentViewport({ zoom: 1.0, panX: 0, panY: 0 });
+    }
 
     // 強制重新渲染以確保底圖正確顯示
     setTimeout(() => {
@@ -516,6 +543,60 @@ const ProductMaintenance = () => {
       console.error("重置設計區失敗:", error);
       setError("重置失敗: " + error.message);
     }
+  };
+
+  // 處理視圖變更（從 DesignAreaPreview 傳回）
+  const handleViewportChange = useCallback((newViewport) => {
+    setCurrentViewport(newViewport);
+  }, []);
+
+  // 儲存預設視圖
+  const handleSaveDefaultViewport = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const updateData = {
+        defaultViewport: {
+          zoom: currentViewport.zoom,
+          panX: currentViewport.panX,
+          panY: currentViewport.panY,
+        },
+      };
+
+      const updatedProduct = await API.products.update(
+        selectedProduct.id,
+        updateData
+      );
+
+      // 更新本地狀態
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selectedProduct.id ? updatedProduct : p
+        )
+      );
+      setSelectedProduct(updatedProduct);
+
+      showNotification(
+        `預設視圖已儲存！(縮放: ${Math.round(currentViewport.zoom * 100)}%, 平移: ${Math.round(currentViewport.panX)}, ${Math.round(currentViewport.panY)})`
+      );
+      console.log("預設視圖已保存:", updateData.defaultViewport);
+    } catch (error) {
+      console.error("儲存預設視圖失敗:", error);
+      setError("儲存失敗: " + error.message);
+      showNotification("儲存預設視圖失敗: " + error.message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 重置視圖為預設值
+  const handleResetViewport = () => {
+    viewport.resetView();
+    setCurrentViewport({ zoom: 1.0, panX: 0, panY: 0 });
+    showNotification("視圖已重置為預設值 (100%)");
   };
 
   // 新增商品
@@ -1152,8 +1233,45 @@ const ProductMaintenance = () => {
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUp}
+                      viewport={viewport}
+                      onViewportChange={handleViewportChange}
                     />
                 </div>
+
+                  {/* 預設視圖控制按鈕 */}
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="text-xs font-semibold text-purple-800">預設視圖設定</h5>
+                      <span className="text-xs text-purple-600">
+                        目前: {Math.round(currentViewport.zoom * 100)}%
+                        {(currentViewport.panX !== 0 || currentViewport.panY !== 0) &&
+                          ` (${Math.round(currentViewport.panX)}, ${Math.round(currentViewport.panY)})`
+                        }
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={handleSaveDefaultViewport}
+                        disabled={saving}
+                        className={`flex items-center justify-center px-3 py-2 text-xs font-medium rounded transition-all ${
+                          saving
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-purple-600 text-white hover:bg-purple-700"
+                        }`}
+                      >
+                        📷 儲存為預設視圖
+                      </button>
+                      <button
+                        onClick={handleResetViewport}
+                        className="flex items-center justify-center px-3 py-2 text-xs font-medium text-purple-700 bg-white border border-purple-300 rounded hover:bg-purple-50 transition-all"
+                      >
+                        ↶ 重置視圖
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-purple-600">
+                      🖱️ 滾輪縮放 | 中鍵拖曳平移 | 儲存後使用者進入編輯器會套用此視圖
+                    </p>
+                  </div>
 
                   {/* 提示 */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">

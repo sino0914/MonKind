@@ -17,11 +17,18 @@ const useImageCrop = (editorState) => {
   /**
    * 開始剪裁
    * @param {Object} element - 要剪裁的圖片元素
+   * @returns {boolean} - 是否成功開始剪裁
    */
   const startCrop = useCallback((element) => {
     if (!element || element.type !== 'image') {
       console.warn('只能剪裁圖片元素');
-      return;
+      return false;
+    }
+
+    // 形狀裁切圖片不允許矩形裁切（兩者互斥）
+    if (element.shapeClip && element.shapeClip.clipPath) {
+      console.warn('形狀裁切圖片不支援矩形裁切');
+      return false;
     }
 
     console.log('✂️ 開始剪裁圖片:', element.id);

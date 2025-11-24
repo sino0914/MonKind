@@ -8,6 +8,7 @@
     "./components/UVMapper": "./components/UVMapper/index.js",
     "./components/Editor": "./components/Editor/index.js",
     "./components/Editor/utils": "./components/Editor/utils/index.js",
+    "./components/Editor/hooks/useCanvasViewport": "./components/Editor/hooks/useCanvasViewport.js",
     "./components/Preview": "./components/Preview/index.js",
     "./components/Preview/ProductThumbnail": "./components/Preview/ProductThumbnail.jsx",
     "./components/ProductMaintenance": "./components/ProductMaintenance/index.js",
