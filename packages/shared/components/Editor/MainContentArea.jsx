@@ -55,6 +55,15 @@ const MainContentArea = ({
   onCancelCrop,
   onResetCrop,
 
+  // 形狀調整相關
+  onStartShapeAdjust,
+  adjustingElement,
+  shapeAdjustOffset,
+  onUpdateShapeOffset,
+  onApplyShapeAdjust,
+  onCancelShapeAdjust,
+  onResetShapeOffset,
+
   // 圖片載入錯誤狀態
   imageLoadErrors,
   markImageAsError,
@@ -154,6 +163,12 @@ const MainContentArea = ({
                   onResetCrop={onResetCrop}
                   isFreeTransform={isFreeTransform}
                   onToggleFreeTransform={onToggleFreeTransform}
+                  adjustingElement={adjustingElement}
+                  shapeAdjustOffset={shapeAdjustOffset}
+                  onUpdateShapeOffset={onUpdateShapeOffset}
+                  onApplyShapeAdjust={onApplyShapeAdjust}
+                  onCancelShapeAdjust={onCancelShapeAdjust}
+                  onResetShapeOffset={onResetShapeOffset}
                 />
 
                 {/* 工具列容器 - 與 Canvas 內容使用相同的 transform */}
@@ -320,6 +335,17 @@ const MainContentArea = ({
                               title="剪裁圖片"
                             >
                               ✂️剪裁
+                            </button>
+                          )}
+
+                          {/* 形狀調整按鈕 - 僅對形狀圖片且圖片正常時顯示 */}
+                          {!isImageBroken && onStartShapeAdjust && element.shapeClip && element.shapeClip.clipPath && (
+                            <button
+                              onClick={() => onStartShapeAdjust(element)}
+                              className="px-2 py-1 text-xs bg-purple-600 hover:bg-purple-700 rounded"
+                              title="調整圖片位置"
+                            >
+                              🔷調整
                             </button>
                           )}
                         </div>

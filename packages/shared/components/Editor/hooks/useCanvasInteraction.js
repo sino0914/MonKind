@@ -220,7 +220,9 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
       } else {
         // 縮放（圖片和文字）
         if (selectedElement.type === 'image') {
-          const aspectRatio = selectedElement.width / selectedElement.height;
+          // 🔷 形狀圖片：強制保持正方形
+          const isShapeImage = selectedElement.shapeClip && selectedElement.shapeClip.clipPath;
+          const aspectRatio = isShapeImage ? 1 : selectedElement.width / selectedElement.height;
           let newWidth = selectedElement.width;
           let newHeight = selectedElement.height;
 
@@ -228,7 +230,8 @@ const useCanvasInteraction = (editorState, currentProduct, imageReplace = null, 
           const scaleCenter = selectedElement.hasMask ? calculateMaskCenter(selectedElement) : { x: selectedElement.x, y: selectedElement.y };
 
           // 判斷是否為自由變形模式（非等比例縮放）
-          if (isFreeTransform) {
+          // 🔷 形狀圖片不支援自由變形，始終使用等比例縮放
+          if (isFreeTransform && !isShapeImage) {
             // 非等比例縮放：獨立調整寬高
             const deltaX = currentX - scaleCenter.x;
             const deltaY = currentY - scaleCenter.y;

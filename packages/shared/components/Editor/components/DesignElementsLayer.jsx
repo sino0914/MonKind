@@ -1,6 +1,7 @@
 import React from 'react';
 import TextEditingInput from './TextEditingInput';
 import CropOverlay from './CropOverlay';
+import ShapeAdjustOverlay from './ShapeAdjustOverlay';
 import { CANVAS_SIZE, DISPLAY_SIZE } from '../constants/editorConfig';
 import { calculateBleedBounds } from '../../../utils/bleedAreaUtils';
 import { getPathTypeShapes } from '../constants/shapeClipConfig';
@@ -42,6 +43,14 @@ const DesignElementsLayer = ({
   onApplyCrop,
   onCancelCrop,
   onResetCrop,
+
+  // 形狀調整相關
+  adjustingElement,
+  shapeAdjustOffset,
+  onUpdateShapeOffset,
+  onApplyShapeAdjust,
+  onCancelShapeAdjust,
+  onResetShapeOffset,
 
   // 自由變形相關
   isFreeTransform,
@@ -268,6 +277,18 @@ const DesignElementsLayer = ({
                           style={{
                             // 自由拉伸過（scaleX ≠ scaleY）用 fill，其他用 cover
                             objectFit: (element.scaleX && element.scaleY && element.scaleX !== element.scaleY) ? 'fill' : 'cover',
+                            // 形狀圖片的圖片偏移（用於調整顯示區域）
+                            // 🔷 調整模式時使用臨時 offset，否則使用元素上儲存的 offset
+                            objectPosition: (() => {
+                              if (!hasShapeClip) return 'center center';
+                              // 如果此元素正在調整中，使用臨時 offset
+                              const isBeingAdjusted = adjustingElement && adjustingElement.id === element.id;
+                              const offset = isBeingAdjusted ? shapeAdjustOffset : element.shapeClip.imageOffset;
+                              if (offset && (offset.x !== 0 || offset.y !== 0)) {
+                                return `calc(50% + ${offset.x}px) calc(50% + ${offset.y}px)`;
+                              }
+                              return 'center center';
+                            })(),
                           }}
                           draggable={false}
                           onLoad={(e) => {
@@ -629,6 +650,18 @@ const DesignElementsLayer = ({
             onCancel={onCancelCrop}
             onReset={onResetCrop}
             currentProduct={currentProduct}
+          />
+        )}
+
+        {/* 形狀調整覆蓋層 */}
+        {adjustingElement && (
+          <ShapeAdjustOverlay
+            element={adjustingElement}
+            currentOffset={shapeAdjustOffset}
+            onUpdateOffset={onUpdateShapeOffset}
+            onApply={onApplyShapeAdjust}
+            onCancel={onCancelShapeAdjust}
+            onReset={onResetShapeOffset}
           />
         )}
       </div>

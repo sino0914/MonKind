@@ -65,6 +65,14 @@ const CanvasArea = ({
   isFreeTransform,
   onToggleFreeTransform,
 
+  // 形狀調整相關
+  adjustingElement,
+  shapeAdjustOffset,
+  onUpdateShapeOffset,
+  onApplyShapeAdjust,
+  onCancelShapeAdjust,
+  onResetShapeOffset,
+
   // 視窗控制
   viewport = null,
 }) => {
@@ -394,6 +402,12 @@ const CanvasArea = ({
             onResetCrop={onResetCrop}
             isFreeTransform={isFreeTransform}
             onToggleFreeTransform={onToggleFreeTransform}
+            adjustingElement={adjustingElement}
+            shapeAdjustOffset={shapeAdjustOffset}
+            onUpdateShapeOffset={onUpdateShapeOffset}
+            onApplyShapeAdjust={onApplyShapeAdjust}
+            onCancelShapeAdjust={onCancelShapeAdjust}
+            onResetShapeOffset={onResetShapeOffset}
             handleMouseDown={handleMouseDown}
             handleSelectElement={handleSelectElement}
             handleFinishTextEdit={handleFinishTextEdit}

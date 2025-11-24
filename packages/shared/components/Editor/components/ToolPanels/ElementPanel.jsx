@@ -98,13 +98,14 @@ const ElementPanel = ({
       printArea: currentProduct?.printArea
     });
 
-    // 創建帶有形狀裁切的圖片元素
+    // 創建帶有形狀裁切的圖片元素（強制正方形）
+    const shapeSize = 100; // 形狀圖片固定為正方形
     const shapeImageElement = {
       id: `shape-image-${shape.id}-${timestamp}`,
       type: 'image',
       url: invalidUrl,
-      width: 100,
-      height: 100,
+      width: shapeSize,
+      height: shapeSize,
       x: centerX,
       y: centerY,
       rotation: 0,
@@ -113,6 +114,10 @@ const ElementPanel = ({
       shapeClip: {
         shapeId: shape.id,
         clipPath: shape.clipPath,
+        // 圖片在形狀內的偏移（用於調整顯示區域）
+        imageOffset: { x: 0, y: 0 },
+        // 圖片縮放倍率（1 = 剛好填滿）
+        imageScale: 1,
       },
     };
 

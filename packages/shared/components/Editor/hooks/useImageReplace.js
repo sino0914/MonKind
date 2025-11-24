@@ -64,6 +64,56 @@ const useImageReplace = (editorState) => {
     // 載入新圖片以取得其尺寸
     const img = new Image();
     img.onload = () => {
+      // 🔷 情況 0：形狀圖片 - 保持正方形容器，調整圖片偏移和縮放
+      if (element.shapeClip && element.shapeClip.clipPath) {
+        const containerSize = element.width; // 形狀圖片應為正方形
+        const imageRatio = img.width / img.height;
+
+        // 計算圖片需要放大多少倍才能填滿正方形容器 (object-fit: cover)
+        let imageScale;
+        if (imageRatio >= 1) {
+          // 圖片較寬：以高度為基準，高度 = containerSize
+          imageScale = 1; // 基準縮放
+        } else {
+          // 圖片較高：以寬度為基準，寬度 = containerSize
+          imageScale = 1;
+        }
+
+        console.log('🔷 形狀圖片替換:', {
+          容器尺寸: containerSize,
+          圖片原始尺寸: { width: img.width, height: img.height },
+          圖片比例: imageRatio.toFixed(2),
+          縮放倍率: imageScale,
+        });
+
+        // 更新元素：保持正方形，更新 shapeClip 設定
+        updateElement(elementId, {
+          url: newImageUrl,
+          width: containerSize,
+          height: containerSize,
+          // 重置縮放比例
+          scaleX: 1,
+          scaleY: 1,
+          // 不使用 mask（形狀裁切取代矩形裁切）
+          hasMask: false,
+          mask: null,
+          // 更新形狀裁切設定
+          shapeClip: {
+            ...element.shapeClip,
+            imageOffset: { x: 0, y: 0 }, // 重置偏移為中心
+            imageScale: imageScale,
+            // 儲存原始圖片比例，用於計算可移動範圍
+            originalImageRatio: imageRatio,
+          },
+        });
+
+        // 只有在替換模式下才取消模式
+        if (targetId === null) {
+          cancelReplaceMode();
+        }
+        return;
+      }
+
       // 🔥 檢查是否已有剪裁：將剪裁區作為新的基準點
       if (element.hasMask && element.mask) {
         // 步驟 1：計算剪裁區在畫布上的絕對位置

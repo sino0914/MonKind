@@ -15,6 +15,7 @@ import useImageReplace from "./hooks/useImageReplace";
 import useCanvasViewport from "./hooks/useCanvasViewport";
 import useFreeTransform from "./hooks/useFreeTransform";
 import useImageCrop from "./hooks/useImageCrop";
+import useShapeAdjust from "./hooks/useShapeAdjust";
 
 // Components
 import { ToolSidebar, TopToolbar, LoadingState, ErrorState } from "./components";
@@ -129,6 +130,9 @@ const UniversalEditor = ({
 
   // 使用圖片剪裁 Hook
   const imageCrop = useImageCrop(editorState);
+
+  // 使用形狀調整 Hook
+  const shapeAdjust = useShapeAdjust(editorState);
 
   // 使用其他 Hooks
   const imageManager = useImageManager(editorState, imageReplace, currentProduct);
@@ -887,6 +891,14 @@ const UniversalEditor = ({
           onApplyCrop={imageCrop.applyCrop}
           onCancelCrop={imageCrop.cancelCrop}
           onResetCrop={imageCrop.resetCrop}
+          // 形狀調整相關
+          onStartShapeAdjust={shapeAdjust.startAdjust}
+          adjustingElement={shapeAdjust.adjustingElement}
+          shapeAdjustOffset={shapeAdjust.currentOffset}
+          onUpdateShapeOffset={shapeAdjust.updateOffset}
+          onApplyShapeAdjust={shapeAdjust.applyAdjust}
+          onCancelShapeAdjust={shapeAdjust.cancelAdjust}
+          onResetShapeOffset={shapeAdjust.resetOffset}
           imageLoadErrors={editorState.imageLoadErrors}
           isHoveringImage={canvasInteraction.isHoveringImage}
           handleMouseMove={canvasInteraction.handleMouseMove}
