@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import ProductPreview from "../Preview/ProductPreview";
 import TextToolbar from "./components/TextToolbar";
 import CanvasArea from "./components/CanvasArea";
@@ -101,6 +101,13 @@ const MainContentArea = ({
 }) => {
   // 圓角滑桿顯示狀態
   const [showBorderRadiusSlider, setShowBorderRadiusSlider] = useState(null);
+
+  // 當選取元素改變或取消選取時，自動關閉圓角滑桿
+  useEffect(() => {
+    if (showBorderRadiusSlider !== null) {
+      setShowBorderRadiusSlider(null);
+    }
+  }, [selectedElement?.id]);
 
   // 處理圓角變更
   const handleBorderRadiusChange = (elementId, newValue) => {

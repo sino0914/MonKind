@@ -4,8 +4,8 @@ export const CANVAS_SIZE = 400; // 畫布邏輯尺寸
 export const DISPLAY_SIZE = 400; // 顯示尺寸
 
 // 文字配置
-export const MIN_FONT_SIZE = 8;
-export const MAX_FONT_SIZE = 72;
+export const MIN_FONT_SIZE = 2;
+export const MAX_FONT_SIZE = 792;
 export const DEFAULT_FONT_SIZE = 24;
 export const DEFAULT_FONT_FAMILY = "Arial";
 
