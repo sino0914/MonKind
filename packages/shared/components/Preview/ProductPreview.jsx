@@ -197,6 +197,27 @@ const ProductPreview = ({
           const w = baseW * (el.scaleX || 1);
           const h = baseH * (el.scaleY || 1);
 
+          // 圓角處理（與形狀裁切互斥）
+          const hasShapeClip = el.shapeClip && el.shapeClip.clipPath;
+          const borderRadius = !hasShapeClip && el.borderRadius ? el.borderRadius : 0;
+          // 計算圓角半徑（百分比轉為像素，基於較小邊）
+          const radiusPx = borderRadius > 0 ? (Math.min(w, h) * borderRadius) / 100 : 0;
+
+          // 繪製帶圓角的矩形路徑
+          const drawRoundedRect = (x, y, width, height, radius) => {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+          };
+
           // 保存當前狀態
           ctx.save();
 
@@ -234,6 +255,13 @@ const ProductPreview = ({
               ctx.clip();
               ctx.drawImage(img, -w / 2, -h / 2, w, h);
               ctx.restore();
+            } else if (radiusPx > 0) {
+              // 有圓角，應用圓角剪裁
+              ctx.save();
+              drawRoundedRect(-w / 2, -h / 2, w, h, radiusPx);
+              ctx.clip();
+              ctx.drawImage(img, -w / 2, -h / 2, w, h);
+              ctx.restore();
             } else {
               ctx.drawImage(img, -w / 2, -h / 2, w, h);
             }
@@ -264,6 +292,13 @@ const ProductPreview = ({
                 w - clipLeft - clipRight,
                 h - clipTop - clipBottom
               );
+              ctx.clip();
+              ctx.drawImage(img, finalX - w / 2, finalY - h / 2, w, h);
+              ctx.restore();
+            } else if (radiusPx > 0) {
+              // 有圓角，應用圓角剪裁
+              ctx.save();
+              drawRoundedRect(finalX - w / 2, finalY - h / 2, w, h, radiusPx);
               ctx.clip();
               ctx.drawImage(img, finalX - w / 2, finalY - h / 2, w, h);
               ctx.restore();
@@ -488,6 +523,14 @@ const ProductPreview = ({
                   ? product.printArea.height
                   : 400;
 
+                // 判斷是否有剪裁和形狀裁切
+                const hasShapeClip = element.shapeClip && element.shapeClip.clipPath;
+                const hasMask = !hasShapeClip && element.hasMask && element.mask;
+                // 計算縮放比例（預覽區域相對於原始 400px 的縮放）
+                const previewScale = width ? width / 400 : 1.1;
+                // 圓角值需要按比例縮放
+                const scaledBorderRadius = element.borderRadius ? element.borderRadius * previewScale : 0;
+
                 return (
                   <div
                     key={`preview-${element.id}`}
@@ -499,7 +542,9 @@ const ProductPreview = ({
                       height: `${(element.height / areaHeight) * 100}%`,
                       transform: "translate(-50%, -50%)",
                       opacity: element.opacity || 1,
-                      overflow: element.hasMask && element.mask ? 'hidden' : 'visible',
+                      overflow: hasMask ? 'hidden' : 'visible',
+                      // 圓角設定（與形狀裁切互斥，無剪裁時套用在容器）
+                      borderRadius: !hasShapeClip && !hasMask && scaledBorderRadius ? `${scaledBorderRadius}px` : '0',
                     }}
                   >
                     <img
@@ -509,12 +554,18 @@ const ProductPreview = ({
                       style={{
                         transform: `rotate(${element.rotation || 0}deg)`,
                         objectFit: (element.scaleX && element.scaleY && element.scaleX !== element.scaleY) ? 'fill' : 'cover',
-                        clipPath: element.hasMask && element.mask ? `inset(
+                        // 形狀裁切（優先）或遮罩裁切（有剪裁時圓角套用在 inset round）
+                        clipPath: hasShapeClip
+                          ? element.shapeClip.clipPath
+                          : (hasMask ? `inset(
                           ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
                           ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
                           ${(1 - (element.mask.y + element.mask.height / 2) / element.height) * 100}%
                           ${((element.mask.x - element.mask.width / 2) / element.width) * 100}%
-                        )` : undefined,
+                          ${scaledBorderRadius ? `round ${scaledBorderRadius}px` : ''}
+                        )` : undefined),
+                        // 圓角需要配合 borderRadius 在容器上
+                        borderRadius: 'inherit',
                       }}
                       onLoad={(e) => {
                         // 圖片載入成功時，恢復顯示
@@ -558,6 +609,13 @@ const ProductPreview = ({
                     </div>
                   );
                 } else if (element.type === "image") {
+                  // 判斷是否有剪裁和形狀裁切
+                  const hasShapeClip = element.shapeClip && element.shapeClip.clipPath;
+                  const hasMask = !hasShapeClip && element.hasMask && element.mask;
+                  // 計算縮放比例
+                  const previewScale = width ? width / 400 : 1.1;
+                  const scaledBorderRadius = element.borderRadius ? element.borderRadius * previewScale : 0;
+
                   return (
                     <div
                       key={`preview-fallback-${element.id}`}
@@ -569,7 +627,9 @@ const ProductPreview = ({
                         height: `${(element.height / 400) * 100}%`,
                         transform: "translate(-50%, -50%)",
                         opacity: element.opacity || 1,
-                        overflow: element.hasMask && element.mask ? 'hidden' : 'visible',
+                        overflow: hasMask ? 'hidden' : 'visible',
+                        // 圓角設定（與形狀裁切互斥，無剪裁時套用在容器）
+                        borderRadius: !hasShapeClip && !hasMask && scaledBorderRadius ? `${scaledBorderRadius}px` : '0',
                       }}
                     >
                       <img
@@ -579,12 +639,18 @@ const ProductPreview = ({
                         style={{
                           transform: `rotate(${element.rotation || 0}deg)`,
                           objectFit: (element.scaleX && element.scaleY && element.scaleX !== element.scaleY) ? 'fill' : 'cover',
-                          clipPath: element.hasMask && element.mask ? `inset(
+                          // 形狀裁切（優先）或遮罩裁切（有剪裁時圓角套用在 inset round）
+                          clipPath: hasShapeClip
+                            ? element.shapeClip.clipPath
+                            : (hasMask ? `inset(
                             ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
                             ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
                             ${(1 - (element.mask.y + element.mask.height / 2) / element.height) * 100}%
                             ${((element.mask.x - element.mask.width / 2) / element.width) * 100}%
-                          )` : undefined,
+                            ${scaledBorderRadius ? `round ${scaledBorderRadius}px` : ''}
+                          )` : undefined),
+                          // 圓角需要配合 borderRadius 在容器上
+                          borderRadius: 'inherit',
                         }}
                         onLoad={(e) => {
                           // 圖片載入成功時，恢復顯示

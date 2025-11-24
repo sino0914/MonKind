@@ -1,7 +1,8 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import ProductPreview from "../Preview/ProductPreview";
 import TextToolbar from "./components/TextToolbar";
 import CanvasArea from "./components/CanvasArea";
+import BorderRadiusSlider from "./components/BorderRadiusSlider";
 import { calculateSelectionBoxBounds } from './utils/canvasUtils';
 import { TOOLBAR_MARGIN } from './constants/editorConfig';
 
@@ -98,6 +99,16 @@ const MainContentArea = ({
   // Preview Ref (用於快照)
   previewRef,
 }) => {
+  // 圓角滑桿顯示狀態
+  const [showBorderRadiusSlider, setShowBorderRadiusSlider] = useState(null);
+
+  // 處理圓角變更
+  const handleBorderRadiusChange = (elementId, newValue) => {
+    if (onUpdateElement) {
+      onUpdateElement(elementId, { borderRadius: newValue });
+    }
+  };
+
   return (
     <div className="flex-1 flex">
       {/* Canvas Area */}
@@ -336,6 +347,33 @@ const MainContentArea = ({
                             >
                               ✂️剪裁
                             </button>
+                          )}
+
+                          {/* 圓角按鈕 - 僅在圖片正常且非形狀裁切時顯示 */}
+                          {!(element.shapeClip && element.shapeClip.clipPath) && (
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowBorderRadiusSlider(
+                                  showBorderRadiusSlider === element.id ? null : element.id
+                                )}
+                                className={`px-2 py-1 text-xs rounded transition-all ${
+                                  showBorderRadiusSlider === element.id
+                                    ? 'bg-cyan-500 hover:bg-cyan-600'
+                                    : 'bg-gray-600 hover:bg-gray-700'
+                                }`}
+                                title="調整圓角"
+                              >
+                                ◐圓角
+                              </button>
+                              {/* 圓角滑桿面板 */}
+                              {showBorderRadiusSlider === element.id && (
+                                <BorderRadiusSlider
+                                  value={element.borderRadius || 0}
+                                  onChange={(newValue) => handleBorderRadiusChange(element.id, newValue)}
+                                  onClose={() => setShowBorderRadiusSlider(null)}
+                                />
+                              )}
+                            </div>
                           )}
 
                           {/* 形狀調整按鈕 - 僅對形狀圖片且圖片正常時顯示 */}

@@ -75,6 +75,7 @@ const ElementPanel = ({
       y: centerY,
       rotation: 0,
       opacity: 1,
+      borderRadius: 0, // 圓角值（0-50%）
     };
 
     addElement(brokenImageElement);

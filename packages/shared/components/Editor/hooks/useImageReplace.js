@@ -97,6 +97,8 @@ const useImageReplace = (editorState) => {
           // 不使用 mask（形狀裁切取代矩形裁切）
           hasMask: false,
           mask: null,
+          // 保留圓角設定（形狀圖片通常不用，但保留以防萬一）
+          borderRadius: element.borderRadius,
           // 更新形狀裁切設定
           shapeClip: {
             ...element.shapeClip,
@@ -195,6 +197,8 @@ const useImageReplace = (editorState) => {
           originalHeight: Math.round(newHeight),
           // 保留形狀裁切設定
           shapeClip: element.shapeClip,
+          // 保留圓角設定
+          borderRadius: element.borderRadius,
         });
 
         console.log('✅ 替換已剪裁圖片（移動到剪裁區位置並重新計算）:', {
@@ -265,6 +269,8 @@ const useImageReplace = (editorState) => {
         originalHeight: Math.round(newHeight),
         // 保留形狀裁切設定
         shapeClip: element.shapeClip,
+        // 保留圓角設定
+        borderRadius: element.borderRadius,
       };
 
       // 如果需要遮罩（圖片比例與容器不同）

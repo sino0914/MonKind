@@ -197,6 +197,8 @@ const DesignElementsLayer = ({
                         overflow: 'hidden', // 重要：隱藏超出部分
                         // 如果有形狀裁切，套用形狀 clip-path
                         clipPath: hasShapeClip ? element.shapeClip.clipPath : 'none',
+                        // 圓角設定（與形狀裁切互斥，px 單位，若無剪裁則套用在容器）
+                        borderRadius: !hasShapeClip && !useRectMask && element.borderRadius ? `${element.borderRadius}px` : '0',
                       }}
                     >
                       {/* 圖片內容 - 使用蒙版時的特殊處理 */}
@@ -219,12 +221,13 @@ const DesignElementsLayer = ({
                               transformOrigin: 'center center',
                               // 有 mask 時不套用 transform，避免干擾 clip-path 裁切
                               transform: 'none',
-                              // 只有在非剪裁模式時才套用 clip-path
+                              // 只有在非剪裁模式時才套用 clip-path（有剪裁時圓角套用在剪裁框）
                               clipPath: (croppingElement && croppingElement.id === element.id) ? 'none' : `inset(
                                 ${((element.mask.y - element.mask.height / 2) / element.height) * 100}%
                                 ${(1 - (element.mask.x + element.mask.width / 2) / element.width) * 100}%
                                 ${(1 - (element.mask.y + element.mask.height / 2) / element.height) * 100}%
                                 ${((element.mask.x - element.mask.width / 2) / element.width) * 100}%
+                                ${element.borderRadius ? `round ${element.borderRadius}px` : ''}
                               )`
                             }}
                             draggable={false}
@@ -255,9 +258,17 @@ const DesignElementsLayer = ({
                                 const parent = e.target.parentElement?.parentElement?.parentElement;
                                 if (parent && !parent.querySelector('.image-error-placeholder')) {
                                   const placeholder = document.createElement('div');
-                                  placeholder.className = 'image-error-placeholder w-full h-full flex items-center justify-center bg-blue-50 border-2 border-blue-300 border-dashed rounded';
+                                  // 取得圓角值並套用到佔位符
+                                  const borderRadius = element.borderRadius || 0;
+                                  placeholder.className = 'image-error-placeholder w-full h-full flex items-center justify-center';
+                                  placeholder.style.cssText = `
+                                    background: linear-gradient(135deg, #e0f2fe 25%, #bae6fd 25%, #bae6fd 50%, #e0f2fe 50%, #e0f2fe 75%, #bae6fd 75%);
+                                    background-size: 20px 20px;
+                                    border-radius: ${borderRadius}px;
+                                    box-shadow: inset 0 0 0 3px rgba(59, 130, 246, 0.6);
+                                  `;
                                   placeholder.innerHTML = `
-                                    <div class="text-center p-2">
+                                    <div class="text-center p-2 bg-white bg-opacity-90 rounded-lg shadow-sm">
                                       <svg class="w-8 h-8 mx-auto mb-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                       </svg>
@@ -318,16 +329,24 @@ const DesignElementsLayer = ({
                           const parent = e.target.parentElement;
                           if (!parent.querySelector('.image-error-placeholder')) {
                             const placeholder = document.createElement('div');
-                            placeholder.className = 'image-error-placeholder w-full h-full flex items-center justify-center bg-blue-50 border-2 border-blue-300 border-dashed rounded';
+                            // 取得圓角值並套用到佔位符
+                            const borderRadius = element.borderRadius || 0;
+                            placeholder.className = 'image-error-placeholder w-full h-full flex items-center justify-center';
+                            placeholder.style.cssText = `
+                              background: linear-gradient(135deg, #e0f2fe 25%, #bae6fd 25%, #bae6fd 50%, #e0f2fe 50%, #e0f2fe 75%, #bae6fd 75%);
+                              background-size: 20px 20px;
+                              border-radius: ${borderRadius}px;
+                              box-shadow: inset 0 0 0 3px rgba(59, 130, 246, 0.6);
+                              transform: rotate(${element.rotation || 0}deg);
+                            `;
                             placeholder.innerHTML = `
-                              <div class="text-center p-2">
+                              <div class="text-center p-2 bg-white bg-opacity-90 rounded-lg shadow-sm">
                                 <svg class="w-8 h-8 mx-auto mb-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                 </svg>
                                 <div class="text-xs text-blue-600 font-medium whitespace-nowrap">上傳圖片</div>
                               </div>
                             `;
-                            placeholder.style.transform = `rotate(${element.rotation || 0}deg)`;
                             parent.appendChild(placeholder);
                           }
                         }}
