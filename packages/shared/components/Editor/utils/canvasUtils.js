@@ -1,6 +1,7 @@
-import { CANVAS_SIZE, SCALE_FACTOR } from '../constants/editorConfig';
+import { CANVAS_SIZE, SCALE_FACTOR, DPI_PRINT } from '../constants/editorConfig';
 import { loadImage } from './imageUtils';
 import { calculateBleedBounds, drawCropMarks } from '../../../utils/bleedAreaUtils';
+import { getCanvasPxSize, mmToPx, printAreaDisplayToMm } from '../../../utils/unitConversion';
 
 // 計算設計區域中心點
 export const calculateCenter = (printArea) => {
@@ -122,7 +123,7 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
     showCropMarks = false  // 是否顯示裁切線
   } = options;
 
-  const { printArea, bleedArea, type: productType, title } = productInfo;
+  const { printArea, bleedArea, type: productType, title, physicalSize } = productInfo;
 
   if (!printArea) {
     throw new Error("無法輸出：商品未設定設計區域");
@@ -141,14 +142,33 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
 
   const { width: printWidth, height: printHeight } = outputBounds;
 
+  // 計算縮放比例：基於 physicalSize 和 300dpi
+  let scaleFactor = SCALE_FACTOR; // 預設值
+  if (physicalSize) {
+    // 將顯示座標的輸出範圍轉換為 mm
+    const outputBoundsMm = printAreaDisplayToMm(outputBounds, physicalSize, CANVAS_SIZE);
+    // 計算 300dpi 時的像素尺寸
+    const outputWidthPx = mmToPx(outputBoundsMm.width, DPI_PRINT);
+    const outputHeightPx = mmToPx(outputBoundsMm.height, DPI_PRINT);
+    // 計算相對於顯示尺寸的縮放比例
+    scaleFactor = outputWidthPx / printWidth;
+
+    console.log("基於 physicalSize 計算縮放:", {
+      顯示尺寸: `${printWidth}×${printHeight}px`,
+      實際尺寸: `${outputBoundsMm.width.toFixed(1)}×${outputBoundsMm.height.toFixed(1)}mm`,
+      輸出尺寸: `${outputWidthPx.toFixed(0)}×${outputHeightPx.toFixed(0)}px (300dpi)`,
+      縮放比例: scaleFactor.toFixed(2)
+    });
+  }
+
   // 2D 和 3D 商品都輸出指定區域大小
   const canvasWidth = printWidth;
   const canvasHeight = printHeight;
 
   // 設定高解析度
-  canvas.width = canvasWidth * SCALE_FACTOR;
-  canvas.height = canvasHeight * SCALE_FACTOR;
-  ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
+  canvas.width = canvasWidth * scaleFactor;
+  canvas.height = canvasHeight * scaleFactor;
+  ctx.scale(scaleFactor, scaleFactor);
 
   // 設定背景
   if (backgroundColor && backgroundColor !== "#ffffff") {
@@ -350,12 +370,12 @@ export const calculateInputWidth = (text, fontSize, fontFamily, fontWeight, font
 // 生成高解析度列印檔案（用於廠商列印）
 export const generatePrintFile = async (productInfo, designElements, backgroundColor, options = {}) => {
   const {
-    scaleFactor = 8,      // 縮放倍數（預設8倍）
+    scaleFactor: customScaleFactor,  // 自訂縮放倍數（選填）
     useBleedArea = true,  // 是否使用出血區域（預設true，用於廠商列印）
     showCropMarks = false // 是否顯示裁切線
   } = options;
 
-  const { printArea, bleedArea, type: productType } = productInfo;
+  const { printArea, bleedArea, type: productType, physicalSize } = productInfo;
 
   if (!printArea) {
     throw new Error("無法生成列印檔案：商品未設定設計區域");
@@ -373,6 +393,25 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
   }
 
   const { width: printWidth, height: printHeight } = outputBounds;
+
+  // 計算縮放比例：基於 physicalSize 和 300dpi，或使用自訂值
+  let scaleFactor = customScaleFactor || 8; // 預設8倍
+  if (physicalSize && !customScaleFactor) {
+    // 將顯示座標的輸出範圍轉換為 mm
+    const outputBoundsMm = printAreaDisplayToMm(outputBounds, physicalSize, CANVAS_SIZE);
+    // 計算 300dpi 時的像素尺寸
+    const outputWidthPx = mmToPx(outputBoundsMm.width, DPI_PRINT);
+    const outputHeightPx = mmToPx(outputBoundsMm.height, DPI_PRINT);
+    // 計算相對於顯示尺寸的縮放比例
+    scaleFactor = outputWidthPx / printWidth;
+
+    console.log("基於 physicalSize 計算列印縮放:", {
+      顯示尺寸: `${printWidth}×${printHeight}px`,
+      實際尺寸: `${outputBoundsMm.width.toFixed(1)}×${outputBoundsMm.height.toFixed(1)}mm`,
+      輸出尺寸: `${outputWidthPx.toFixed(0)}×${outputHeightPx.toFixed(0)}px (300dpi)`,
+      縮放比例: scaleFactor.toFixed(2)
+    });
+  }
 
   // 2D 和 3D 商品都輸出指定區域大小
   const canvasWidth = printWidth;

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import GLBViewer from "@monkind/shared/components/GLBViewer";
 import UVMapper from "@monkind/shared/components/UVMapper";
@@ -18,6 +18,9 @@ const ProductMaintenance = () => {
 
   // 使用共享的 hook，傳入 customer 配置
   const pm = useProductMaintenance(customerConfig);
+
+  // 軸心輔助線顯示狀態
+  const [showPivotHelper, setShowPivotHelper] = useState(false);
 
   // 載入狀態
   if (pm.loading) {
@@ -225,6 +228,57 @@ const ProductMaintenance = () => {
                 </div>
 
                 <div className="p-5">
+                  {/* 底圖實際尺寸設定 */}
+                  <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">
+                        底圖實際尺寸 (mm)
+                      </h4>
+                      <span className="text-xs text-gray-500">
+                        用於計算 300dpi 列印尺寸
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-600">寬度</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="1000"
+                          value={pm.getPhysicalSize(pm.selectedProduct).widthMm}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 1;
+                            pm.handleUpdatePhysicalSize({
+                              ...pm.getPhysicalSize(pm.selectedProduct),
+                              widthMm: value,
+                            });
+                          }}
+                          className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                        />
+                        <span className="text-xs text-gray-500">mm</span>
+                      </div>
+                      <span className="text-gray-400">×</span>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-600">高度</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="1000"
+                          value={pm.getPhysicalSize(pm.selectedProduct).heightMm}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 1;
+                            pm.handleUpdatePhysicalSize({
+                              ...pm.getPhysicalSize(pm.selectedProduct),
+                              heightMm: value,
+                            });
+                          }}
+                          className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                        />
+                        <span className="text-xs text-gray-500">mm</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <DesignAreaPreview
                     mockupImage={pm.selectedProduct.mockupImage}
                     printArea={pm.tempPrintArea}
@@ -234,6 +288,7 @@ const ProductMaintenance = () => {
                     }}
                     isDragging={pm.isDragging}
                     showBleedArea={false}
+                    physicalSize={pm.getPhysicalSize(pm.selectedProduct)}
                   />
 
                   <div className="mt-4 flex justify-end space-x-3">
@@ -343,6 +398,9 @@ const ProductMaintenance = () => {
                               glbUrl={pm.selectedProduct.model3D.glbUrl}
                               uvMapping={pm.selectedProduct.model3D.uvMapping}
                               onUVUpdate={pm.handleUpdateUVMapping}
+                              pivot={pm.selectedProduct.model3D?.pivot}
+                              showPivotHelper={showPivotHelper}
+                              className="h-64"
                             />
                             <button
                               onClick={pm.handleRemoveGLB}
@@ -387,6 +445,133 @@ const ProductMaintenance = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* 旋轉軸心設定 */}
+                    {pm.selectedProduct.model3D?.glbUrl && (
+                      <div className="mt-6 pt-6 border-t border-gray-200">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-900">
+                              旋轉軸心設定
+                            </h4>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              設定 3D 模型旋轉時的中心點（-1 到 1 為相對於模型邊界）
+                            </p>
+                          </div>
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={showPivotHelper}
+                              onChange={(e) => setShowPivotHelper(e.target.checked)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-600">顯示輔助線</span>
+                          </label>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          {/* X 軸 */}
+                          <div>
+                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                              <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                              <span>X 軸</span>
+                            </label>
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.05"
+                              value={pm.selectedProduct.model3D?.pivot?.x || 0}
+                              onChange={(e) => {
+                                const newPivot = {
+                                  ...pm.selectedProduct.model3D?.pivot,
+                                  x: parseFloat(e.target.value),
+                                };
+                                pm.handleUpdatePivot(newPivot);
+                              }}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-500"
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                              <span>-1</span>
+                              <span className="font-medium text-gray-700">
+                                {(pm.selectedProduct.model3D?.pivot?.x || 0).toFixed(2)}
+                              </span>
+                              <span>1</span>
+                            </div>
+                          </div>
+
+                          {/* Y 軸 */}
+                          <div>
+                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                              <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                              <span>Y 軸</span>
+                            </label>
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.05"
+                              value={pm.selectedProduct.model3D?.pivot?.y || 0}
+                              onChange={(e) => {
+                                const newPivot = {
+                                  ...pm.selectedProduct.model3D?.pivot,
+                                  y: parseFloat(e.target.value),
+                                };
+                                pm.handleUpdatePivot(newPivot);
+                              }}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                              <span>-1</span>
+                              <span className="font-medium text-gray-700">
+                                {(pm.selectedProduct.model3D?.pivot?.y || 0).toFixed(2)}
+                              </span>
+                              <span>1</span>
+                            </div>
+                          </div>
+
+                          {/* Z 軸 */}
+                          <div>
+                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                              <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                              <span>Z 軸</span>
+                            </label>
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.05"
+                              value={pm.selectedProduct.model3D?.pivot?.z || 0}
+                              onChange={(e) => {
+                                const newPivot = {
+                                  ...pm.selectedProduct.model3D?.pivot,
+                                  z: parseFloat(e.target.value),
+                                };
+                                pm.handleUpdatePivot(newPivot);
+                              }}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                              <span>-1</span>
+                              <span className="font-medium text-gray-700">
+                                {(pm.selectedProduct.model3D?.pivot?.z || 0).toFixed(2)}
+                              </span>
+                              <span>1</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 重置按鈕 */}
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            onClick={() => pm.handleUpdatePivot({ x: 0, y: 0, z: 0 })}
+                            className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                          >
+                            重置軸心
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

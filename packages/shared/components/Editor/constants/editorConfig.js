@@ -1,7 +1,8 @@
 // 編輯器配置常量
 
-export const CANVAS_SIZE = 400; // 畫布邏輯尺寸
+export const CANVAS_SIZE = 400; // 畫布邏輯尺寸（用於顯示）
 export const DISPLAY_SIZE = 400; // 顯示尺寸
+export const DPI_PRINT = 300; // 列印 DPI
 
 // 文字配置
 export const MIN_FONT_SIZE = 2;

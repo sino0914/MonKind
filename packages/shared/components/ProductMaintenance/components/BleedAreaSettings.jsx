@@ -72,13 +72,14 @@ const BleedAreaSettings = ({
               <input
                 type="number"
                 min="0"
-                max="50"
+                max="20"
+                step="0.1"
                 value={bleedArea.value || 0}
                 onChange={(e) => onValueChange({ value: Number(e.target.value) })}
                 disabled={disabled}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               />
-              <span className="text-sm text-gray-600">px</span>
+              <span className="text-sm text-gray-600">mm</span>
             </div>
           ) : (
             <div className="space-y-2">
@@ -88,13 +89,14 @@ const BleedAreaSettings = ({
                 <input
                   type="number"
                   min="0"
-                  max="50"
+                  max="20"
+                  step="0.1"
                   value={bleedArea.top || 0}
                   onChange={(e) => onValueChange({ top: Number(e.target.value) })}
                   disabled={disabled}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 />
-                <span className="text-sm text-gray-600">px</span>
+                <span className="text-sm text-gray-600">mm</span>
               </div>
 
               {/* 右 */}
@@ -103,13 +105,14 @@ const BleedAreaSettings = ({
                 <input
                   type="number"
                   min="0"
-                  max="50"
+                  max="20"
+                  step="0.1"
                   value={bleedArea.right || 0}
                   onChange={(e) => onValueChange({ right: Number(e.target.value) })}
                   disabled={disabled}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 />
-                <span className="text-sm text-gray-600">px</span>
+                <span className="text-sm text-gray-600">mm</span>
               </div>
 
               {/* 下 */}
@@ -118,13 +121,14 @@ const BleedAreaSettings = ({
                 <input
                   type="number"
                   min="0"
-                  max="50"
+                  max="20"
+                  step="0.1"
                   value={bleedArea.bottom || 0}
                   onChange={(e) => onValueChange({ bottom: Number(e.target.value) })}
                   disabled={disabled}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 />
-                <span className="text-sm text-gray-600">px</span>
+                <span className="text-sm text-gray-600">mm</span>
               </div>
 
               {/* 左 */}
@@ -133,20 +137,21 @@ const BleedAreaSettings = ({
                 <input
                   type="number"
                   min="0"
-                  max="50"
+                  max="20"
+                  step="0.1"
                   value={bleedArea.left || 0}
                   onChange={(e) => onValueChange({ left: Number(e.target.value) })}
                   disabled={disabled}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 />
-                <span className="text-sm text-gray-600">px</span>
+                <span className="text-sm text-gray-600">mm</span>
               </div>
             </div>
           )}
 
           {/* 說明文字 */}
           <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-            出血區域是印刷時額外的安全邊界，可避免裁切時出現白邊。數值範圍: 0-50px
+            出血區域是印刷時額外的安全邊界，可避免裁切時出現白邊。數值範圍: 0-20mm
           </div>
         </>
       )}

@@ -8,6 +8,20 @@ import {
   validatePrintArea,
   validateBleedArea,
 } from '../utils/validationHelpers';
+import {
+  printAreaMmToDisplay,
+  printAreaDisplayToMm,
+  formatMm,
+} from '@monkind/shared/utils/unitConversion';
+
+// 預設底圖實際尺寸（mm）- 用於舊資料向後相容
+const DEFAULT_PHYSICAL_SIZE = {
+  widthMm: 100,
+  heightMm: 100,
+};
+
+// 顯示畫布尺寸（px）
+const DISPLAY_SIZE = 400;
 
 /**
  * useProductMaintenance Hook
@@ -190,6 +204,8 @@ export const useProductMaintenance = (config = {}) => {
             position: { x: 0, y: 0, z: 5 },
             target: { x: 0, y: 0, z: 0 },
           },
+          // 旋轉軸心設定 (-1 到 1，相對於模型邊界框)
+          pivot: { x: 0, y: 0, z: 0 },
         };
       }
 
@@ -393,6 +409,77 @@ export const useProductMaintenance = (config = {}) => {
     }
   }, [selectedProduct, showError]);
 
+  // === 更新旋轉軸心 ===
+  const handleUpdatePivot = useCallback(async (pivotData) => {
+    if (!selectedProduct || selectedProduct.type !== '3D') return;
+
+    try {
+      const updatedProduct = {
+        ...selectedProduct,
+        model3D: {
+          ...selectedProduct.model3D,
+          pivot: pivotData,
+        },
+      };
+
+      await API.products.update(selectedProduct.id, {
+        model3D: updatedProduct.model3D,
+      });
+
+      setSelectedProduct(updatedProduct);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p))
+      );
+    } catch (error) {
+      console.error('更新旋轉軸心失敗:', error);
+      showError('更新旋轉軸心失敗: ' + error.message);
+    }
+  }, [selectedProduct, showError]);
+
+  // === 更新底圖實際尺寸 (mm) ===
+  const handleUpdatePhysicalSize = useCallback(async (physicalSize) => {
+    if (!selectedProduct) return;
+
+    try {
+      setSaving(true);
+      const updatedProduct = await API.products.update(selectedProduct.id, {
+        physicalSize,
+      });
+
+      setSelectedProduct(updatedProduct);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p))
+      );
+
+      showSuccess('底圖尺寸已更新');
+    } catch (error) {
+      console.error('更新底圖尺寸失敗:', error);
+      showError('更新底圖尺寸失敗: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedProduct, showSuccess, showError]);
+
+  // === 取得產品的實際尺寸（向後相容）===
+  const getPhysicalSize = useCallback((product) => {
+    return product?.physicalSize || DEFAULT_PHYSICAL_SIZE;
+  }, []);
+
+  // === 將 mm 單位的 printArea 轉換為顯示用座標 ===
+  const getPrintAreaForDisplay = useCallback((product) => {
+    if (!product?.printArea) {
+      return { x: 50, y: 50, width: 200, height: 150 };
+    }
+    const physicalSize = getPhysicalSize(product);
+    return printAreaMmToDisplay(product.printArea, physicalSize, DISPLAY_SIZE);
+  }, [getPhysicalSize]);
+
+  // === 將顯示座標轉換為 mm 單位的 printArea ===
+  const getPrintAreaInMm = useCallback((displayPrintArea, product) => {
+    const physicalSize = getPhysicalSize(product);
+    return printAreaDisplayToMm(displayPrintArea, physicalSize, DISPLAY_SIZE);
+  }, [getPhysicalSize]);
+
   // === 返回所有狀態和方法 ===
   return {
     // 狀態
@@ -447,5 +534,14 @@ export const useProductMaintenance = (config = {}) => {
     handleUploadGLB,
     handleRemoveGLB,
     handleUpdateUVMapping,
+    handleUpdatePivot,
+
+    // 尺寸相關（mm 單位支援）
+    handleUpdatePhysicalSize,
+    getPhysicalSize,
+    getPrintAreaForDisplay,
+    getPrintAreaInMm,
+    DISPLAY_SIZE,
+    DEFAULT_PHYSICAL_SIZE,
   };
 };

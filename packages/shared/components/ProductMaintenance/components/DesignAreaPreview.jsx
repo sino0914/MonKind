@@ -1,9 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { calculateBleedBounds } from '../utils/bleedAreaUtils';
+import { printAreaDisplayToMm, formatMm } from '../../../utils/unitConversion';
 
 /**
  * DesignAreaPreview 組件
  * 顯示設計區域預覽畫布，支援拖曳和調整大小
+ * 顯示單位為 mm
  */
 const DesignAreaPreview = ({
   mockupImage,
@@ -15,6 +17,7 @@ const DesignAreaPreview = ({
   isDragging,
   canvasSize = 400,
   showBleedArea = true,
+  physicalSize, // { widthMm, heightMm }
 }) => {
   const canvasRef = useRef(null);
   const [localDragState, setLocalDragState] = useState({
@@ -162,6 +165,11 @@ const DesignAreaPreview = ({
     handleMouseUp();
   };
 
+  // 將顯示座標轉換為 mm 顯示
+  const printAreaMm = physicalSize
+    ? printAreaDisplayToMm(printArea, physicalSize, canvasSize)
+    : null;
+
   return (
     <div className="relative">
       <canvas
@@ -176,7 +184,14 @@ const DesignAreaPreview = ({
         style={{ maxWidth: '100%', height: 'auto' }}
       />
       <div className="mt-2 text-sm text-gray-600">
-        <p>設計區域: X={printArea.x.toFixed(0)}px, Y={printArea.y.toFixed(0)}px, W={printArea.width.toFixed(0)}px, H={printArea.height.toFixed(0)}px</p>
+        {printAreaMm ? (
+          <p>
+            設計區域: X={formatMm(printAreaMm.x)}mm, Y={formatMm(printAreaMm.y)}mm,
+            W={formatMm(printAreaMm.width)}mm, H={formatMm(printAreaMm.height)}mm
+          </p>
+        ) : (
+          <p>設計區域: X={printArea.x.toFixed(0)}px, Y={printArea.y.toFixed(0)}px, W={printArea.width.toFixed(0)}px, H={printArea.height.toFixed(0)}px</p>
+        )}
       </div>
     </div>
   );

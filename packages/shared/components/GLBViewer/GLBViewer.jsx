@@ -9,6 +9,73 @@ import {
 } from "@react-three/drei";
 import * as THREE from "three";
 
+// 軸心輔助線組件 - 顯示 XYZ 三軸
+function PivotHelper({ pivot, boundingBox, visible = false }) {
+  if (!visible || !boundingBox) return null;
+
+  // 計算軸心在實際座標中的位置
+  const center = new THREE.Vector3();
+  boundingBox.getCenter(center);
+  const size = new THREE.Vector3();
+  boundingBox.getSize(size);
+
+  // 將 -1 到 1 的比例值轉換為實際座標
+  const pivotPosition = new THREE.Vector3(
+    center.x + (pivot?.x || 0) * (size.x / 2),
+    center.y + (pivot?.y || 0) * (size.y / 2),
+    center.z + (pivot?.z || 0) * (size.z / 2)
+  );
+
+  // 輔助線長度（基於模型大小）
+  const axisLength = Math.max(size.x, size.y, size.z) * 0.8;
+
+  return (
+    <group position={pivotPosition}>
+      {/* X 軸 - 紅色 */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={2}
+            array={new Float32Array([-axisLength, 0, 0, axisLength, 0, 0])}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial color="#ff0000" linewidth={2} />
+      </line>
+      {/* Y 軸 - 綠色 */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={2}
+            array={new Float32Array([0, -axisLength, 0, 0, axisLength, 0])}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial color="#00ff00" linewidth={2} />
+      </line>
+      {/* Z 軸 - 藍色 */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={2}
+            array={new Float32Array([0, 0, -axisLength, 0, 0, axisLength])}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial color="#0088ff" linewidth={2} />
+      </line>
+      {/* 中心點球體 */}
+      <mesh>
+        <sphereGeometry args={[0.02, 16, 16]} />
+        <meshBasicMaterial color="#ffff00" />
+      </mesh>
+    </group>
+  );
+}
+
 // GLB模型組件 - Trackball 自由旋轉（類似 Blender）
 function GLBModel({
   url,
@@ -20,11 +87,27 @@ function GLBModel({
   isDragging,
   velocity,
   groupRef,
+  pivot,
+  showPivotHelper = false,
+  onBoundingBoxCalculated,
 }) {
   const { scene, materials } = useGLTF(url);
+  const [boundingBox, setBoundingBox] = useState(null);
+  const modelRef = useRef();
 
   // 複製場景以避免修改原始資料
   const clonedScene = scene.clone();
+
+  // 計算模型邊界框
+  useEffect(() => {
+    if (clonedScene) {
+      const box = new THREE.Box3().setFromObject(clonedScene);
+      setBoundingBox(box);
+      if (onBoundingBoxCalculated) {
+        onBoundingBoxCalculated(box);
+      }
+    }
+  }, [url]);
 
   // 處理慣性旋轉
   useFrame(() => {
@@ -81,9 +164,31 @@ function GLBModel({
     }
   }, [showWireframe, materials, testTexture, uvMapping]);
 
+  // 計算軸心偏移（用於旋轉）
+  const pivotOffset = boundingBox ? (() => {
+    const center = new THREE.Vector3();
+    boundingBox.getCenter(center);
+    const size = new THREE.Vector3();
+    boundingBox.getSize(size);
+    return new THREE.Vector3(
+      (pivot?.x || 0) * (size.x / 2),
+      (pivot?.y || 0) * (size.y / 2),
+      (pivot?.z || 0) * (size.z / 2)
+    );
+  })() : new THREE.Vector3(0, 0, 0);
+
   return (
-    <group ref={groupRef}>
-      <primitive object={clonedScene} rotation={[0, 2.5, 0]} />
+    <group ref={groupRef} position={pivotOffset}>
+      {/* 模型位置需要反向偏移，使旋轉軸心正確 */}
+      <group position={[-pivotOffset.x, -pivotOffset.y, -pivotOffset.z]}>
+        <primitive object={clonedScene} rotation={[0, 2.5, 0]} />
+      </group>
+      {/* 軸心輔助線 */}
+      <PivotHelper
+        pivot={pivot}
+        boundingBox={boundingBox}
+        visible={showPivotHelper}
+      />
     </group>
   );
 }
@@ -107,6 +212,8 @@ export default function GLBViewer({
   autoRotate = true,
   uvMapping,
   testTexture,
+  pivot,
+  showPivotHelper = false,
 }) {
   const [showWireframe, setShowWireframe] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
@@ -245,6 +352,8 @@ export default function GLBViewer({
             isDragging={isDragging}
             velocity={velocity}
             groupRef={groupRef}
+            pivot={pivot}
+            showPivotHelper={showPivotHelper}
           />
 
           {/* 軌道控制器 - 禁用旋轉，保留縮放和平移 */}
