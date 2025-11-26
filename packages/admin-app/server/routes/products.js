@@ -2,6 +2,10 @@ const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const {
+  validateProductBackgroundConfig,
+  mergeBackgroundConfig
+} = require('../utils/backgroundImageValidator.js');
 
 const router = express.Router();
 const dataDir = path.join(__dirname, '../data');
@@ -174,10 +178,37 @@ router.put('/:id', async (req, res) => {
       });
     }
 
+    const currentProduct = products[index];
+    const updateData = req.body;
+
+    // 驗證背景圖配置
+    const validationResult = validateProductBackgroundConfig(
+      mergeBackgroundConfig(currentProduct, updateData)
+    );
+
+    if (!validationResult.valid) {
+      const allErrors = [
+        ...validationResult.backgroundImageErrors,
+        ...validationResult.mappingErrors
+      ];
+
+      return res.status(400).json({
+        success: false,
+        message: '背景圖配置驗證失敗',
+        errors: allErrors
+      });
+    }
+
+    // 合併背景圖配置（包括版本控制）
+    let mergedData = { ...updateData };
+    if (updateData.productBackgroundImage !== undefined || updateData.bleedAreaMapping !== undefined) {
+      mergedData = mergeBackgroundConfig(currentProduct, updateData);
+    }
+
     // 更新產品數據
     products[index] = {
-      ...products[index],
-      ...req.body,
+      ...currentProduct,
+      ...mergedData,
       id: parseInt(req.params.id), // 確保 ID 不被覆蓋
       updatedAt: new Date().toISOString()
     };

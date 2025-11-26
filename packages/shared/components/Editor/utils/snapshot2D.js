@@ -22,12 +22,15 @@ const loadImage = (url) =>
   });
 
 /**
- * 生成 2D 商品快照
+ * 生成 2D 商品快照（增強版，支持背景圖映射）
  * @param {Object} product - 商品資料
  * @param {Array} designElements - 設計元素
  * @param {string} backgroundColor - 背景顏色
  * @param {number} width - 快照寬度
  * @param {number} height - 快照高度
+ * @param {Object} options - 【新增】選項
+ *   - useProductBackground: boolean (默認 false，使用背景圖映射)
+ *   - bleedAreaMapping: Object (映射配置)
  * @returns {Promise<string|null>} - 返回 base64 圖片字串
  */
 export const generate2DSnapshot = async (
@@ -35,7 +38,8 @@ export const generate2DSnapshot = async (
   designElements,
   backgroundColor,
   width = 400,
-  height = 400
+  height = 400,
+  options = {}
 ) => {
   if (!product || product.type === '3D') {
     console.warn('無法生成 2D 快照：商品不是 2D 類型');
@@ -55,9 +59,14 @@ export const generate2DSnapshot = async (
     }
 
     // 1. 繪製商品背景圖（保持比例，object-contain）
-    const mockupImage = product.mockupImage || product.image;
-    if (mockupImage) {
-      const bgImg = await loadImage(mockupImage);
+    // 【修改】支持使用背景圖映射
+    const useProductBackground = options.useProductBackground && product.productBackgroundImage;
+    const backgroundImage = useProductBackground
+      ? product.productBackgroundImage?.url
+      : (product.mockupImage || product.image);
+
+    if (backgroundImage) {
+      const bgImg = await loadImage(backgroundImage);
       if (bgImg) {
         // 計算保持比例的尺寸（類似 CSS object-contain）
         const imgRatio = bgImg.width / bgImg.height;
