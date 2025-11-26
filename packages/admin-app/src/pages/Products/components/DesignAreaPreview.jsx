@@ -23,6 +23,8 @@ const DesignAreaPreview = ({
   onMouseUp,
   viewport,
   onViewportChange,
+  productBackgroundImage, // 新增：背景圖
+  bleedAreaMapping, // 新增：映射設定
 }) => {
   const containerRef = useRef(null);
 
@@ -120,22 +122,22 @@ const DesignAreaPreview = ({
           transition: viewport?.isPanning ? 'none' : 'transform 0.1s ease-out',
         }}
       >
-        {/* 底圖 */}
-        {product.mockupImage ? (
+        {/* 底圖（優先使用背景圖，否則使用 mockupImage） */}
+        {(productBackgroundImage?.url || product.mockupImage) ? (
           <img
-            key={`mockup-${product.id}-${product.mockupImage.substring(0, 50)}`}
-            src={product.mockupImage}
+            key={`background-${product.id}-${(productBackgroundImage?.url || product.mockupImage)?.substring(0, 50)}`}
+            src={productBackgroundImage?.url || product.mockupImage}
             alt={`${product.title} 底圖`}
             className="w-full h-full object-contain pointer-events-none"
             onError={(e) => {
-              console.error('Mockup image failed to load:', product.mockupImage);
+              console.error('Background/Mockup image failed to load:', productBackgroundImage?.url || product.mockupImage);
               e.target.style.display = 'none';
               if (e.target.nextSibling) {
                 e.target.nextSibling.style.display = 'flex';
               }
             }}
             onLoad={() => {
-              console.log('Mockup image loaded successfully');
+              console.log('Background/Mockup image loaded successfully');
             }}
           />
         ) : null}
