@@ -17,15 +17,15 @@ export function validateBackgroundImageUrl(url) {
     return { valid: false, error: '背景图URL必须是字符串' };
   }
 
-  // 检查URL格式（基础检查）
+  // 检查URL格式：必须是完整URL（http:// 或 https://）
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return { valid: false, error: `背景图URL必须是完整URL (http:// 或 https://): ${url}` };
+  }
+
   try {
     new URL(url);
     return { valid: true, error: null };
   } catch (e) {
-    // 如果是相对路径，也接受
-    if (url.startsWith('/')) {
-      return { valid: true, error: null };
-    }
     return { valid: false, error: `背景图URL格式无效: ${url}` };
   }
 }
@@ -304,6 +304,28 @@ export function validateProductBackgroundConfig(product) {
  * @param {Object} updateData - 更新数据
  * @returns {Object} 合并后的产品数据
  */
+/**
+ * 轉換相對路徑為完整URL
+ * @param {string} url - 可能是相對或完整URL
+ * @returns {string} 完整URL
+ */
+function normalizeImageUrl(url) {
+  if (!url) return null;
+
+  // 如果已是完整URL，直接返回
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+
+  // 如果是相對路徑，補充完整URL
+  if (url.startsWith('/')) {
+    const baseUrl = process.env.API_BASE_URL || 'http://localhost:3002';
+    return `${baseUrl}${url}`;
+  }
+
+  return url;
+}
+
 export function mergeBackgroundConfig(currentProduct, updateData) {
   const merged = { ...currentProduct };
 
@@ -317,6 +339,11 @@ export function mergeBackgroundConfig(currentProduct, updateData) {
         ...updateData.productBackgroundImage,
         uploadedAt: updateData.productBackgroundImage.uploadedAt || new Date().toISOString()
       };
+
+      // 確保URL是完整URL（修復相對路徑）
+      if (merged.productBackgroundImage.url) {
+        merged.productBackgroundImage.url = normalizeImageUrl(merged.productBackgroundImage.url);
+      }
     }
   }
 

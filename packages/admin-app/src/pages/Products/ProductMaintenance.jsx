@@ -399,6 +399,10 @@ const ProductMaintenance = () => {
       product.title,
       "mockupImage:",
       !!product.mockupImage,
+      "productBackgroundImage:",
+      !!product.productBackgroundImage,
+      "bleedAreaMapping:",
+      !!product.bleedAreaMapping,
       "defaultViewport:",
       product.defaultViewport
     );
@@ -409,6 +413,10 @@ const ProductMaintenance = () => {
       product.printArea || { x: 50, y: 50, width: 200, height: 150 }
     );
     resetBleedArea(product.bleedArea || null);
+
+    // 初始化背景圖和映射配置
+    setTempBackgroundImage(product.productBackgroundImage || null);
+    setTempBleedAreaMapping(product.bleedAreaMapping || null);
 
     // 載入該商品的預設視圖
     if (product.defaultViewport) {
@@ -509,8 +517,13 @@ const ProductMaintenance = () => {
       // 上傳背景圖
       const uploadResult = await API.upload.image(file);
 
+      // 組合完整 URL（加上伺服器 base URL）- 參考 mockup 上傳模式
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+      const baseUrl = API_BASE_URL.replace('/api', '');
+      const fullUrl = `${baseUrl}${uploadResult.url}`;
+
       const backgroundImageData = {
-        url: uploadResult.url,
+        url: fullUrl,
         uploadedAt: new Date().toISOString(),
         fileInfo: {
           filename: uploadResult.filename,
