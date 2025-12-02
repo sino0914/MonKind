@@ -205,7 +205,8 @@ export const saveDraft = async (productId, designData, draftId = null, product =
         elements,
         backgroundColor,
         400,
-        400
+        400,
+        { useProductBackground: true } // 優先使用商品背景圖
       );
       if (snapshot) {
         console.log('✅ 2D 快照已生成，大小:', (snapshot.length / 1024).toFixed(2), 'KB');

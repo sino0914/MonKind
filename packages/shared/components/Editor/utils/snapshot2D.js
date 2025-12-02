@@ -4,6 +4,8 @@
  * 參考 ProductPreview.jsx 的 2D 渲染方式
  */
 
+import { getBleedMappingTransform } from '../../ProductMaintenance/utils/bleedAreaMappingUtils';
+
 /**
  * 載入圖片工具
  * @param {string} url - 圖片 URL
@@ -103,6 +105,25 @@ export const generate2DSnapshot = async (
       // 沒有背景圖，使用白色
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
+    }
+
+    // 檢查是否需要套用映射變換
+    const shouldApplyMapping = useProductBackground &&
+                              product.bleedAreaMapping?.enabled;
+
+    if (shouldApplyMapping) {
+      console.log('🔄 snapshot2D: 套用背景圖映射變換');
+      // 套用映射變換到 Canvas
+      const transform = getBleedMappingTransform(product, product.bleedAreaMapping, width);
+
+      if (transform) {
+        ctx.save();
+        // 使用 transform 矩陣進行變換
+        // 順序：translate, scale
+        ctx.translate(width / 2, height / 2); // 移動到中心
+        ctx.scale(transform.scaleX, transform.scaleY); // 縮放
+        ctx.translate(transform.translateX - width / 2, transform.translateY - height / 2); // 平移回去並套用偏移
+      }
     }
 
     // 2. 繪製設計區域背景色
@@ -306,6 +327,12 @@ export const generate2DSnapshot = async (
     // 恢復裁切（如果有設定）
     if (product.printArea) {
       ctx.restore();
+    }
+
+    // 恢復映射變換（如果有套用）
+    if (shouldApplyMapping) {
+      ctx.restore();
+      console.log('✅ snapshot2D: 已恢復映射變換');
     }
 
     // 5. 轉換為 base64

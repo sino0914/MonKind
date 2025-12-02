@@ -169,7 +169,8 @@ const Editor = () => {
               designData.elements,
               designData.backgroundColor,
               400,
-              400
+              400,
+              { useProductBackground: true } // 優先使用商品背景圖
             );
             console.log('✅ 更新購物車時已重新生成 2D 快照');
 
@@ -271,7 +272,8 @@ const Editor = () => {
               designData.elements,
               designData.backgroundColor,
               400,
-              400
+              400,
+              { useProductBackground: true } // 優先使用商品背景圖
             );
             console.log('✅ 新建購物車時已生成 2D 快照');
 

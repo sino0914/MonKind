@@ -557,24 +557,58 @@ const ProductMaintenance = () => {
 
   // 保存背景圖和映射設定
   const handleSaveBackgroundConfig = async () => {
-    if (!selectedProduct) return;
+    if (!selectedProduct) {
+      console.error('❌ 儲存失敗：未選擇商品');
+      return;
+    }
 
     try {
       setSaving(true);
       setError(null);
 
-      // 始終保存背景圖和映射設定
+      // 詳細日誌：儲存前的資料
+      console.log('📝 準備儲存背景圖設定:', {
+        productId: selectedProduct.id,
+        productTitle: selectedProduct.title,
+        tempBackgroundImage: tempBackgroundImage,
+        tempBleedAreaMapping: tempBleedAreaMapping
+      });
+
+      // 確保資料結構正確
       const updateData = {
         productBackgroundImage: tempBackgroundImage,
-        bleedAreaMapping: tempBleedAreaMapping
+        bleedAreaMapping: tempBleedAreaMapping ? {
+          ...tempBleedAreaMapping,
+          enabled: tempBleedAreaMapping?.enabled ?? true,
+          version: (tempBleedAreaMapping?.version || 0) + 1,
+          appliedAt: new Date().toISOString()
+        } : null
       };
 
-      console.log('Saving background config:', updateData);
+      console.log('💾 發送到後端的資料:', updateData);
 
+      // 呼叫 API 更新
       const updatedProduct = await API.products.update(
         selectedProduct.id,
         updateData
       );
+
+      console.log('✅ 後端回傳的資料:', {
+        id: updatedProduct.id,
+        productBackgroundImage: updatedProduct.productBackgroundImage,
+        bleedAreaMapping: updatedProduct.bleedAreaMapping
+      });
+
+      // 驗證資料確實被儲存
+      if (tempBackgroundImage && !updatedProduct.productBackgroundImage) {
+        console.error('⚠️ 警告：背景圖未被儲存');
+        throw new Error('背景圖儲存失敗，請重試');
+      }
+
+      if (tempBleedAreaMapping && !updatedProduct.bleedAreaMapping) {
+        console.error('⚠️ 警告：映射設定未被儲存');
+        throw new Error('映射設定儲存失敗，請重試');
+      }
 
       // 更新本地狀態
       const updatedProducts = products.map((p) =>
@@ -586,9 +620,14 @@ const ProductMaintenance = () => {
       setTempBackgroundImage(updatedProduct.productBackgroundImage || null);
       setTempBleedAreaMapping(updatedProduct.bleedAreaMapping || null);
 
+      console.log('✅ 本地狀態已更新');
       showNotification("背景圖設定已成功儲存！");
     } catch (error) {
-      console.error("保存背景圖設定失敗:", error);
+      console.error("❌ 保存背景圖設定失敗:", {
+        error: error.message,
+        stack: error.stack,
+        productId: selectedProduct?.id
+      });
       setError("保存失敗: " + error.message);
       showNotification("保存失敗: " + error.message, "error");
     } finally {
