@@ -36,7 +36,6 @@ export { default as DesignAreaPreview } from './components/DesignAreaPreview';
 export { default as BleedAreaSettings } from './components/BleedAreaSettings';
 export { default as BackgroundImageUploader } from './components/BackgroundImageUploader';
 export { default as BleedAreaMappingEditor } from './components/BleedAreaMappingEditor';
-export { default as BackgroundImageMappingConfig } from './components/BackgroundImageMappingConfig';
 
 // Utils
 export * from './utils/validationHelpers';

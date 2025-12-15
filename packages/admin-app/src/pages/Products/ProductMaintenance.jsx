@@ -10,7 +10,8 @@ import { useDesignArea } from "./hooks/useDesignArea";
 import NotificationMessage from "./components/NotificationMessage";
 import DesignAreaPreview from "./components/DesignAreaPreview";
 import BleedAreaSettings from "./components/BleedAreaSettings";
-import BackgroundImageMappingConfig from "@monkind/shared/components/ProductMaintenance/components/BackgroundImageMappingConfig";
+import BackgroundImageUploader from "@monkind/shared/components/ProductMaintenance/components/BackgroundImageUploader";
+import BleedAreaMappingEditor from "@monkind/shared/components/ProductMaintenance/components/BleedAreaMappingEditor";
 
 const ProductMaintenance = () => {
   const navigate = useNavigate();
@@ -542,7 +543,7 @@ const ProductMaintenance = () => {
     setTempBleedAreaMapping(mapping);
   };
 
-  // 保存背景圖和映射設定
+  // 保存背景圖和映射配置
   const handleSaveBackgroundConfig = async () => {
     if (!selectedProduct) return;
 
@@ -550,13 +551,22 @@ const ProductMaintenance = () => {
       setSaving(true);
       setError(null);
 
-      // 始終保存背景圖和映射設定
-      const updateData = {
-        productBackgroundImage: tempBackgroundImage,
-        bleedAreaMapping: tempBleedAreaMapping
-      };
+      const updateData = {};
 
-      console.log('Saving background config:', updateData);
+      // 添加背景圖配置
+      if (tempBackgroundImage !== selectedProduct.productBackgroundImage) {
+        updateData.productBackgroundImage = tempBackgroundImage;
+      }
+
+      // 添加映射配置
+      if (tempBleedAreaMapping !== selectedProduct.bleedAreaMapping) {
+        updateData.bleedAreaMapping = tempBleedAreaMapping;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        showNotification("沒有需要保存的變更");
+        return;
+      }
 
       const updatedProduct = await API.products.update(
         selectedProduct.id,
@@ -573,9 +583,9 @@ const ProductMaintenance = () => {
       setTempBackgroundImage(updatedProduct.productBackgroundImage || null);
       setTempBleedAreaMapping(updatedProduct.bleedAreaMapping || null);
 
-      showNotification("背景圖設定已成功儲存！");
+      showNotification("背景圖配置已成功儲存！");
     } catch (error) {
-      console.error("保存背景圖設定失敗:", error);
+      console.error("保存背景圖配置失敗:", error);
       setError("保存失敗: " + error.message);
       showNotification("保存失敗: " + error.message, "error");
     } finally {
@@ -1331,8 +1341,6 @@ const ProductMaintenance = () => {
                       onMouseUp={handleMouseUp}
                       viewport={viewport}
                       onViewportChange={handleViewportChange}
-                      productBackgroundImage={tempBackgroundImage}
-                      bleedAreaMapping={tempBleedAreaMapping}
                     />
                 </div>
 
@@ -1438,20 +1446,53 @@ const ProductMaintenance = () => {
                   <p className="mt-2 text-xs text-gray-500">支援 JPG, PNG, GIF, WebP</p>
                 </div>
 
-                {/* === 背景圖映射設定 (2D 專用) === */}
+                {/* === 背景圖映射配置 (2D 專用) === */}
                 {selectedProduct.type === "2D" && (
-                  <BackgroundImageMappingConfig
-                    product={selectedProduct}
-                    backgroundImage={tempBackgroundImage}
-                    bleedAreaMapping={tempBleedAreaMapping}
-                    onBackgroundImageUpload={handleBackgroundImageUpload}
-                    onBackgroundImageDelete={handleBackgroundImageDelete}
-                    onMappingChange={handleBleedAreaMappingChange}
-                    onSave={handleSaveBackgroundConfig}
-                    loading={backgroundImageLoading}
-                    error={backgroundImageError}
-                    saving={saving}
-                  />
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                      背景圖映射配置
+                      {tempBackgroundImage && (
+                        <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded ml-3">
+                          ✓ 已配置
+                        </span>
+                      )}
+                    </h4>
+
+                    {/* 背景圖上傳器 */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <BackgroundImageUploader
+                        backgroundImage={tempBackgroundImage}
+                        onUpload={handleBackgroundImageUpload}
+                        onDelete={handleBackgroundImageDelete}
+                        loading={backgroundImageLoading}
+                        error={backgroundImageError}
+                      />
+                    </div>
+
+                    {/* 出血區映射編輯器 */}
+                    {tempBackgroundImage && (
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <BleedAreaMappingEditor
+                          product={selectedProduct}
+                          initialMapping={tempBleedAreaMapping}
+                          onMappingChange={handleBleedAreaMappingChange}
+                        />
+                      </div>
+                    )}
+
+                    {/* 保存按鈕 */}
+                    <button
+                      onClick={handleSaveBackgroundConfig}
+                      disabled={saving}
+                      className={`w-full px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                        saving
+                          ? "bg-gray-400 text-white cursor-not-allowed"
+                          : "bg-green-600 text-white hover:bg-green-700"
+                      }`}
+                    >
+                      {saving ? "保存中..." : "💾 保存背景圖配置"}
+                    </button>
+                  </div>
                 )}
 
                 {selectedProduct.type === "3D" && (
