@@ -1,12 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { calculateBleedBounds } from '../utils/bleedAreaUtils';
-import { getBleedBoundsInBackground } from '../utils/bleedAreaMappingUtils';
 import { printAreaDisplayToMm, formatMm } from '../../../utils/unitConversion';
 
 /**
- * DesignAreaPreview 組件（改进版）
+ * DesignAreaPreview 組件
  * 顯示設計區域預覽畫布，支援拖曳和調整大小
- * 支持背景图映射显示
  * 顯示單位為 mm
  */
 const DesignAreaPreview = ({
@@ -20,10 +18,6 @@ const DesignAreaPreview = ({
   canvasSize = 400,
   showBleedArea = true,
   physicalSize, // { widthMm, heightMm }
-  // 新增参数：背景图映射支持
-  productBackgroundImage,
-  bleedAreaMapping,
-  useProductBackground = false, // 是否使用背景图映射预览
 }) => {
   const canvasRef = useRef(null);
   const [localDragState, setLocalDragState] = useState({
@@ -33,7 +27,7 @@ const DesignAreaPreview = ({
     startArea: null,
   });
 
-  // 繪製畫布內容（支持背景图映射）
+  // 繪製畫布內容
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -41,85 +35,50 @@ const DesignAreaPreview = ({
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvasSize, canvasSize);
 
-    // 选择要使用的背景图
-    const backgroundImageUrl = (useProductBackground && productBackgroundImage?.url)
-      ? productBackgroundImage.url
-      : mockupImage;
-
     // 繪製背景圖片
-    if (backgroundImageUrl) {
+    if (mockupImage) {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
       img.onload = () => {
         ctx.drawImage(img, 0, 0, canvasSize, canvasSize);
         drawOverlays(ctx);
       };
-      img.onerror = () => {
-        // 圖片加載失敗，繪製灰色背景
-        ctx.fillStyle = '#f0f0f0';
-        ctx.fillRect(0, 0, canvasSize, canvasSize);
-        drawOverlays(ctx);
-      };
-      img.src = backgroundImageUrl;
+      img.src = mockupImage;
     } else {
       // 沒有圖片時繪製灰色背景
       ctx.fillStyle = '#f0f0f0';
       ctx.fillRect(0, 0, canvasSize, canvasSize);
       drawOverlays(ctx);
     }
-  }, [mockupImage, productBackgroundImage, printArea, bleedArea, canvasSize, showBleedArea, useProductBackground]);
+  }, [mockupImage, printArea, bleedArea, canvasSize, showBleedArea]);
 
-  // 繪製覆蓋層（出血區域和設計區域，支持背景图映射）
+  // 繪製覆蓋層（出血區域和設計區域）
   const drawOverlays = (ctx) => {
-    // 確定是否使用映射后的出血区
-    const usesMappedBleedArea = useProductBackground && bleedAreaMapping && productBackgroundImage;
-
     // 繪製出血區域（如果啟用）
     if (showBleedArea && bleedArea) {
-      let bleedBounds;
-
-      if (usesMappedBleedArea) {
-        // 使用映射後的出血區邊界
-        bleedBounds = getBleedBoundsInBackground({
-          printArea,
-          bleedArea
-        }, bleedAreaMapping, canvasSize);
-      } else {
-        // 使用原始出血區邊界
-        bleedBounds = calculateBleedBounds(printArea, bleedArea);
-      }
-
+      const bleedBounds = calculateBleedBounds(printArea, bleedArea);
       if (bleedBounds) {
-        ctx.strokeStyle = usesMappedBleedArea ? 'rgba(156, 39, 176, 0.6)' : 'rgba(255, 0, 0, 0.5)';
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
         ctx.strokeRect(bleedBounds.x, bleedBounds.y, bleedBounds.width, bleedBounds.height);
         ctx.setLineDash([]);
-
-        // 如果使用映射，添加视觉反馈
-        if (usesMappedBleedArea) {
-          ctx.fillStyle = 'rgba(156, 39, 176, 0.03)';
-          ctx.fillRect(bleedBounds.x, bleedBounds.y, bleedBounds.width, bleedBounds.height);
-        }
       }
     }
 
-    // 繪製設計區域（仅在非映射模式下显示，映射模式下已经在出血区中显示）
-    if (!usesMappedBleedArea) {
-      ctx.strokeStyle = 'rgba(0, 123, 255, 0.8)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(printArea.x, printArea.y, printArea.width, printArea.height);
+    // 繪製設計區域
+    ctx.strokeStyle = 'rgba(0, 123, 255, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(printArea.x, printArea.y, printArea.width, printArea.height);
 
-      // 繪製調整大小控制點
-      const handleSize = 8;
-      ctx.fillStyle = 'rgba(0, 123, 255, 0.8)';
-      ctx.fillRect(
-        printArea.x + printArea.width - handleSize / 2,
-        printArea.y + printArea.height - handleSize / 2,
-        handleSize,
-        handleSize
-      );
-    }
+    // 繪製調整大小控制點
+    const handleSize = 8;
+    ctx.fillStyle = 'rgba(0, 123, 255, 0.8)';
+    ctx.fillRect(
+      printArea.x + printArea.width - handleSize / 2,
+      printArea.y + printArea.height - handleSize / 2,
+      handleSize,
+      handleSize
+    );
   };
 
   // 處理滑鼠按下

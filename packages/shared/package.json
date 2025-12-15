@@ -12,10 +12,6 @@
     "./components/Preview": "./components/Preview/index.js",
     "./components/Preview/ProductThumbnail": "./components/Preview/ProductThumbnail.jsx",
     "./components/ProductMaintenance": "./components/ProductMaintenance/index.js",
-    "./components/ProductMaintenance/components/BackgroundImageUploader": "./components/ProductMaintenance/components/BackgroundImageUploader.jsx",
-    "./components/ProductMaintenance/components/BleedAreaMappingEditor": "./components/ProductMaintenance/components/BleedAreaMappingEditor.jsx",
-    "./components/ProductMaintenance/hooks/useBleedAreaMapping": "./components/ProductMaintenance/hooks/useBleedAreaMapping.js",
-    "./components/ProductMaintenance/utils/bleedAreaMappingUtils": "./components/ProductMaintenance/utils/bleedAreaMappingUtils.js",
     "./services/api": "./services/index.js",
     "./utils": "./utils/index.js"
   },

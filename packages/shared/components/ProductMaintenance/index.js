@@ -28,19 +28,15 @@
 export { useNotification } from './hooks/useNotification';
 export { useDesignArea } from './hooks/useDesignArea';
 export { useProductMaintenance } from './hooks/useProductMaintenance';
-export { default as useBleedAreaMapping } from './hooks/useBleedAreaMapping';
 
 // Components
 export { default as NotificationMessage } from './components/NotificationMessage';
 export { default as DesignAreaPreview } from './components/DesignAreaPreview';
 export { default as BleedAreaSettings } from './components/BleedAreaSettings';
-export { default as BackgroundImageUploader } from './components/BackgroundImageUploader';
-export { default as BleedAreaMappingEditor } from './components/BleedAreaMappingEditor';
 
 // Utils
 export * from './utils/validationHelpers';
 export * from './utils/bleedAreaUtils';
-export * from './utils/bleedAreaMappingUtils';
 
 // Config
 export { adminConfig, customerConfig, getConfig, mergeConfig } from './config';
