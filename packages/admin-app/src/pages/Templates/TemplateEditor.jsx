@@ -158,8 +158,7 @@ const TemplateEditor = () => {
             designData.elements,
             designData.backgroundColor,
             400,
-            400,
-            { useProductBackground: true } // 優先使用商品背景圖
+            400
           );
           console.log('✅ 2D 快照生成成功');
 

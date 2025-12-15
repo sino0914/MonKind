@@ -3,10 +3,9 @@
  * 可重用的商品設計預覽器，支援 2D 和 3D 預覽
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { API } from "../../services/api";
 import GLBViewer from "../GLBViewer";
-import { getBleedMappingTransform } from "../ProductMaintenance/utils/bleedAreaMappingUtils";
 
 const ProductPreview = ({
   productId,
@@ -72,21 +71,14 @@ const ProductPreview = ({
     }
   }, [productId]);
 
-  // 背景圖選擇：優先使用商品背景圖（productBackgroundImage），如果沒有則降級使用底圖（mockupImage）
+  // 背景色現在直接設定在設計區域，不再處理商品圖片顏色
   useEffect(() => {
-    if (product?.productBackgroundImage?.url) {
-      // 優先使用商品背景圖
-      setProcessedMockupImage(product.productBackgroundImage.url);
-      console.log('✅ ProductPreview: 使用商品背景圖', product.productBackgroundImage.url);
-    } else if (product?.mockupImage) {
-      // 降級使用底圖
+    if (product?.mockupImage) {
       setProcessedMockupImage(product.mockupImage);
-      console.log('⚠️ ProductPreview: 降級使用 mockupImage（無商品背景圖）');
     } else {
       setProcessedMockupImage(null);
-      console.log('❌ ProductPreview: 無可用背景圖');
     }
-  }, [product?.mockupImage, product?.productBackgroundImage]);
+  }, [product?.mockupImage]);
 
   // 載入商品資料
   useEffect(() => {
@@ -340,21 +332,6 @@ const ProductPreview = ({
     }
   }, [product, designElements, backgroundColor, generateUVTexture]);
 
-  // 計算座標變換（用於背景圖映射）
-  const mappingTransform = useMemo(() => {
-    // 只有在使用商品背景圖且啟用映射時才套用變換
-    if (!product || product.type === '3D') return null;
-
-    const useBackgroundMapping = product?.productBackgroundImage?.url &&
-                                 product?.bleedAreaMapping?.enabled;
-
-    if (!useBackgroundMapping) return null;
-
-    const transform = getBleedMappingTransform(product, product.bleedAreaMapping, 400);
-    console.log('🔄 ProductPreview: 套用座標變換', transform);
-    return transform;
-  }, [product]);
-
   // 載入中狀態
   if (loading) {
     return (
@@ -491,11 +468,6 @@ const ProductPreview = ({
               height: `${
                 product.printArea ? (product.printArea.height / 400) * 100 : 100
               }%`,
-              // 套用背景圖映射的座標變換
-              transform: mappingTransform
-                ? `translate(${mappingTransform.translateX}px, ${mappingTransform.translateY}px) scale(${mappingTransform.scaleX}, ${mappingTransform.scaleY})`
-                : 'none',
-              transformOrigin: 'center center',
               zIndex: 2,
             }}
           >
