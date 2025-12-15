@@ -568,13 +568,18 @@ const ProductMaintenance = () => {
       setSaving(true);
       setError(null);
 
-      // 準備更新資料（包含設計區和出血區域）
+      // 準備更新資料（包含設計區、出血區域、以及預設視圖）
       const updateData = {
         printArea: tempPrintArea,
-        bleedArea: tempBleedArea
+        bleedArea: tempBleedArea,
+        defaultViewport: {
+          zoom: currentViewport.zoom,
+          panX: currentViewport.panX,
+          panY: currentViewport.panY,
+        },
       };
 
-      // 使用 API 保存設計區範圍和出血區域
+      // 使用 API 保存設計區範圍、出血區域和預設視圖
       const updatedProduct = await API.products.update(
         selectedProduct.id,
         updateData
@@ -588,9 +593,10 @@ const ProductMaintenance = () => {
       setProducts(updatedProducts);
       setSelectedProduct(updatedProduct);
 
-      showNotification("設計區範圍和出血區域已成功儲存！");
+      showNotification("設計區和視圖已儲存！");
       console.log("設計區範圍已保存:", tempPrintArea);
       console.log("出血區域已保存:", tempBleedArea);
+      console.log("預設視圖已保存:", updateData.defaultViewport);
     } catch (error) {
       console.error("保存設計區失敗:", error);
       setError("保存失敗: " + error.message);
@@ -837,6 +843,52 @@ const ProductMaintenance = () => {
       scale: 1.0
     });
     showNotification("設計區域已重置為預設值");
+  };
+
+  // 統一儲存展示圖片的所有配置（設計區域 + 視圖）
+  const handleSaveDisplayImageAll = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const updateData = {
+        displayImageDesignArea: {
+          centerX: displayImageDesignArea.centerX,
+          centerY: displayImageDesignArea.centerY,
+          scale: displayImageDesignArea.scale,
+        },
+        displayImageViewport: {
+          zoom: currentDisplayImageViewport.zoom,
+          panX: currentDisplayImageViewport.panX,
+          panY: currentDisplayImageViewport.panY,
+        },
+      };
+
+      const updatedProduct = await API.products.update(
+        selectedProduct.id,
+        updateData
+      );
+
+      // 更新本地狀態
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selectedProduct.id ? updatedProduct : p
+        )
+      );
+      setSelectedProduct(updatedProduct);
+
+      showNotification("展示圖片配置已儲存！");
+      console.log("展示圖片設計區域已保存:", updateData.displayImageDesignArea);
+      console.log("展示圖片預設視圖已保存:", updateData.displayImageViewport);
+    } catch (error) {
+      console.error("儲存展示圖片配置失敗:", error);
+      setError("儲存失敗: " + error.message);
+      showNotification("儲存展示圖片配置失敗: " + error.message, "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 新增商品
@@ -1556,6 +1608,19 @@ const ProductMaintenance = () => {
                           {saving ? "儲存中..." : "💾 儲存"}
                         </button>
                       )}
+                      {activeEditorTab === 'display' && (
+                        <button
+                          onClick={handleSaveDisplayImageAll}
+                          disabled={saving}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                            saving
+                              ? "bg-gray-400 text-white cursor-not-allowed"
+                              : "bg-green-600 text-white hover:bg-green-700"
+                          }`}
+                        >
+                          {saving ? "儲存中..." : "💾 儲存"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1618,39 +1683,20 @@ const ProductMaintenance = () => {
                     />
                 </div>
 
-                  {/* 預設視圖控制按鈕 */}
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="text-xs font-semibold text-purple-800">預設視圖設定</h5>
-                      <span className="text-xs text-purple-600">
-                        目前: {Math.round(currentViewport.zoom * 100)}%
-                        {(currentViewport.panX !== 0 || currentViewport.panY !== 0) &&
-                          ` (${Math.round(currentViewport.panX)}, ${Math.round(currentViewport.panY)})`
-                        }
-                      </span>
+                  {/* 簡潔工具欄 */}
+                  <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+                    <div>
+                      縮放: {Math.round(currentViewport.zoom * 100)}%
+                      {(currentViewport.panX !== 0 || currentViewport.panY !== 0) &&
+                        ` | 平移: (${Math.round(currentViewport.panX)}, ${Math.round(currentViewport.panY)})`
+                      }
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={handleSaveDefaultViewport}
-                        disabled={saving}
-                        className={`flex items-center justify-center px-3 py-2 text-xs font-medium rounded transition-all ${
-                          saving
-                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            : "bg-purple-600 text-white hover:bg-purple-700"
-                        }`}
-                      >
-                        📷 儲存為預設視圖
-                      </button>
-                      <button
-                        onClick={handleResetViewport}
-                        className="flex items-center justify-center px-3 py-2 text-xs font-medium text-purple-700 bg-white border border-purple-300 rounded hover:bg-purple-50 transition-all"
-                      >
-                        ↶ 重置視圖
-                      </button>
-                    </div>
-                    <p className="mt-2 text-xs text-purple-600">
-                      🖱️ 滾輪縮放 | 中鍵拖曳平移 | 儲存後使用者進入編輯器會套用此視圖
-                    </p>
+                    <button
+                      onClick={handleResetViewport}
+                      className="text-blue-600 hover:text-blue-800 underline"
+                    >
+                      ↶ 重置視圖
+                    </button>
                   </div>
 
                   {/* 提示 */}
@@ -1661,8 +1707,8 @@ const ProductMaintenance = () => {
                   </div>
 
                   {/* 底圖控制項 */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <h5 className="text-xs font-semibold text-gray-900 mb-3">底圖管理</h5>
+                  <div className="border border-gray-200 rounded-lg p-3 mb-4">
+                    <h5 className="text-xs font-medium text-gray-900 mb-2">底圖管理</h5>
                     <div className="grid grid-cols-2 gap-2">
                     {/* 上傳底圖 */}
                     <div>
@@ -1838,44 +1884,31 @@ const ProductMaintenance = () => {
                             />
                           </div>
 
-                          {/* 設計區域控制 */}
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <h5 className="text-xs font-semibold text-green-800">設計區域配置</h5>
-                              <span className="text-xs text-green-600">
-                                縮放: {Math.round(displayImageDesignArea.scale * 100)}% |
-                                中心: ({Math.round(displayImageDesignArea.centerX)}, {Math.round(displayImageDesignArea.centerY)})
-                              </span>
+                          {/* 簡潔工具欄 */}
+                          <div className="mt-2 mb-4 flex items-center justify-between text-xs text-gray-600">
+                            <div>
+                              縮放: {Math.round(currentDisplayImageViewport.zoom * 100)}% |
+                              設計區: {Math.round(displayImageDesignArea.scale * 100)}%
                             </div>
-
-                            {/* 保存和重置按鈕 */}
-                            <div className="grid grid-cols-2 gap-2 mb-2">
+                            <div className="flex space-x-3">
                               <button
-                                onClick={handleSaveDisplayImageDesignArea}
-                                disabled={saving}
-                                className={`flex items-center justify-center px-3 py-2 text-xs font-medium rounded transition-all ${
-                                  saving
-                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                    : "bg-green-600 text-white hover:bg-green-700"
-                                }`}
+                                onClick={handleResetDisplayImageViewport}
+                                className="text-blue-600 hover:text-blue-800 underline"
                               >
-                                💾 儲存設計區域
+                                ↶ 重置視圖
                               </button>
                               <button
                                 onClick={handleResetDisplayImageDesignArea}
-                                className="flex items-center justify-center px-3 py-2 text-xs font-medium text-green-700 bg-white border border-green-300 rounded hover:bg-green-50 transition-all"
+                                className="text-blue-600 hover:text-blue-800 underline"
                               >
-                                ↶ 重置設計區域
+                                ↶ 重置設計區
                               </button>
                             </div>
-                            <p className="text-xs text-green-600">
-                              🎯 拖曳藍色區域移動中心點 | 🔵 拖曳角控制點等比例縮放
-                            </p>
                           </div>
 
                           {/* 圖片管理按鈕 */}
-                          <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                            <h5 className="text-xs font-semibold text-gray-900 mb-3">圖片管理</h5>
+                          <div className="border border-gray-200 rounded-lg p-3 mb-4">
+                            <h5 className="text-xs font-medium text-gray-900 mb-2">圖片管理</h5>
                             <div className="grid grid-cols-2 gap-2">
                               {/* 更換圖片 */}
                               <div>
@@ -1928,41 +1961,6 @@ const ProductMaintenance = () => {
                                 移除圖片
                               </button>
                             </div>
-                          </div>
-
-                          {/* 預設視圖控制按鈕 */}
-                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <h5 className="text-xs font-semibold text-purple-800">預設視圖設定</h5>
-                              <span className="text-xs text-purple-600">
-                                目前: {Math.round(currentDisplayImageViewport.zoom * 100)}%
-                                {(currentDisplayImageViewport.panX !== 0 || currentDisplayImageViewport.panY !== 0) &&
-                                  ` (${Math.round(currentDisplayImageViewport.panX)}, ${Math.round(currentDisplayImageViewport.panY)})`
-                                }
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <button
-                                onClick={handleSaveDisplayImageViewport}
-                                disabled={saving}
-                                className={`flex items-center justify-center px-3 py-2 text-xs font-medium rounded transition-all ${
-                                  saving
-                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                    : "bg-purple-600 text-white hover:bg-purple-700"
-                                }`}
-                              >
-                                📷 儲存為預設視圖
-                              </button>
-                              <button
-                                onClick={handleResetDisplayImageViewport}
-                                className="flex items-center justify-center px-3 py-2 text-xs font-medium text-purple-700 bg-white border border-purple-300 rounded hover:bg-purple-50 transition-all"
-                              >
-                                ↶ 重置視圖
-                              </button>
-                            </div>
-                            <p className="mt-2 text-xs text-purple-600">
-                              🖱️ 滾輪縮放 | 中鍵拖曳平移 | 儲存後此視圖將用於客戶端展示
-                            </p>
                           </div>
 
                           {/* 提示信息 */}
