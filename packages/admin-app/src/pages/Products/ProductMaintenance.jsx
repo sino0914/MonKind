@@ -10,6 +10,7 @@ import { useDesignArea } from "./hooks/useDesignArea";
 import NotificationMessage from "./components/NotificationMessage";
 import DesignAreaPreview from "./components/DesignAreaPreview";
 import BleedAreaSettings from "./components/BleedAreaSettings";
+import DisplayImagePreview from "./components/DisplayImagePreview";
 
 const ProductMaintenance = () => {
   const navigate = useNavigate();
@@ -37,15 +38,28 @@ const ProductMaintenance = () => {
     handleDragMove,
   } = useDesignArea();
 
-  // 使用畫布視窗控制 Hook（縮放/平移）
+  // 使用畫布視窗控制 Hook（縮放/平移）- 底圖
   const viewport = useCanvasViewport();
 
-  // 追蹤目前視圖狀態（用於儲存）
+  // 追蹤目前視圖狀態（用於儲存）- 底圖
   const [currentViewport, setCurrentViewport] = useState({
     zoom: 1.0,
     panX: 0,
     panY: 0,
   });
+
+  // 展示圖片的視窗控制 Hook
+  const displayImageViewport = useCanvasViewport();
+
+  // 追蹤展示圖片的視圖狀態
+  const [currentDisplayImageViewport, setCurrentDisplayImageViewport] = useState({
+    zoom: 1.0,
+    panX: 0,
+    panY: 0,
+  });
+
+  // 編輯器頁籤狀態（'mockup' | 'display'）
+  const [activeEditorTab, setActiveEditorTab] = useState('mockup');
 
   // 其他狀態
   const [products, setProducts] = useState([]);
@@ -105,6 +119,11 @@ const ProductMaintenance = () => {
   // 產品類型變更處理
   const handleProductTypeChange = async (newType) => {
     if (!selectedProduct) return;
+
+    // 如果切換為 3D 且目前在展示圖片頁籤，切換回底圖頁籤
+    if (newType === '3D' && activeEditorTab === 'display') {
+      setActiveEditorTab('mockup');
+    }
 
     try {
       setSaving(true);
@@ -389,9 +408,20 @@ const ProductMaintenance = () => {
       "mockupImage:",
       !!product.mockupImage,
       "defaultViewport:",
-      product.defaultViewport
+      product.defaultViewport,
+      "displayImage:",
+      !!product.displayImage,
+      "displayImageViewport:",
+      product.displayImageViewport,
+      "type:",
+      product.type
     );
     setSelectedProduct(product);
+
+    // 如果是 3D 產品且目前在展示圖片頁籤，切換回底圖頁籤
+    if (product.type === '3D' && activeEditorTab === 'display') {
+      setActiveEditorTab('mockup');
+    }
 
     // 使用 hook 的 reset 函數初始化設計區域和出血區域
     resetPrintArea(
@@ -399,7 +429,7 @@ const ProductMaintenance = () => {
     );
     resetBleedArea(product.bleedArea || null);
 
-    // 載入該商品的預設視圖
+    // 載入該商品的底圖預設視圖
     if (product.defaultViewport) {
       viewport.setViewport(product.defaultViewport);
       setCurrentViewport({
@@ -411,6 +441,20 @@ const ProductMaintenance = () => {
       // 如果沒有預設視圖，重置為預設值
       viewport.resetView();
       setCurrentViewport({ zoom: 1.0, panX: 0, panY: 0 });
+    }
+
+    // 載入展示圖片的預設視圖
+    if (product.displayImageViewport) {
+      displayImageViewport.setViewport(product.displayImageViewport);
+      setCurrentDisplayImageViewport({
+        zoom: product.displayImageViewport.zoom ?? 1.0,
+        panX: product.displayImageViewport.panX ?? 0,
+        panY: product.displayImageViewport.panY ?? 0,
+      });
+    } else {
+      // 如果沒有預設視圖，重置為預設值
+      displayImageViewport.resetView();
+      setCurrentDisplayImageViewport({ zoom: 1.0, panX: 0, panY: 0 });
     }
 
     // 強制重新渲染以確保底圖正確顯示
@@ -545,9 +589,14 @@ const ProductMaintenance = () => {
     }
   };
 
-  // 處理視圖變更（從 DesignAreaPreview 傳回）
+  // 處理視圖變更（從 DesignAreaPreview 傳回）- 底圖
   const handleViewportChange = useCallback((newViewport) => {
     setCurrentViewport(newViewport);
+  }, []);
+
+  // 處理展示圖片視圖變更
+  const handleDisplayImageViewportChange = useCallback((newViewport) => {
+    setCurrentDisplayImageViewport(newViewport);
   }, []);
 
   // 儲存預設視圖
@@ -592,11 +641,60 @@ const ProductMaintenance = () => {
     }
   };
 
-  // 重置視圖為預設值
+  // 重置視圖為預設值 - 底圖
   const handleResetViewport = () => {
     viewport.resetView();
     setCurrentViewport({ zoom: 1.0, panX: 0, panY: 0 });
-    showNotification("視圖已重置為預設值 (100%)");
+    showNotification("底圖視圖已重置為預設值 (100%)");
+  };
+
+  // 儲存展示圖片預設視圖
+  const handleSaveDisplayImageViewport = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const updateData = {
+        displayImageViewport: {
+          zoom: currentDisplayImageViewport.zoom,
+          panX: currentDisplayImageViewport.panX,
+          panY: currentDisplayImageViewport.panY,
+        },
+      };
+
+      const updatedProduct = await API.products.update(
+        selectedProduct.id,
+        updateData
+      );
+
+      // 更新本地狀態
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selectedProduct.id ? updatedProduct : p
+        )
+      );
+      setSelectedProduct(updatedProduct);
+
+      showNotification(
+        `展示圖片預設視圖已儲存！(縮放: ${Math.round(currentDisplayImageViewport.zoom * 100)}%, 平移: ${Math.round(currentDisplayImageViewport.panX)}, ${Math.round(currentDisplayImageViewport.panY)})`
+      );
+      console.log("展示圖片預設視圖已保存:", updateData.displayImageViewport);
+    } catch (error) {
+      console.error("儲存展示圖片預設視圖失敗:", error);
+      setError("儲存失敗: " + error.message);
+      showNotification("儲存展示圖片預設視圖失敗: " + error.message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 重置展示圖片視圖為預設值
+  const handleResetDisplayImageViewport = () => {
+    displayImageViewport.resetView();
+    setCurrentDisplayImageViewport({ zoom: 1.0, panX: 0, panY: 0 });
+    showNotification("展示圖片視圖已重置為預設值 (100%)");
   };
 
   // 新增商品
@@ -614,6 +712,7 @@ const ProductMaintenance = () => {
           newProduct.title
         )}`,
         mockupImage: null,
+        displayImage: null, // 初始化展示圖片欄位
         contentImages: [], // 初始化內容圖片陣列
         printArea: { x: 50, y: 50, width: 200, height: 150 },
       };
@@ -914,6 +1013,105 @@ const ProductMaintenance = () => {
     }
   };
 
+  // 處理展示圖片上傳
+  const handleDisplayImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    console.log("開始上傳展示圖片:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+
+    // 檢查檔案類型
+    if (!file.type.startsWith("image/")) {
+      console.error("檔案類型錯誤:", file.type);
+      showNotification("請選擇圖片檔案 (JPG, PNG, GIF, WebP)", "error");
+      return;
+    }
+
+    // 檢查是否有選中的產品
+    if (!selectedProduct) {
+      console.error("沒有選中的產品");
+      showNotification("請先選擇要更新的商品", "error");
+      return;
+    }
+
+    try {
+      // 顯示處理中狀態
+      showNotification("正在上傳展示圖片...", "info");
+
+      // 上傳圖片到伺服器
+      const uploadResult = await API.upload.image(file);
+
+      if (!uploadResult || !uploadResult.url) {
+        throw new Error("上傳失敗：伺服器回應無效");
+      }
+
+      // 組合完整 URL
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+      const baseUrl = API_BASE_URL.replace('/api', '');
+      const imageUrl = `${baseUrl}${uploadResult.url}`;
+      console.log("展示圖片已上傳到伺服器:", imageUrl);
+
+      // 更新產品資料
+      showNotification("正在儲存展示圖片...", "info");
+      const result = await handleUpdateProduct("displayImage", imageUrl);
+      console.log("API 更新結果:", result);
+
+      // 強制重新渲染以立即顯示新圖片
+      const updatedProduct = { ...selectedProduct, displayImage: imageUrl };
+      setSelectedProduct(updatedProduct);
+
+      // 更新產品列表中的資料
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selectedProduct.id ? { ...p, displayImage: imageUrl } : p
+        )
+      );
+
+      showNotification("展示圖片已更新", "success");
+      console.log("展示圖片上傳完成");
+
+      // 清除 input 的值，讓同一個檔案可以重新上傳
+      event.target.value = "";
+    } catch (error) {
+      console.error("展示圖片上傳失敗:", error);
+      const errorMessage = error.message
+        ? `上傳失敗: ${error.message}`
+        : "展示圖片上傳失敗";
+      showNotification(errorMessage, "error");
+    }
+  };
+
+  // 移除展示圖片
+  const handleRemoveDisplayImage = async () => {
+    try {
+      console.log("移除展示圖片");
+
+      // 更新產品資料
+      await handleUpdateProduct("displayImage", null);
+
+      // 強制重新渲染以立即移除圖片顯示
+      const updatedProduct = { ...selectedProduct, displayImage: null };
+      setSelectedProduct(updatedProduct);
+
+      // 更新產品列表中的資料
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selectedProduct.id ? { ...p, displayImage: null } : p
+        )
+      );
+
+      showNotification("展示圖片已移除");
+      console.log("展示圖片移除完成");
+    } catch (error) {
+      console.error("移除展示圖片失敗:", error);
+      showNotification("移除展示圖片失敗", "error");
+    }
+  };
+
   // 處理內容圖片上傳
   const handleContentImageUpload = async (event) => {
     const files = Array.from(event.target.files);
@@ -1137,26 +1335,61 @@ const ProductMaintenance = () => {
           {/* Main Content Area - 全寬顯示 */}
           <div className="col-span-1">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 左側：設計區編輯器 */}
+              {/* 左側：設計區編輯器（頁籤式） */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                {/* 頁籤導航 */}
+                <div className="border-b border-gray-200">
+                  <nav className="flex space-x-1 px-5">
+                    <button
+                      onClick={() => setActiveEditorTab('mockup')}
+                      className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                        activeEditorTab === 'mockup'
+                          ? 'border-blue-600 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      底圖編輯
+                    </button>
+                    {/* 只有 2D 產品才顯示展示圖片頁籤 */}
+                    {selectedProduct.type !== '3D' && (
+                      <button
+                        onClick={() => setActiveEditorTab('display')}
+                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center ${
+                          activeEditorTab === 'display'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        展示圖片編輯
+                        {selectedProduct.displayImage && (
+                          <span className="ml-2 text-xs text-green-600">✓</span>
+                        )}
+                      </button>
+                    )}
+                  </nav>
+                </div>
+
+                {/* 頁籤標題和操作按鈕 */}
                 <div className="p-5 border-b border-gray-200">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-3">
                       <h3 className="text-base font-semibold text-gray-900">
-                        設計區編輯器
+                        {activeEditorTab === 'mockup' ? '設計區編輯器' : '展示圖片編輯器'}
                       </h3>
-                      <span
-                        className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                          selectedProduct.type === "3D"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {selectedProduct.type || "2D"}
-                      </span>
+                      {activeEditorTab === 'mockup' && (
+                        <span
+                          className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                            selectedProduct.type === "3D"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {selectedProduct.type || "2D"}
+                        </span>
+                      )}
                     </div>
                     <div className="flex space-x-2">
-                      {selectedProduct.type !== "3D" && (
+                      {activeEditorTab === 'mockup' && selectedProduct.type !== "3D" && (
                         <button
                           onClick={handleResetPrintArea}
                           className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-xs font-medium"
@@ -1164,29 +1397,34 @@ const ProductMaintenance = () => {
                           ↶ 重置
                         </button>
                       )}
-                      <button
-                        onClick={
-                          selectedProduct.type === "3D"
-                            ? handleSave3DModel
-                            : handleSavePrintArea
-                        }
-                        disabled={saving}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                          saving
-                            ? "bg-gray-400 text-white cursor-not-allowed"
-                            : "bg-green-600 text-white hover:bg-green-700"
-                        }`}
-                      >
-                        {saving ? "儲存中..." : "💾 儲存"}
-                      </button>
+                      {activeEditorTab === 'mockup' && (
+                        <button
+                          onClick={
+                            selectedProduct.type === "3D"
+                              ? handleSave3DModel
+                              : handleSavePrintArea
+                          }
+                          disabled={saving}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                            saving
+                              ? "bg-gray-400 text-white cursor-not-allowed"
+                              : "bg-green-600 text-white hover:bg-green-700"
+                          }`}
+                        >
+                          {saving ? "儲存中..." : "💾 儲存"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Canvas Area */}
                 <div className="p-5">
+                  {/* 底圖編輯器頁籤內容 */}
+                  {activeEditorTab === 'mockup' && (
+                    <>
                   {/* 產品類型切換 */}
-                  <div className="flex items-center justify-center space-x-4 mb-4 pb-4 border-b border-gray-200">
+                  <div className="flex items-center justify-center space-x-4 mb-4 pb-4 border-gray-200">
                     <span className="text-xs font-medium text-gray-700">
                       產品類型：
                     </span>
@@ -1431,6 +1669,203 @@ const ProductMaintenance = () => {
                     </div>
                   </div>
                 )}
+                    </>
+                  )}
+
+                  {/* 展示圖片編輯器頁籤內容 - 只有 2D 產品才顯示 */}
+                  {activeEditorTab === 'display' && selectedProduct.type !== '3D' && (
+                    <>
+                      {selectedProduct.displayImage ? (
+                        <>
+                          {/* 展示圖片畫布 */}
+                          <div className="mb-4">
+                            <DisplayImagePreview
+                              imageUrl={selectedProduct.displayImage}
+                              viewport={displayImageViewport}
+                              onViewportChange={handleDisplayImageViewportChange}
+                            />
+                          </div>
+
+                          {/* 圖片管理按鈕 */}
+                          <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                            <h5 className="text-xs font-semibold text-gray-900 mb-3">圖片管理</h5>
+                            <div className="grid grid-cols-2 gap-2">
+                              {/* 更換圖片 */}
+                              <div>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleDisplayImageUpload}
+                                  className="hidden"
+                                  id="display-image-upload-tab"
+                                />
+                                <label
+                                  htmlFor="display-image-upload-tab"
+                                  className="flex items-center justify-center w-full px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 cursor-pointer transition-all"
+                                >
+                                  <svg
+                                    className="w-3 h-3 mr-1"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                    />
+                                  </svg>
+                                  更換圖片
+                                </label>
+                              </div>
+
+                              {/* 移除圖片 */}
+                              <button
+                                onClick={handleRemoveDisplayImage}
+                                className="flex items-center justify-center w-full px-3 py-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-all"
+                              >
+                                <svg
+                                  className="w-3 h-3 mr-1"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                                移除圖片
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 預設視圖控制按鈕 */}
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="text-xs font-semibold text-purple-800">預設視圖設定</h5>
+                              <span className="text-xs text-purple-600">
+                                目前: {Math.round(currentDisplayImageViewport.zoom * 100)}%
+                                {(currentDisplayImageViewport.panX !== 0 || currentDisplayImageViewport.panY !== 0) &&
+                                  ` (${Math.round(currentDisplayImageViewport.panX)}, ${Math.round(currentDisplayImageViewport.panY)})`
+                                }
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={handleSaveDisplayImageViewport}
+                                disabled={saving}
+                                className={`flex items-center justify-center px-3 py-2 text-xs font-medium rounded transition-all ${
+                                  saving
+                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                    : "bg-purple-600 text-white hover:bg-purple-700"
+                                }`}
+                              >
+                                📷 儲存為預設視圖
+                              </button>
+                              <button
+                                onClick={handleResetDisplayImageViewport}
+                                className="flex items-center justify-center px-3 py-2 text-xs font-medium text-purple-700 bg-white border border-purple-300 rounded hover:bg-purple-50 transition-all"
+                              >
+                                ↶ 重置視圖
+                              </button>
+                            </div>
+                            <p className="mt-2 text-xs text-purple-600">
+                              🖱️ 滾輪縮放 | 中鍵拖曳平移 | 儲存後此視圖將用於客戶端展示
+                            </p>
+                          </div>
+
+                          {/* 提示信息 */}
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p className="text-xs text-gray-700 mb-2">
+                              <strong>展示圖片說明：</strong>
+                            </p>
+                            <div className="space-y-1 text-xs text-gray-600">
+                              <p>• 展示圖片用於產品詳情頁的主要展示</p>
+                              <p>• 調整視圖可以設定客戶端看到的預設縮放和位置</p>
+                              <p>• 建議設定一個清晰美觀的預設視圖</p>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* 上傳展示圖片區域 */}
+                          <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                            <div className="flex flex-col items-center justify-center space-y-4">
+                              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+                                <svg
+                                  className="w-8 h-8 text-gray-400"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
+                                </svg>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                                  尚未上傳展示圖片
+                                </h4>
+                                <p className="text-xs text-gray-500">
+                                  展示圖片將用於產品詳情頁的主要展示
+                                </p>
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleDisplayImageUpload}
+                                className="hidden"
+                                id="display-image-upload-empty"
+                              />
+                              <label
+                                htmlFor="display-image-upload-empty"
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors text-sm font-medium"
+                              >
+                                <svg
+                                  className="w-4 h-4 mr-2"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                  />
+                                </svg>
+                                上傳展示圖片
+                              </label>
+                              <p className="text-xs text-gray-500">
+                                支援 JPG, PNG, GIF, WebP 格式
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* 說明信息 */}
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+                            <p className="text-xs text-gray-700 mb-2">
+                              <strong>展示圖片說明：</strong>
+                            </p>
+                            <div className="space-y-1 text-xs text-gray-600">
+                              <p>• 展示圖片用於產品詳情頁的主要展示圖片</p>
+                              <p>• 上傳後可調整預設視圖（縮放和位置）</p>
+                              <p>• 客戶在瀏覽產品時會看到您設定的預設視圖</p>
+                              <p>• 建議上傳高品質、清晰的產品圖片</p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
