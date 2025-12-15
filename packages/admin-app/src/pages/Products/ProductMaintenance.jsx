@@ -58,6 +58,20 @@ const ProductMaintenance = () => {
     panY: 0,
   });
 
+  // 展示圖片上的設計區域配置（中心點和縮放）
+  const [displayImageDesignArea, setDisplayImageDesignArea] = useState({
+    centerX: 200,  // 設計區域中心點 X（在 400x400 畫布上）
+    centerY: 200,  // 設計區域中心點 Y
+    scale: 1.0     // 縮放比例
+  });
+
+  // 拖拽狀態
+  const [isDraggingDesignArea, setIsDraggingDesignArea] = useState(false);
+  const [isResizingDesignArea, setIsResizingDesignArea] = useState(false);
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
+  const [initialScale, setInitialScale] = useState(1.0);
+  const [initialDistance, setInitialDistance] = useState(0);
+
   // 編輯器頁籤狀態（'mockup' | 'display'）
   const [activeEditorTab, setActiveEditorTab] = useState('mockup');
 
@@ -457,6 +471,22 @@ const ProductMaintenance = () => {
       setCurrentDisplayImageViewport({ zoom: 1.0, panX: 0, panY: 0 });
     }
 
+    // 載入展示圖片的設計區域配置
+    if (product.displayImageDesignArea) {
+      setDisplayImageDesignArea({
+        centerX: product.displayImageDesignArea.centerX ?? 200,
+        centerY: product.displayImageDesignArea.centerY ?? 200,
+        scale: product.displayImageDesignArea.scale ?? 1.0,
+      });
+    } else {
+      // 如果沒有配置，重置為預設值
+      setDisplayImageDesignArea({
+        centerX: 200,
+        centerY: 200,
+        scale: 1.0
+      });
+    }
+
     // 強制重新渲染以確保底圖正確顯示
     setTimeout(() => {
       setSelectedProduct({ ...product });
@@ -599,6 +629,66 @@ const ProductMaintenance = () => {
     setCurrentDisplayImageViewport(newViewport);
   }, []);
 
+  // 處理設計區域拖拽開始（移動中心點）
+  const handleDesignAreaDragStart = useCallback((e, startX, startY) => {
+    setIsDraggingDesignArea(true);
+    setDragStartPos({ x: startX, y: startY });
+  }, []);
+
+  // 處理設計區域拖拽移動（移動中心點）
+  const handleDesignAreaDragMove = useCallback((currentX, currentY) => {
+    if (!isDraggingDesignArea) return;
+
+    const deltaX = currentX - dragStartPos.x;
+    const deltaY = currentY - dragStartPos.y;
+
+    setDisplayImageDesignArea(prev => ({
+      ...prev,
+      centerX: Math.max(0, Math.min(400, prev.centerX + deltaX)),
+      centerY: Math.max(0, Math.min(400, prev.centerY + deltaY))
+    }));
+
+    setDragStartPos({ x: currentX, y: currentY });
+  }, [isDraggingDesignArea, dragStartPos]);
+
+  // 處理設計區域拖拽結束
+  const handleDesignAreaDragEnd = useCallback(() => {
+    setIsDraggingDesignArea(false);
+    setIsResizingDesignArea(false);
+  }, []);
+
+  // 處理角控制點拖曳開始（等比例縮放）
+  const handleCornerDragStart = useCallback((e, startX, startY) => {
+    setIsResizingDesignArea(true);
+    setDragStartPos({ x: startX, y: startY });
+    setInitialScale(displayImageDesignArea.scale);
+
+    // 計算初始距離（從中心點到拖曳起始點）
+    const dx = startX - displayImageDesignArea.centerX;
+    const dy = startY - displayImageDesignArea.centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    setInitialDistance(distance);
+  }, [displayImageDesignArea]);
+
+  // 處理角控制點拖曳移動（等比例縮放）
+  const handleCornerDragMove = useCallback((currentX, currentY) => {
+    if (!isResizingDesignArea || initialDistance === 0) return;
+
+    // 計算當前距離（從中心點到當前滑鼠位置）
+    const dx = currentX - displayImageDesignArea.centerX;
+    const dy = currentY - displayImageDesignArea.centerY;
+    const currentDistance = Math.sqrt(dx * dx + dy * dy);
+
+    // 計算縮放比例
+    const scaleChange = currentDistance / initialDistance;
+    const newScale = Math.max(0.5, Math.min(3.0, initialScale * scaleChange));
+
+    setDisplayImageDesignArea(prev => ({
+      ...prev,
+      scale: newScale
+    }));
+  }, [isResizingDesignArea, initialDistance, initialScale, displayImageDesignArea.centerX, displayImageDesignArea.centerY]);
+
   // 儲存預設視圖
   const handleSaveDefaultViewport = async () => {
     if (!selectedProduct) return;
@@ -695,6 +785,58 @@ const ProductMaintenance = () => {
     displayImageViewport.resetView();
     setCurrentDisplayImageViewport({ zoom: 1.0, panX: 0, panY: 0 });
     showNotification("展示圖片視圖已重置為預設值 (100%)");
+  };
+
+  // 儲存展示圖片設計區域配置
+  const handleSaveDisplayImageDesignArea = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const updateData = {
+        displayImageDesignArea: {
+          centerX: displayImageDesignArea.centerX,
+          centerY: displayImageDesignArea.centerY,
+          scale: displayImageDesignArea.scale,
+        },
+      };
+
+      const updatedProduct = await API.products.update(
+        selectedProduct.id,
+        updateData
+      );
+
+      // 更新本地狀態
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selectedProduct.id ? updatedProduct : p
+        )
+      );
+      setSelectedProduct(updatedProduct);
+
+      showNotification(
+        `設計區域配置已儲存！(中心: ${Math.round(displayImageDesignArea.centerX)}, ${Math.round(displayImageDesignArea.centerY)} | 縮放: ${Math.round(displayImageDesignArea.scale * 100)}%)`
+      );
+      console.log("展示圖片設計區域已保存:", updateData.displayImageDesignArea);
+    } catch (error) {
+      console.error("儲存展示圖片設計區域失敗:", error);
+      setError("儲存失敗: " + error.message);
+      showNotification("儲存設計區域配置失敗: " + error.message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 重置展示圖片設計區域為預設值
+  const handleResetDisplayImageDesignArea = () => {
+    setDisplayImageDesignArea({
+      centerX: 200,
+      centerY: 200,
+      scale: 1.0
+    });
+    showNotification("設計區域已重置為預設值");
   };
 
   // 新增商品
@@ -1683,7 +1825,52 @@ const ProductMaintenance = () => {
                               imageUrl={selectedProduct.displayImage}
                               viewport={displayImageViewport}
                               onViewportChange={handleDisplayImageViewportChange}
+                              printArea={tempPrintArea}
+                              bleedArea={tempBleedArea}
+                              designArea={displayImageDesignArea}
+                              onDesignAreaDragStart={handleDesignAreaDragStart}
+                              onDesignAreaDragMove={handleDesignAreaDragMove}
+                              onDesignAreaDragEnd={handleDesignAreaDragEnd}
+                              onCornerDragStart={handleCornerDragStart}
+                              onCornerDragMove={handleCornerDragMove}
+                              isDragging={isDraggingDesignArea}
+                              isResizing={isResizingDesignArea}
                             />
+                          </div>
+
+                          {/* 設計區域控制 */}
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="text-xs font-semibold text-green-800">設計區域配置</h5>
+                              <span className="text-xs text-green-600">
+                                縮放: {Math.round(displayImageDesignArea.scale * 100)}% |
+                                中心: ({Math.round(displayImageDesignArea.centerX)}, {Math.round(displayImageDesignArea.centerY)})
+                              </span>
+                            </div>
+
+                            {/* 保存和重置按鈕 */}
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              <button
+                                onClick={handleSaveDisplayImageDesignArea}
+                                disabled={saving}
+                                className={`flex items-center justify-center px-3 py-2 text-xs font-medium rounded transition-all ${
+                                  saving
+                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                    : "bg-green-600 text-white hover:bg-green-700"
+                                }`}
+                              >
+                                💾 儲存設計區域
+                              </button>
+                              <button
+                                onClick={handleResetDisplayImageDesignArea}
+                                className="flex items-center justify-center px-3 py-2 text-xs font-medium text-green-700 bg-white border border-green-300 rounded hover:bg-green-50 transition-all"
+                              >
+                                ↶ 重置設計區域
+                              </button>
+                            </div>
+                            <p className="text-xs text-green-600">
+                              🎯 拖曳藍色區域移動中心點 | 🔵 拖曳角控制點等比例縮放
+                            </p>
                           </div>
 
                           {/* 圖片管理按鈕 */}
@@ -1786,7 +1973,10 @@ const ProductMaintenance = () => {
                             <div className="space-y-1 text-xs text-gray-600">
                               <p>• 展示圖片用於產品詳情頁的主要展示</p>
                               <p>• 調整視圖可以設定客戶端看到的預設縮放和位置</p>
-                              <p>• 建議設定一個清晰美觀的預設視圖</p>
+                              <p>• <strong>藍色區域</strong>為設計區域，可拖曳移動中心點</p>
+                              <p>• <strong>紅色虛線</strong>為出血區域（如有設定）</p>
+                              <p>• 設計區域的大小和比例與底圖設計區相同</p>
+                              <p>• 建議調整設計區域位置，讓客戶清楚看到設計區</p>
                             </div>
                           </div>
                         </>
