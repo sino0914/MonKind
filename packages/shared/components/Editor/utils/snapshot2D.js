@@ -5,6 +5,46 @@
  */
 
 /**
+ * 判斷是否使用展示圖片
+ * @param {Object} product - 商品資料
+ * @returns {boolean}
+ */
+const shouldUseDisplayImage = (product) => {
+  if (!product) return false;
+  if (product.type === '3D') return false;
+  if (!product.displayImage) return false;
+  if (!product.displayImageDesignArea) return false;
+
+  const { centerX, centerY, scale } = product.displayImageDesignArea;
+  if (typeof centerX !== 'number' || typeof centerY !== 'number' || typeof scale !== 'number') {
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * 計算設計區域邊界（展示圖片模式）
+ * @param {Object} printArea - 設計區域資料
+ * @param {Object} displayImageDesignArea - 展示圖片設計區域配置
+ * @returns {Object|null} - 設計區域邊界 {x, y, width, height}
+ */
+const getDesignAreaBounds = (printArea, displayImageDesignArea) => {
+  if (!printArea || !displayImageDesignArea) return null;
+
+  const { centerX, centerY, scale } = displayImageDesignArea;
+  const scaledWidth = printArea.width * scale;
+  const scaledHeight = printArea.height * scale;
+
+  return {
+    x: centerX - scaledWidth / 2,
+    y: centerY - scaledHeight / 2,
+    width: scaledWidth,
+    height: scaledHeight
+  };
+};
+
+/**
  * 載入圖片工具
  * @param {string} url - 圖片 URL
  * @returns {Promise<HTMLImageElement|null>}
@@ -55,9 +95,11 @@ export const generate2DSnapshot = async (
     }
 
     // 1. 繪製商品背景圖（保持比例，object-contain）
-    const mockupImage = product.mockupImage || product.image;
-    if (mockupImage) {
-      const bgImg = await loadImage(mockupImage);
+    const useDisplayImage = shouldUseDisplayImage(product);
+    const backgroundImageUrl = useDisplayImage ? product.displayImage : (product.mockupImage || product.image);
+
+    if (backgroundImageUrl) {
+      const bgImg = await loadImage(backgroundImageUrl);
       if (bgImg) {
         // 計算保持比例的尺寸（類似 CSS object-contain）
         const imgRatio = bgImg.width / bgImg.height;
@@ -98,33 +140,79 @@ export const generate2DSnapshot = async (
 
     // 2. 繪製設計區域背景色
     if (backgroundColor && product.printArea) {
-      const { x, y, width: pWidth, height: pHeight } = product.printArea;
-
-      // 計算縮放比例（基於 400px 的設計稿）
       const scale = width / 400;
+
+      let areaX, areaY, areaWidth, areaHeight;
+
+      if (useDisplayImage) {
+        const bounds = getDesignAreaBounds(product.printArea, product.displayImageDesignArea);
+        if (bounds) {
+          areaX = bounds.x;
+          areaY = bounds.y;
+          areaWidth = bounds.width;
+          areaHeight = bounds.height;
+        } else {
+          // 回退到 printArea
+          const { x, y, width: pWidth, height: pHeight } = product.printArea;
+          areaX = x;
+          areaY = y;
+          areaWidth = pWidth;
+          areaHeight = pHeight;
+        }
+      } else {
+        const { x, y, width: pWidth, height: pHeight } = product.printArea;
+        areaX = x;
+        areaY = y;
+        areaWidth = pWidth;
+        areaHeight = pHeight;
+      }
 
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(
-        x * scale,
-        y * scale,
-        pWidth * scale,
-        pHeight * scale
+        areaX * scale,
+        areaY * scale,
+        areaWidth * scale,
+        areaHeight * scale
       );
     }
 
     // 3. 設定裁切區域（超出設計區的元素會被隱藏）
     if (product.printArea) {
-      const { x, y, width: pWidth, height: pHeight } = product.printArea;
       const scale = width / 400;
+
+      let clipX, clipY, clipWidth, clipHeight;
+
+      if (useDisplayImage) {
+        const bounds = getDesignAreaBounds(product.printArea, product.displayImageDesignArea);
+        if (bounds) {
+          clipX = bounds.x;
+          clipY = bounds.y;
+          clipWidth = bounds.width;
+          clipHeight = bounds.height;
+        } else {
+          // 回退到 printArea
+          const { x, y, width: pWidth, height: pHeight } = product.printArea;
+          clipX = x;
+          clipY = y;
+          clipWidth = pWidth;
+          clipHeight = pHeight;
+        }
+      } else {
+        const { x, y, width: pWidth, height: pHeight } = product.printArea;
+        clipX = x;
+        clipY = y;
+        clipWidth = pWidth;
+        clipHeight = pHeight;
+      }
 
       ctx.save();
       // 建立裁切路徑
       ctx.beginPath();
       ctx.rect(
-        x * scale,
-        y * scale,
-        pWidth * scale,
-        pHeight * scale
+        clipX * scale,
+        clipY * scale,
+        clipWidth * scale,
+        clipHeight * scale
       );
       ctx.clip();
     }
@@ -139,16 +227,41 @@ export const generate2DSnapshot = async (
       const scale = width / 400;
       const { x: printX, y: printY, width: printWidth, height: printHeight } = product.printArea;
 
+      // 計算繪製區域
+      let drawAreaX, drawAreaY, drawAreaWidth, drawAreaHeight;
+      if (useDisplayImage) {
+        const bounds = getDesignAreaBounds(product.printArea, product.displayImageDesignArea);
+        if (bounds) {
+          drawAreaX = bounds.x;
+          drawAreaY = bounds.y;
+          drawAreaWidth = bounds.width;
+          drawAreaHeight = bounds.height;
+        } else {
+          // 回退到 printArea
+          drawAreaX = printX;
+          drawAreaY = printY;
+          drawAreaWidth = printWidth;
+          drawAreaHeight = printHeight;
+        }
+      } else {
+        drawAreaX = printX;
+        drawAreaY = printY;
+        drawAreaWidth = printWidth;
+        drawAreaHeight = printHeight;
+      }
+
       for (const element of sortedElements) {
         if (!element) continue;
 
-        // 計算元素相對於設計區的位置
+        // 計算元素相對於設計區的位置（百分比）
         const relativeX = element.x - printX;
         const relativeY = element.y - printY;
+        const relativePercentX = relativeX / printWidth;
+        const relativePercentY = relativeY / printHeight;
 
         // 轉換為 Canvas 上的實際位置
-        const canvasX = (printX + relativeX) * scale;
-        const canvasY = (printY + relativeY) * scale;
+        const canvasX = (drawAreaX + relativePercentX * drawAreaWidth) * scale;
+        const canvasY = (drawAreaY + relativePercentY * drawAreaHeight) * scale;
 
         ctx.save();
 

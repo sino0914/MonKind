@@ -27,6 +27,37 @@ const ProductThumbnail = ({
     );
   }
 
+  // 判斷是否使用展示圖片
+  const shouldUseDisplayImage = () => {
+    if (!product) return false;
+    if (product.type === '3D') return false;
+    if (!product.displayImage) return false;
+    if (!product.displayImageDesignArea) return false;
+
+    const { centerX, centerY, scale } = product.displayImageDesignArea;
+    if (typeof centerX !== 'number' || typeof centerY !== 'number' || typeof scale !== 'number') {
+      return false;
+    }
+
+    return true;
+  };
+
+  // 計算設計區域邊界（展示圖片模式）
+  const getDesignAreaBounds = () => {
+    if (!product?.printArea || !product?.displayImageDesignArea) return null;
+
+    const { centerX, centerY, scale } = product.displayImageDesignArea;
+    const scaledWidth = product.printArea.width * scale;
+    const scaledHeight = product.printArea.height * scale;
+
+    return {
+      x: centerX - scaledWidth / 2,
+      y: centerY - scaledHeight / 2,
+      width: scaledWidth,
+      height: scaledHeight
+    };
+  };
+
   // 根據商品類型選擇快照
   const snapshot = product.type === '3D' ? snapshot3D : snapshot2D;
 
@@ -76,7 +107,7 @@ const ProductThumbnail = ({
       {/* 商品背景圖 */}
       <div className="absolute inset-0">
         <img
-          src={product.mockupImage || product.image}
+          src={shouldUseDisplayImage() ? product.displayImage : (product.mockupImage || product.image)}
           alt={product.title}
           className="w-full h-full object-contain"
         />
@@ -86,27 +117,58 @@ const ProductThumbnail = ({
       {backgroundColor && product.printArea && (
         <div
           className="absolute"
-          style={{
-            left: `${(product.printArea.x / 400) * 100}%`,
-            top: `${(product.printArea.y / 400) * 100}%`,
-            width: `${(product.printArea.width / 400) * 100}%`,
-            height: `${(product.printArea.height / 400) * 100}%`,
-            backgroundColor: backgroundColor,
-            zIndex: 1
-          }}
+          style={(() => {
+            if (shouldUseDisplayImage()) {
+              const bounds = getDesignAreaBounds();
+              if (!bounds) return {};
+
+              return {
+                left: `${(bounds.x / 400) * 100}%`,
+                top: `${(bounds.y / 400) * 100}%`,
+                width: `${(bounds.width / 400) * 100}%`,
+                height: `${(bounds.height / 400) * 100}%`,
+                backgroundColor: backgroundColor,
+                zIndex: 1
+              };
+            } else {
+              return {
+                left: `${(product.printArea.x / 400) * 100}%`,
+                top: `${(product.printArea.y / 400) * 100}%`,
+                width: `${(product.printArea.width / 400) * 100}%`,
+                height: `${(product.printArea.height / 400) * 100}%`,
+                backgroundColor: backgroundColor,
+                zIndex: 1
+              };
+            }
+          })()}
         />
       )}
 
       {/* 設計元素 */}
       <div
         className="absolute overflow-hidden"
-        style={{
-          left: `${product.printArea ? (product.printArea.x / 400) * 100 : 0}%`,
-          top: `${product.printArea ? (product.printArea.y / 400) * 100 : 0}%`,
-          width: `${product.printArea ? (product.printArea.width / 400) * 100 : 100}%`,
-          height: `${product.printArea ? (product.printArea.height / 400) * 100 : 100}%`,
-          zIndex: 2
-        }}
+        style={(() => {
+          if (shouldUseDisplayImage()) {
+            const bounds = getDesignAreaBounds();
+            if (!bounds) return {};
+
+            return {
+              left: `${(bounds.x / 400) * 100}%`,
+              top: `${(bounds.y / 400) * 100}%`,
+              width: `${(bounds.width / 400) * 100}%`,
+              height: `${(bounds.height / 400) * 100}%`,
+              zIndex: 2
+            };
+          } else {
+            return {
+              left: `${product.printArea ? (product.printArea.x / 400) * 100 : 0}%`,
+              top: `${product.printArea ? (product.printArea.y / 400) * 100 : 0}%`,
+              width: `${product.printArea ? (product.printArea.width / 400) * 100 : 100}%`,
+              height: `${product.printArea ? (product.printArea.height / 400) * 100 : 100}%`,
+              zIndex: 2
+            };
+          }
+        })()}
       >
         {designElements.map((element) => {
           if (element.type === "text") {
