@@ -143,12 +143,9 @@ const CanvasArea = ({
       style={{
         overflow: "hidden",
         cursor: viewport?.isPanning ? 'grabbing' : (isHoveringImage ? 'none' : 'auto'),
-        minWidth: '400px',
-        minHeight: '400px',
-        maxWidth: 'min(90vh, calc(100vw - 600px))',
-        maxHeight: 'min(90vh, calc(100vh - 200px))',
+        flexShrink: 0,
+        width: 'min(100%, 600px)',
         aspectRatio: '1 / 1',
-        width: '100%',
         height: 'auto',
       }}
       onMouseDown={combinedMouseDown}

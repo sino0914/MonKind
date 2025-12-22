@@ -125,6 +125,13 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
 
   const { printArea, bleedArea, type: productType, title, physicalSize } = productInfo;
 
+  console.log("🔍 測試輸出 - 檢查出血區域設定:", {
+    useBleedArea,
+    bleedArea,
+    printArea,
+    有出血區域: !!bleedArea
+  });
+
   if (!printArea) {
     throw new Error("無法輸出：商品未設定設計區域");
   }
@@ -136,8 +143,10 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
   let outputBounds;
   if (useBleedArea && bleedArea) {
     outputBounds = calculateBleedBounds(printArea, bleedArea);
+    console.log("✅ 使用出血區域:", outputBounds);
   } else {
     outputBounds = printArea;
+    console.log("⚠️ 使用設計區域:", outputBounds);
   }
 
   const { width: printWidth, height: printHeight } = outputBounds;

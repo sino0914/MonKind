@@ -426,12 +426,9 @@ const ProductPreview = ({
         <div
           className="bg-white rounded border-2 border-gray-200 relative overflow-hidden"
           style={{
-            width: containerWidth,
-            height: containerHeight,
-            minWidth: isResponsive ? '440px' : undefined,
-            minHeight: isResponsive ? '440px' : undefined,
-            maxWidth: isResponsive ? 'min(90vh, calc(100vw - 600px))' : undefined,
-            maxHeight: isResponsive ? 'min(90vh, calc(100vh - 200px))' : undefined,
+            width: isResponsive ? 'min(100%, 600px)' : containerWidth,
+            height: isResponsive ? 'auto' : containerHeight,
+            flexShrink: isResponsive ? 0 : undefined,
             aspectRatio: isResponsive ? '1 / 1' : undefined,
           }}
         >
@@ -448,12 +445,9 @@ const ProductPreview = ({
         <div
           className="bg-white rounded border-2 border-gray-200 relative overflow-hidden"
           style={{
-            width: containerWidth,
-            height: containerHeight,
-            minWidth: isResponsive ? '440px' : undefined,
-            minHeight: isResponsive ? '440px' : undefined,
-            maxWidth: isResponsive ? 'min(90vh, calc(100vw - 600px))' : undefined,
-            maxHeight: isResponsive ? 'min(90vh, calc(100vh - 200px))' : undefined,
+            width: isResponsive ? 'min(100%, 600px)' : containerWidth,
+            height: isResponsive ? 'auto' : containerHeight,
+            flexShrink: isResponsive ? 0 : undefined,
             aspectRatio: isResponsive ? '1 / 1' : undefined,
           }}
         >
