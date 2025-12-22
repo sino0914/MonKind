@@ -237,11 +237,9 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
         img = await loadImage(element.url);
       }
       if (img) {
-        // 計算實際渲染尺寸（考慮自由變形 scaleX/scaleY）
-        const baseWidth = element.width || 100;
-        const baseHeight = element.height || 100;
-        const imgWidth = baseWidth * (element.scaleX || 1);
-        const imgHeight = baseHeight * (element.scaleY || 1);
+        // 使用最終渲染尺寸（width/height 已包含所有縮放）
+        const imgWidth = element.width || 100;
+        const imgHeight = element.height || 100;
 
         ctx.save();
 
@@ -489,11 +487,9 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
         img = await loadImage(element.url);
       }
       if (img) {
-        // 計算實際渲染尺寸（考慮自由變形 scaleX/scaleY）
-        const baseWidth = element.width || 100;
-        const baseHeight = element.height || 100;
-        const imgWidth = baseWidth * (element.scaleX || 1);
-        const imgHeight = baseHeight * (element.scaleY || 1);
+        // 使用最終渲染尺寸（width/height 已包含所有縮放）
+        const imgWidth = element.width || 100;
+        const imgHeight = element.height || 100;
 
         ctx.save();
 

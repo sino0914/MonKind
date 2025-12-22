@@ -290,11 +290,9 @@ export const generate2DSnapshot = async (
           }
 
           if (img) {
-            // 計算實際渲染尺寸（考慮自由變形 scaleX/scaleY）
-            const baseWidth = (element.width || 100) * scale;
-            const baseHeight = (element.height || 100) * scale;
-            const imgWidth = baseWidth * (element.scaleX || 1);
-            const imgHeight = baseHeight * (element.scaleY || 1);
+            // 使用最終渲染尺寸（width/height 已包含所有縮放）
+            const imgWidth = (element.width || 100) * scale;
+            const imgHeight = (element.height || 100) * scale;
 
             // 應用透明度
             ctx.globalAlpha = element.opacity !== undefined ? element.opacity : 1;
