@@ -2,6 +2,7 @@ import { CANVAS_SIZE, SCALE_FACTOR, DPI_PRINT } from '../constants/editorConfig'
 import { loadImage } from './imageUtils';
 import { calculateBleedBounds, drawCropMarks } from '../../../utils/bleedAreaUtils';
 import { getCanvasPxSize, mmToPx, printAreaDisplayToMm } from '../../../utils/unitConversion';
+import { addDpiToPng } from '../../../utils/pngDpiUtils';
 
 // 計算設計區域中心點
 export const calculateCenter = (printArea) => {
@@ -343,20 +344,29 @@ export const exportDesignToImage = async (productInfo, designElements, backgroun
   // 轉換為 Blob 並下載
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => {
+      async (blob) => {
         if (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          const areaType = useBleedArea && bleedArea ? "含出血區" : "設計區域";
-          a.download = `${title}_${areaType}_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+          try {
+            // 添加 DPI 元數據
+            const blobWithDpi = await addDpiToPng(blob, DPI_PRINT);
 
-          console.log("✅ 圖片輸出完成");
-          resolve();
+            const url = URL.createObjectURL(blobWithDpi);
+            const a = document.createElement("a");
+            a.href = url;
+            const areaType = useBleedArea && bleedArea ? "含出血區" : "設計區域";
+            // 文件名添加 300dpi 標識
+            a.download = `${title}_${areaType}_300dpi_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            console.log("✅ 圖片輸出完成（已添加 300 DPI 元數據）");
+            resolve();
+          } catch (error) {
+            console.error("❌ 添加 DPI 元數據失敗:", error);
+            reject(error);
+          }
         } else {
           console.error("❌ Canvas轉換失敗");
           reject(new Error("無法生成圖片"));
@@ -590,9 +600,17 @@ export const generatePrintFile = async (productInfo, designElements, backgroundC
   // 返回 Blob（供上傳使用）
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => {
+      async (blob) => {
         if (blob) {
-          resolve(blob);
+          try {
+            // 添加 DPI 元數據
+            const blobWithDpi = await addDpiToPng(blob, DPI_PRINT);
+            console.log("✅ 列印檔案已添加 300 DPI 元數據");
+            resolve(blobWithDpi);
+          } catch (error) {
+            console.error("❌ 添加 DPI 元數據失敗:", error);
+            reject(error);
+          }
         } else {
           reject(new Error("無法生成列印檔案"));
         }
