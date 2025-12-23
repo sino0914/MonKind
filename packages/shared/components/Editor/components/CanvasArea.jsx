@@ -1,6 +1,7 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import DesignElementsLayer from './DesignElementsLayer';
 import { calculateBleedBounds } from '../../../utils/bleedAreaUtils';
+import { CANVAS_SIZE } from '../constants/editorConfig';
 
 /**
  * 畫布區域組件
@@ -78,6 +79,32 @@ const CanvasArea = ({
 }) => {
   // 畫布容器的 ref
   const canvasContainerRef = useRef(null);
+
+  // 追蹤畫布縮放因子
+  const [canvasScale, setCanvasScale] = useState(1);
+
+  // 測量畫布實際尺寸並計算縮放因子
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    if (!container) return;
+
+    const updateScale = () => {
+      const actualWidth = container.offsetWidth;
+      const newScale = actualWidth / CANVAS_SIZE;
+      setCanvasScale(newScale);
+    };
+
+    // 初始化測量
+    updateScale();
+
+    // 監聽容器尺寸變化
+    const resizeObserver = new ResizeObserver(updateScale);
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []); // 移除 canvasScale 依賴，避免重複建立 observer
 
   // 使用原生事件監聽器來阻止滾輪事件冒泡
   useEffect(() => {
@@ -412,6 +439,7 @@ const CanvasArea = ({
             handleDeleteElement={handleDeleteElement}
             measureTextWidth={measureTextWidth}
             editingInputWidth={editingInputWidth}
+            canvasScale={canvasScale}
           />
         </>
       )}

@@ -11,6 +11,7 @@ const TextEditingInput = ({
   onContentChange,
   onFinishEdit,
   inputWidth,
+  canvasScale = 1,
 }) => {
   if (!element) return null;
 
@@ -34,7 +35,7 @@ const TextEditingInput = ({
         left: `${(element.x / CANVAS_SIZE) * 100}%`,
         top: `${(element.y / CANVAS_SIZE) * 100}%`,
         transform: "translate(-50%, -50%)",
-        fontSize: `${element.fontSize * (DISPLAY_SIZE / CANVAS_SIZE)}px`,
+        fontSize: `${element.fontSize * canvasScale}px`,
         color: element.color,
         fontFamily: element.fontFamily,
         fontWeight: element.fontWeight || "normal",

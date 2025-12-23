@@ -66,6 +66,9 @@ const DesignElementsLayer = ({
   // 測量函數
   measureTextWidth,
   editingInputWidth,
+
+  // 畫布縮放因子
+  canvasScale = 1,
 }) => {
   // 取得需要 SVG clipPath 定義的形狀
   const pathTypeShapes = getPathTypeShapes();
@@ -140,6 +143,7 @@ const DesignElementsLayer = ({
                           onContentChange={setEditingContent}
                           onFinishEdit={handleFinishTextEdit}
                           inputWidth={editingInputWidth}
+                          canvasScale={canvasScale}
                         />
                       ) : (
                         <div
@@ -154,7 +158,7 @@ const DesignElementsLayer = ({
                           {/* 文字內容 */}
                           <div
                             style={{
-                              fontSize: `${element.fontSize * (DISPLAY_SIZE / CANVAS_SIZE)}px`,
+                              fontSize: `${element.fontSize * canvasScale}px`,
                               color: element.color,
                               fontFamily: element.fontFamily,
                               fontWeight: element.fontWeight || "normal",
@@ -395,8 +399,8 @@ const DesignElementsLayer = ({
                 element.fontWeight,
                 element.fontStyle
               );
-              elementWidth = textWidth * (DISPLAY_SIZE / CANVAS_SIZE);
-              elementHeight = element.fontSize * (DISPLAY_SIZE / CANVAS_SIZE) * 1.5;
+              elementWidth = textWidth * canvasScale;
+              elementHeight = element.fontSize * canvasScale * 1.5;
             }
 
             return (
